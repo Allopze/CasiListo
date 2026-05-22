@@ -17,15 +17,17 @@ struct ItemRowView: View {
     var body: some View {
         HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {
             // Toda la tarjeta (excepto el botón de edición) al tocarla completa o descompleta el ítem.
-            HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {
-                checkboxView
-                rowContent
-                Spacer()
-            }
-            .contentShape(Rectangle())
-            .onTapGesture {
+            Button {
                 toggleItem()
+            } label: {
+                HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {
+                    checkboxView
+                    rowContent
+                    Spacer()
+                }
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityLabel)
             .accessibilityValue(item.isPurchased ? "Comprado" : "Pendiente")

@@ -84,40 +84,42 @@ struct CategorySectionView: View {
     private var sectionHeader: some View {
         let isCollapsed = viewModel.isCategoryCollapsed(category)
         
-        return HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {
-            Image(systemName: category.sfSymbol)
-                .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
-                .foregroundStyle(Theme.accentYellow)
-                .frame(width: 20 * CGFloat(accessibilityTextSizeScale), alignment: .center)
-
-            Text(category.displayName)
-                .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(Color.appTextSecondary)
-
-            Spacer()
-
-            Text("\(items.count)")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(Color.appTextPurchased)
-                .monospacedDigit()
-            
-            Image(systemName: "chevron.down")
-                .font(.system(size: 11 * CGFloat(accessibilityTextSizeScale), weight: .bold))
-                .foregroundStyle(Color.appTextSecondary)
-                .rotationEffect(.degrees(isCollapsed ? -90 : 0))
-                .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
-        }
-        .textCase(nil)
-        .padding(.top, 8 * CGFloat(accessibilityTextSizeScale))
-        .padding(.bottom, 4 * CGFloat(accessibilityTextSizeScale))
-        .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
-        .contentShape(Rectangle())
-        .onTapGesture {
+        return Button {
             HapticFeedback.selection()
             withAnimation(Theme.defaultAnimation) {
                 viewModel.toggleCategoryCollapse(category)
             }
+        } label: {
+            HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {
+                Image(systemName: category.sfSymbol)
+                    .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                    .foregroundStyle(Theme.accentYellow)
+                    .frame(width: 20 * CGFloat(accessibilityTextSizeScale), alignment: .center)
+
+                Text(category.displayName)
+                    .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
+                    .foregroundStyle(Color.appTextSecondary)
+
+                Spacer()
+
+                Text("\(items.count)")
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .foregroundStyle(Color.appTextPurchased)
+                    .monospacedDigit()
+                
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 11 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .foregroundStyle(Color.appTextSecondary)
+                    .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
+            }
+            .textCase(nil)
+            .padding(.top, 8 * CGFloat(accessibilityTextSizeScale))
+            .padding(.bottom, 4 * CGFloat(accessibilityTextSizeScale))
+            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityHint(isCollapsed ? "Toca para expandir la categoría" : "Toca para colapsar la categoría")
     }

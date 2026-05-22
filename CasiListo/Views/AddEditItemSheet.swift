@@ -77,9 +77,10 @@ struct AddEditItemSheet: View {
             }
             .onAppear {
                 loadExistingData()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                    isNameFocused = true
-                }
+            }
+            .task {
+                try? await Task.sleep(for: .milliseconds(300))
+                isNameFocused = true
             }
         }
         .presentationDetents([.large])

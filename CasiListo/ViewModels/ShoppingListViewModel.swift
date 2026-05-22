@@ -2,6 +2,7 @@ import SwiftUI
 import SwiftData
 
 /// Destinos modales de la lista. Mantiene una sola presentación activa.
+@MainActor
 enum ShoppingListSheetDestination: Identifiable {
     case addItem
     case editItem(ShoppingItem)
@@ -21,6 +22,7 @@ enum ShoppingListSheetDestination: Identifiable {
 
 /// ViewModel principal que centraliza la lógica de la lista de compra.
 @Observable
+@MainActor
 final class ShoppingListViewModel {
 
     // MARK: - Estado de UI
@@ -70,14 +72,19 @@ final class ShoppingListViewModel {
             }
     }
 
-    /// Cuenta de ítems pendientes.
-    func pendingCount(from items: [ShoppingItem]) -> Int {
-        items.filter { !$0.isPurchased }.count
+    /// Conteos de ítems en un solo pase.
+    struct ItemCounts {
+        let pending: Int
+        let purchased: Int
     }
 
-    /// Cuenta de ítems comprados.
-    func purchasedCount(from items: [ShoppingItem]) -> Int {
-        items.filter { $0.isPurchased }.count
+    /// Calcula pendientes y comprados en un único recorrido del array.
+    func itemCounts(from items: [ShoppingItem]) -> ItemCounts {
+        var pending = 0, purchased = 0
+        for item in items {
+            if item.isPurchased { purchased += 1 } else { pending += 1 }
+        }
+        return ItemCounts(pending: pending, purchased: purchased)
     }
 
     // MARK: - Acciones

@@ -40,23 +40,9 @@ enum Category: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    /// Orden de presentación en la lista.
+    /// Orden de presentación en la lista (coincide con el orden de declaración del enum).
     var sortIndex: Int {
-        switch self {
-        case .vinos: return 0
-        case .bebidasAlcoholicas: return 1
-        case .aseoPersonal: return 2
-        case .bebidas: return 3
-        case .carnes: return 4
-        case .despensa: return 5
-        case .frutasVerduras: return 6
-        case .hogarLimpieza: return 7
-        case .lacteosHuevos: return 8
-        case .mascotas: return 9
-        case .panaderiaDulces: return 10
-        case .pescados: return 11
-        case .varios: return 12
-        }
+        Category.allCases.firstIndex(of: self) ?? 0
     }
 }
 

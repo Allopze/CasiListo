@@ -236,16 +236,20 @@ extension View {
 
 @MainActor
 enum HapticFeedback {
+    private static let selectionGenerator = UISelectionFeedbackGenerator()
+    private static let notificationGenerator = UINotificationFeedbackGenerator()
+    private static let impactGenerator = UIImpactFeedbackGenerator(style: .light)
+
     static func selection() {
-        UISelectionFeedbackGenerator().selectionChanged()
+        selectionGenerator.selectionChanged()
     }
 
     static func success() {
-        UINotificationFeedbackGenerator().notificationOccurred(.success)
+        notificationGenerator.notificationOccurred(.success)
     }
 
     static func impact() {
-        UIImpactFeedbackGenerator(style: .light).impactOccurred()
+        impactGenerator.impactOccurred()
     }
 }
 

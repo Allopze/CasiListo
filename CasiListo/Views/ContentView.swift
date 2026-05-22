@@ -62,7 +62,7 @@ struct ContentView: View {
                 isPresented: $showsClearPurchasedDialog,
                 titleVisibility: .visible
             ) {
-                Button("Borrar \(viewModel.purchasedCount(from: allItems)) comprados", role: .destructive) {
+                Button("Borrar \(viewModel.itemCounts(from: allItems).purchased) comprados", role: .destructive) {
                     HapticFeedback.impact()
                     withAnimation(Theme.defaultAnimation) {
                         viewModel.clearPurchased(items: allItems, context: modelContext)
@@ -75,7 +75,7 @@ struct ContentView: View {
             }
         }
         .tint(Theme.accentYellow)
-        .onAppear {
+        .task {
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
             if !hasSeeded {
                 seedDefaultItems()
@@ -138,7 +138,7 @@ struct ContentView: View {
                 Label("Ajustes", systemImage: "gearshape")
             }
 
-            if viewModel.purchasedCount(from: allItems) > 0 {
+            if viewModel.itemCounts(from: allItems).purchased > 0 {
                 Button(role: .destructive) {
                     showsClearPurchasedDialog = true
                 } label: {
@@ -291,11 +291,13 @@ private struct ShoppingListView: View {
     var body: some View {
         let groups = viewModel.groupedItems(from: allItems)
 
+        let counts = viewModel.itemCounts(from: allItems)
+
         List {
             Section {
                 SummaryBarView(
-                    pendingCount: viewModel.pendingCount(from: allItems),
-                    purchasedCount: viewModel.purchasedCount(from: allItems),
+                    pendingCount: counts.pending,
+                    purchasedCount: counts.purchased,
                     showPurchased: $viewModel.showPurchased
                 )
                 .listRowInsets(.init(
