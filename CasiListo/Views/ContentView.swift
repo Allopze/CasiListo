@@ -117,6 +117,31 @@ struct ContentView: View {
         .accessibilityLabel("Añadir producto")
     }
 
+    private var formattedShareText: String {
+        let groups = viewModel.groupedItems(from: allItems)
+        guard !groups.isEmpty else { return "Mi lista de compras en CasiListo está vacía." }
+        
+        var text = "📝 *Lista de Compras: CasiListo*\n\n"
+        for group in groups {
+            text += "*\(group.category.displayName.uppercased())*\n"
+            for item in group.items {
+                let check = item.isPurchased ? "✅" : "⬜"
+                let qty = item.quantity.isEmpty ? "" : " (\(item.quantity))"
+                
+                var priceStr = ""
+                if let price = item.price {
+                    let formattedPrice = price.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(price)) : String(format: "%.2f", price)
+                    priceStr = " - $\(formattedPrice)"
+                }
+                
+                let note = item.note.isEmpty ? "" : " [Nota: \(item.note)]"
+                text += "\(check) \(item.name)\(qty)\(priceStr)\(note)\n"
+            }
+            text += "\n"
+        }
+        return text
+    }
+
     private var menuButton: some View {
         Menu {
             Button {
@@ -129,6 +154,10 @@ struct ContentView: View {
                     viewModel.showPurchased ? "Ocultar comprados" : "Mostrar comprados",
                     systemImage: viewModel.showPurchased ? "eye.slash" : "eye"
                 )
+            }
+
+            ShareLink(item: formattedShareText) {
+                Label("Compartir lista", systemImage: "square.and.arrow.up")
             }
 
             Button {
@@ -185,18 +214,26 @@ struct ContentView: View {
 private struct SummaryBarView: View {
     let pendingCount: Int
     let purchasedCount: Int
+    let pendingTotal: Double
+    let purchasedTotal: Double
     @Binding var showPurchased: Bool
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
-        AdaptiveGlassEffectContainer(spacing: 12) {
+        let pendingTotalStr = pendingTotal.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(pendingTotal)) : String(format: "%.2f", pendingTotal)
+        let purchasedTotalStr = purchasedTotal.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(purchasedTotal)) : String(format: "%.2f", purchasedTotal)
+
+        let pendingLabel = pendingTotal > 0 ? "\(pendingCount) pendientes ($\(pendingTotalStr))" : "\(pendingCount) pendientes"
+        let purchasedLabel = purchasedTotal > 0 ? "\(purchasedCount) comprados ($\(purchasedTotalStr))" : "\(purchasedCount) comprados"
+
+        return AdaptiveGlassEffectContainer(spacing: 12) {
             HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {
-                Label("\(pendingCount) pendientes", systemImage: "circle")
+                Label(pendingLabel, systemImage: "circle")
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.appTextSecondary)
 
                 if purchasedCount > 0 {
-                    Label("\(purchasedCount) comprados", systemImage: "checkmark.circle.fill")
+                    Label(purchasedLabel, systemImage: "checkmark.circle.fill")
                         .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Theme.accentYellow)
                 }
@@ -256,27 +293,103 @@ private struct NoResultsView: View {
 }
 
 private struct BottomAddBarView: View {
+    @Binding var text: String
+    let onAddQuick: () -> Void
     let onAddTapped: () -> Void
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
-        AdaptiveGlassEffectContainer(spacing: 12) {
-            HStack {
-                Spacer()
-
-                Button {
-                    onAddTapped()
-                } label: {
-                    Label("Añadir producto", systemImage: "plus")
-                        .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                        .padding(.vertical, 4 * CGFloat(accessibilityTextSizeScale))
+        AdaptiveGlassEffectContainer(spacing: 8) {
+            VStack(spacing: 6) {
+                // Suggestions horizontal chip list
+                let suggestions = SuggestedProducts.suggestions(for: text)
+                if !text.isEmpty && !suggestions.isEmpty {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            ForEach(suggestions.prefix(5), id: \.self) { suggestion in
+                                Button {
+                                    HapticFeedback.selection()
+                                    text = suggestion
+                                    onAddQuick()
+                                } label: {
+                                    Text(suggestion)
+                                        .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                                        .foregroundStyle(Color.appTextPrimary)
+                                        .padding(.horizontal, 12 * CGFloat(accessibilityTextSizeScale))
+                                        .padding(.vertical, 6 * CGFloat(accessibilityTextSizeScale))
+                                        .glassFilterSurface(cornerRadius: Theme.chipCornerRadius, interactive: true)
+                                }
+                                .buttonStyle(.plain)
+                            }
+                        }
+                        .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .padding(.top, 4)
                 }
-                .adaptiveGlassProminentButtonStyle()
+
+                HStack(spacing: 10 * CGFloat(accessibilityTextSizeScale)) {
+                    // Text input field
+                    HStack {
+                        Image(systemName: "cart.badge.plus")
+                            .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale)))
+                            .foregroundStyle(Color.appTextSecondary)
+                            .padding(.leading, 12 * CGFloat(accessibilityTextSizeScale))
+
+                        TextField("Añadir rápido...", text: $text)
+                            .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                            .textFieldStyle(.plain)
+                            .autocorrectionDisabled()
+                            .submitLabel(.done)
+                            .onSubmit {
+                                if !text.trimmingCharacters(in: .whitespaces).isEmpty {
+                                    onAddQuick()
+                                }
+                            }
+                    }
+                    .frame(height: 40 * CGFloat(accessibilityTextSizeScale))
+                    .glassFilterSurface(cornerRadius: Theme.controlCornerRadius(scale: accessibilityTextSizeScale), interactive: true)
+
+                    if !text.trimmingCharacters(in: .whitespaces).isEmpty {
+                        // Quick add confirmation button (+)
+                        Button {
+                            onAddQuick()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
+                                .foregroundStyle(Theme.accentYellow)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Añadir instantáneamente")
+
+                        // Open details modal button
+                        Button {
+                            onAddTapped()
+                        } label: {
+                            Image(systemName: "ellipsis.circle.fill")
+                                .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
+                                .foregroundStyle(Color.appTextSecondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Añadir con detalles")
+                    } else {
+                        // Classic add button (opens sheet)
+                        Button {
+                            onAddTapped()
+                        } label: {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
+                                .foregroundStyle(Theme.accentYellow)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Añadir producto")
+                    }
+                }
+                .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+                .padding(.top, 4)
+                .padding(.bottom, 8 * CGFloat(accessibilityTextSizeScale))
             }
-            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
-            .padding(.top, 8)
-            .padding(.bottom, 10 * CGFloat(accessibilityTextSizeScale))
-            .background(Color.appBackground.opacity(0.68))
+            .background(Color.appBackground.opacity(0.85))
         }
     }
 }
@@ -287,17 +400,42 @@ private struct ShoppingListView: View {
     let onEdit: (ShoppingItem) -> Void
     let onAddTapped: () -> Void
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @Environment(\.modelContext) private var modelContext
+
+    private func addQuickItem() {
+        let name = viewModel.quickAddText.trimmingCharacters(in: .whitespaces)
+        guard !name.isEmpty else { return }
+
+        let category = SuggestedProducts.suggestedCategory(for: name) ?? .varios
+        let newItem = ShoppingItem(
+            name: name,
+            quantity: "",
+            category: category,
+            note: "",
+            isPurchased: false,
+            sortOrder: viewModel.nextSortOrder(for: category, in: allItems)
+        )
+        withAnimation(Theme.defaultAnimation) {
+            modelContext.insert(newItem)
+            viewModel.quickAddText = ""
+        }
+        HapticFeedback.success()
+    }
 
     var body: some View {
         let groups = viewModel.groupedItems(from: allItems)
 
         let counts = viewModel.itemCounts(from: allItems)
+        let pendingTotal = viewModel.pendingTotal(from: allItems)
+        let purchasedTotal = viewModel.purchasedTotal(from: allItems)
 
         List {
             Section {
                 SummaryBarView(
                     pendingCount: counts.pending,
                     purchasedCount: counts.purchased,
+                    pendingTotal: pendingTotal,
+                    purchasedTotal: purchasedTotal,
                     showPurchased: $viewModel.showPurchased
                 )
                 .listRowInsets(.init(
@@ -331,7 +469,13 @@ private struct ShoppingListView: View {
         .environment(\.defaultMinListRowHeight, 1)
         .background(Color.appBackground)
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomAddBarView(onAddTapped: onAddTapped)
+            BottomAddBarView(
+                text: $viewModel.quickAddText,
+                onAddQuick: {
+                    addQuickItem()
+                },
+                onAddTapped: onAddTapped
+            )
         }
         .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
         .animation(Theme.defaultAnimation, value: viewModel.searchText)

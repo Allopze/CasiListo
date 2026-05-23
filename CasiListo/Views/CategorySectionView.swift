@@ -75,6 +75,9 @@ struct CategorySectionView: View {
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
                 }
+                .onMove { source, destination in
+                    viewModel.moveItem(from: source, to: destination, within: items, context: modelContext)
+                }
             }
         } header: {
             sectionHeader
@@ -92,20 +95,26 @@ struct CategorySectionView: View {
         } label: {
             HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                    .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(Theme.accentYellow)
                     .frame(width: 20 * CGFloat(accessibilityTextSizeScale), alignment: .center)
 
                 Text(category.displayName)
                     .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(Color.appTextSecondary)
+                    .foregroundStyle(Color.appTextPrimary)
+                    .bold()
 
                 Spacer()
 
                 Text("\(items.count)")
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(Color.appTextPurchased)
+                    .foregroundStyle(Color.white)
+                    .bold()
                     .monospacedDigit()
+                    .padding(.horizontal, 10 * CGFloat(accessibilityTextSizeScale))
+                    .padding(.vertical, 4 * CGFloat(accessibilityTextSizeScale))
+                    .background(Theme.accentYellow)
+                    .clipShape(Capsule())
                 
                 Image(systemName: "chevron.down")
                     .font(.system(size: 11 * CGFloat(accessibilityTextSizeScale), weight: .bold))
@@ -114,9 +123,14 @@ struct CategorySectionView: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
             }
             .textCase(nil)
+            .padding(.vertical, 10 * CGFloat(accessibilityTextSizeScale))
+            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+            .background(Color.appCardBackground)
+            .clipShape(RoundedRectangle(cornerRadius: Theme.smallCornerRadius(scale: accessibilityTextSizeScale), style: .continuous))
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
             .padding(.top, 8 * CGFloat(accessibilityTextSizeScale))
             .padding(.bottom, 4 * CGFloat(accessibilityTextSizeScale))
-            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

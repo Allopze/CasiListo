@@ -31,6 +31,7 @@ final class ShoppingListViewModel {
     var showPurchased: Bool = true
     var presentedSheet: ShoppingListSheetDestination?
     var collapsedCategories: Set<Category> = []
+    var quickAddText: String = ""
 
     // MARK: - Filtrado y agrupación
 
@@ -135,5 +136,30 @@ final class ShoppingListViewModel {
         let categoryItems = items.filter { $0.category == category }
         let maxOrder = categoryItems.map(\.sortOrder).max() ?? -1
         return maxOrder + 1
+    }
+
+    /// Reordena los ítems dentro de una categoría y actualiza sus valores de `sortOrder`.
+    func moveItem(from source: IndexSet, to destination: Int, within items: [ShoppingItem], context: ModelContext) {
+        var mutableItems = items
+        mutableItems.move(fromOffsets: source, toOffset: destination)
+        for (index, item) in mutableItems.enumerated() {
+            item.sortOrder = index
+        }
+        try? context.save()
+    }
+
+    /// Calcula la suma de precios de todos los artículos pendientes.
+    func pendingTotal(from items: [ShoppingItem]) -> Double {
+        items.filter { !$0.isPurchased }.compactMap(\.price).reduce(0, +)
+    }
+
+    /// Calcula la suma de precios de todos los artículos comprados.
+    func purchasedTotal(from items: [ShoppingItem]) -> Double {
+        items.filter { $0.isPurchased }.compactMap(\.price).reduce(0, +)
+    }
+
+    /// Calcula el costo total general de la lista.
+    func grandTotal(from items: [ShoppingItem]) -> Double {
+        items.compactMap(\.price).reduce(0, +)
     }
 }

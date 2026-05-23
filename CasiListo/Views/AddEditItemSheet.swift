@@ -26,6 +26,7 @@ struct AddEditItemSheet: View {
 
     @State private var name: String = ""
     @State private var quantity: String = ""
+    @State private var priceString: String = ""
     @State private var selectedCategory: Category = .varios
     @State private var note: String = ""
     @State private var showSuggestions: Bool = false
@@ -77,6 +78,13 @@ struct AddEditItemSheet: View {
             }
             .onAppear {
                 loadExistingData()
+                if case .add = mode, !viewModel.quickAddText.isEmpty {
+                    name = viewModel.quickAddText
+                    viewModel.quickAddText = ""
+                    if let suggested = SuggestedProducts.suggestedCategory(for: name) {
+                        selectedCategory = suggested
+                    }
+                }
             }
             .task {
                 try? await Task.sleep(for: .milliseconds(300))
@@ -129,6 +137,9 @@ struct AddEditItemSheet: View {
             TextField("Cantidad, ej: 2, 1 kg, 500 g", text: $quantity)
                 .textInputAutocapitalization(.never)
 
+            TextField("Precio opcional, ej: 1.50", text: $priceString)
+                .keyboardType(.decimalPad)
+
             TextField("Nota", text: $note, axis: .vertical)
                 .lineLimit(2...4)
         } header: {
@@ -152,12 +163,19 @@ struct AddEditItemSheet: View {
             quantity = item.quantity
             selectedCategory = item.category
             note = item.note
+            if let price = item.price {
+                priceString = price.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(price)) : String(format: "%.2f", price)
+            } else {
+                priceString = ""
+            }
         }
     }
 
     private func saveItem() {
         let trimmedName = name.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty else { return }
+
+        let parsedPrice = Double(priceString.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces))
 
         switch mode {
         case .add:
@@ -166,7 +184,8 @@ struct AddEditItemSheet: View {
                 quantity: quantity.trimmingCharacters(in: .whitespaces),
                 category: selectedCategory,
                 note: note.trimmingCharacters(in: .whitespaces),
-                sortOrder: viewModel.nextSortOrder(for: selectedCategory, in: allItems)
+                sortOrder: viewModel.nextSortOrder(for: selectedCategory, in: allItems),
+                price: parsedPrice
             )
             modelContext.insert(newItem)
 
@@ -175,6 +194,7 @@ struct AddEditItemSheet: View {
             item.quantity = quantity.trimmingCharacters(in: .whitespaces)
             item.category = selectedCategory
             item.note = note.trimmingCharacters(in: .whitespaces)
+            item.price = parsedPrice
         }
     }
 }

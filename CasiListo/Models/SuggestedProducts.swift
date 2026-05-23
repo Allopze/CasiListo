@@ -40,7 +40,6 @@ struct SuggestedProducts {
         ],
         .despensa: [
             "Palillos", "Pan rallado", "Almendras", "Nueces peladas", "Castañas cajú",
-            "Judias verdes congeladas", "Maíz en grano congelado", "Maíz (panoja) congelado",
             "Mix de verduras", "Aceite girasol", "Aceite de oliva", "Vinagre corriente",
             "Vinagre blanco Carbonel", "Vinagre de jerez Carbonel", "Vinagre de arroz",
             "Bicarbonato", "Salsa de soja", "Alioli", "Mayonesa", "Mayonesa con ajo",
@@ -48,17 +47,17 @@ struct SuggestedProducts {
             "Crema espárragos", "Kepchup tarro", "Kepchup bolsa", "Orégano",
             "Pimienta negra", "Pimentón dulce", "Pimentón picante", "Sesamo tostado",
             "Canela en rama", "Sal fina", "Sal entrefina", "Sal gruesa", "Levadura",
-            "Pote de sal", "Pasta sashuy", "Puré de patatas", "Patatas duquesa",
+            "Pote de sal", "Pasta sashuy", "Puré de patatas",
             "Arroz", "Arroz paella", "Macarrones", "Espagueti", "Fideos", "Corbatas",
             "Mariposas", "Sopas", "Caldo de pollo", "Caldo de carne", "Lentejas",
             "Alubias", "Garbanzos", "Mejillones escabeche", "Sardinas salsa de tomate",
             "Sardinas en aceite", "Atún", "Anchoas", "Aceitunas rellenas",
             "Aceitunas con hueso", "Paté", "Guisantes", "Pimiento morrón",
             "Pimientos Piquillo", "Champiñones enteros", "Champiñones laminados",
-            "Tuco", "Latas picoteo (calamares, pulpo, etc.)", "Pollo crispi",
+            "Tuco", "Latas picoteo (calamares, pulpo, etc.)",
             "Sopas de pollo", "Cereales Zucaritas", "Azúcar", "Endulzante",
             "Harina de maíz", "Harina de trigo", "Harina con polvos de hornear",
-            "Pasta lasaña", "Pasta china", "Hielo"
+            "Pasta lasaña", "Pasta china"
         ],
         .frutasVerduras: [
             "Patatas", "Manzanas verdes", "Manzanas Fuji", "Kiwis", "Plátanos",
@@ -86,6 +85,12 @@ struct SuggestedProducts {
             "Queso La Vaquita", "Margarina", "Mantequilla", "Postres",
             "Leche sin lactosa", "Leche semi", "Crema de leche (nata)",
             "Crema de leche sin lactosa", "Yogures", "Huevos", "Postre"
+        ],
+        .congelados: [
+            "Hielo", "Judias verdes congeladas", "Maíz en grano congelado", "Maíz (panoja) congelado",
+            "Patatas duquesa", "Pollo crispi", "Hamburguesas congeladas", "Pizzas congeladas",
+            "Helado de vainilla", "Helado de chocolate", "Mix de verduras congelado",
+            "Pescado congelado", "Empanadas congeladas", "Papas fritas congeladas"
         ],
         .mascotas: [
             "Comida seca Gatos", "Arena gatos", "Comida seca Frijol",

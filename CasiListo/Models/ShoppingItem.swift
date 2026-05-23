@@ -12,6 +12,7 @@ final class ShoppingItem {
     var note: String
     var isPurchased: Bool
     var sortOrder: Int
+    var price: Double?
     var createdAt: Date
 
     /// Categoría tipada, derivada de `categoryRawValue`.
@@ -26,7 +27,8 @@ final class ShoppingItem {
         category: Category = .varios,
         note: String = "",
         isPurchased: Bool = false,
-        sortOrder: Int = 0
+        sortOrder: Int = 0,
+        price: Double? = nil
     ) {
         self.id = UUID()
         self.name = name
@@ -35,6 +37,7 @@ final class ShoppingItem {
         self.note = note
         self.isPurchased = isPurchased
         self.sortOrder = sortOrder
+        self.price = price
         self.createdAt = Date()
     }
 }
