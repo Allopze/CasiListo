@@ -38,7 +38,7 @@ struct StoreFilterBar: View {
             }
             .padding(.horizontal, 14 * CGFloat(accessibilityTextSizeScale))
             .padding(.vertical, 8 * CGFloat(accessibilityTextSizeScale))
-            .foregroundStyle(isSelected ? Color.white : Color.appTextPrimary)
+            .foregroundStyle(isSelected ? selectedForeground(for: store) : Color.appTextPrimary)
             .background {
                 if isSelected {
                     RoundedRectangle(cornerRadius: 12 * CGFloat(accessibilityTextSizeScale), style: .continuous)
@@ -54,5 +54,12 @@ struct StoreFilterBar: View {
             }
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
+        .accessibilityValue(isSelected ? "Seleccionado" : "No seleccionado")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private func selectedForeground(for store: Store?) -> Color {
+        store == nil ? Color.black : Color.white
     }
 }

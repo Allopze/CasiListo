@@ -108,7 +108,7 @@ struct CategorySectionView: View {
 
                 Text("\(items.count)")
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(Color.white)
+                    .foregroundStyle(Color.black)
                     .bold()
                     .monospacedDigit()
                     .padding(.horizontal, 10 * CGFloat(accessibilityTextSizeScale))
@@ -135,6 +135,8 @@ struct CategorySectionView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(category.displayName), \(items.count) productos")
+        .accessibilityValue(isCollapsed ? "Colapsada" : "Expandida")
         .accessibilityHint(isCollapsed ? "Toca para expandir la categoría" : "Toca para colapsar la categoría")
     }
 

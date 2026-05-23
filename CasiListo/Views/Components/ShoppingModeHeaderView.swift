@@ -22,13 +22,15 @@ struct ShoppingModeHeaderView: View {
                             .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                             .bold()
                     }
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color.shoppingModeText)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.1))
+                    .frame(minHeight: Theme.minimumTouchTarget)
+                    .background(Color.shoppingModeControlBackground)
                     .clipShape(Capsule())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Volver a seleccionar supermercado")
                 
                 Spacer()
                 
@@ -53,19 +55,20 @@ struct ShoppingModeHeaderView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(.white)
-                        .padding(10)
-                        .background(Color.white.opacity(0.1))
+                        .foregroundStyle(Color.shoppingModeText)
+                        .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                        .background(Color.shoppingModeControlBackground)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Salir del modo compra")
             }
             
             VStack(spacing: 6) {
                 HStack {
                     Text("\(viewModel.purchasedCount) de \(viewModel.totalCount) comprados")
                         .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                        .foregroundStyle(Color.appTextSecondary)
+                        .foregroundStyle(Color.shoppingModeSecondaryText)
                     Spacer()
                     Text("\(Int(viewModel.progress * 100))%")
                         .font(Theme.captionFont(scale: accessibilityTextSizeScale))
@@ -76,7 +79,7 @@ struct ShoppingModeHeaderView: View {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
                         RoundedRectangle(cornerRadius: 6)
-                            .fill(Color.white.opacity(0.08))
+                            .fill(Color.shoppingModeControlBackground)
                         
                         RoundedRectangle(cornerRadius: 6)
                             .fill(viewModel.store.color)
@@ -89,6 +92,6 @@ struct ShoppingModeHeaderView: View {
         .padding(.horizontal, 20)
         .padding(.top, 16)
         .padding(.bottom, 16)
-        .background(Color.appCardBackground)
+        .background(Color.shoppingModeSurface)
     }
 }

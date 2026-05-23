@@ -102,10 +102,12 @@ final class ShoppingModeViewModel {
         
         if currentCatPending == 0 {
             // Esperar un momento breve para que el usuario vea el check y luego avanzar
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(600))
+                guard !Task.isCancelled else { return }
                 withAnimation(.spring()) {
-                    if self.activeCategoryIndex < self.categories.count - 1 {
-                        self.activeCategoryIndex += 1
+                    if activeCategoryIndex < categories.count - 1 {
+                        activeCategoryIndex += 1
                     }
                 }
             }

@@ -19,6 +19,7 @@ enum Theme {
     static let cardPadding: CGFloat = 16
     static let itemSpacing: CGFloat = 12
     static let sectionSpacing: CGFloat = 24
+    static let minimumTouchTarget: CGFloat = 44
 
     // MARK: - Fuentes Estáticas (Compatibilidad)
 
@@ -164,7 +165,7 @@ struct AdaptiveGlassButtonStyle: ButtonStyle {
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     func makeBody(configuration: Configuration) -> some View {
-        let size = 40 * CGFloat(accessibilityTextSizeScale)
+        let size = max(Theme.minimumTouchTarget, 40 * CGFloat(accessibilityTextSizeScale))
         configuration.label
             .frame(width: size, height: size)
             .background(.ultraThinMaterial)
@@ -274,6 +275,21 @@ extension Color {
 
     /// Separador sutil.
     static let appSeparator = Color(light: Color(hex: "ECECEC"), dark: Color(hex: "3A3938"))
+
+    /// Fondo inmersivo para el modo compra. Se mantiene oscuro en claro y oscuro para asegurar contraste.
+    static let shoppingModeBackground = Color(hex: "101412")
+
+    /// Superficie de tarjeta y controles del modo compra.
+    static let shoppingModeSurface = Color.white.opacity(0.09)
+
+    /// Superficie para controles secundarios del modo compra.
+    static let shoppingModeControlBackground = Color.white.opacity(0.14)
+
+    /// Texto primario del modo compra.
+    static let shoppingModeText = Color.white
+
+    /// Texto secundario del modo compra.
+    static let shoppingModeSecondaryText = Color.white.opacity(0.72)
 
     // MARK: - Helpers
 

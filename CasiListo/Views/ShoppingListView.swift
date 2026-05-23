@@ -38,7 +38,13 @@ struct ShoppingListView: View {
             }
 
             if groups.isEmpty {
-                NoResultsView(searchText: viewModel.searchText)
+                NoResultsView(
+                    searchText: viewModel.searchText,
+                    onAddSearch: {
+                        viewModel.quickAddText = viewModel.searchText
+                        onAddTapped()
+                    }
+                )
                     .listRowInsets(.init(top: 60, leading: Theme.cardPadding(scale: accessibilityTextSizeScale), bottom: 60, trailing: Theme.cardPadding(scale: accessibilityTextSizeScale)))
                     .listRowSeparator(.hidden)
                     .listRowBackground(Color.clear)

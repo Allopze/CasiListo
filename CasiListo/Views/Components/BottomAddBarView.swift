@@ -62,6 +62,7 @@ struct BottomAddBarView: View {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
                                 .foregroundStyle(Theme.accentYellow)
+                                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir instantáneamente")
@@ -70,6 +71,7 @@ struct BottomAddBarView: View {
                             Image(systemName: "ellipsis.circle.fill")
                                 .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
                                 .foregroundStyle(Color.appTextSecondary)
+                                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir con detalles")
@@ -78,6 +80,7 @@ struct BottomAddBarView: View {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
                                 .foregroundStyle(Theme.accentYellow)
+                                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir producto")

@@ -159,12 +159,12 @@ struct ItemRowView: View {
             HapticFeedback.selection()
             onEdit()
         } label: {
-            Image(systemName: "pencil")
-                .font(.system(size: 13 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
-                .foregroundStyle(Theme.accentYellow)
-                .frame(
-                    width: 32 * CGFloat(accessibilityTextSizeScale),
-                    height: 32 * CGFloat(accessibilityTextSizeScale)
+                Image(systemName: "pencil")
+                    .font(.system(size: 13 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                    .foregroundStyle(Theme.accentYellow)
+                    .frame(
+                    width: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale)),
+                    height: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale))
                 )
                 .background(Theme.accentYellow.opacity(0.12))
                 .clipShape(Circle())

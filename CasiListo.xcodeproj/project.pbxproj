@@ -400,6 +400,9 @@
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "CasiListo puede avisarte cuando pasas cerca de un supermercado con productos pendientes.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CasiListo usa tu ubicaci\U00f3n para recordarte compras pendientes cerca del supermercado.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micr\U00f3fono para guardar notas de voz en productos de tu lista.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -432,6 +435,9 @@
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "CasiListo puede avisarte cuando pasas cerca de un supermercado con productos pendientes.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CasiListo usa tu ubicaci\U00f3n para recordarte compras pendientes cerca del supermercado.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micr\U00f3fono para guardar notas de voz en productos de tu lista.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

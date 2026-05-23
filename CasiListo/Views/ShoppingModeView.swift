@@ -14,7 +14,7 @@ struct ShoppingModeView: View {
     
     var body: some View {
         ZStack {
-            Color.appBackground.ignoresSafeArea()
+            Color.shoppingModeBackground.ignoresSafeArea()
             
             if let viewModel = sessionViewModel {
                 if viewModel.isCompleted {

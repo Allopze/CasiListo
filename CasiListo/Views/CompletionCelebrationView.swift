@@ -12,6 +12,7 @@ struct CompletionCelebrationView: View {
     @State private var confettiParticles: [ConfettiParticle] = []
     
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     
     var body: some View {
         ZStack {
@@ -23,9 +24,10 @@ struct CompletionCelebrationView: View {
             )
             .ignoresSafeArea()
             
-            // Confeti animado
-            ForEach(confettiParticles) { particle in
-                ConfettiView(particle: particle)
+            if !reduceMotion {
+                ForEach(confettiParticles) { particle in
+                    ConfettiView(particle: particle)
+                }
             }
             
             VStack(spacing: 24 * CGFloat(accessibilityTextSizeScale)) {
@@ -133,7 +135,9 @@ struct CompletionCelebrationView: View {
             }
         }
         .onAppear {
-            generateConfetti()
+            if !reduceMotion {
+                generateConfetti()
+            }
             
             // Triple haptic feedback secuencial
             triggerTripleHaptic()
@@ -193,10 +197,10 @@ struct CompletionCelebrationView: View {
     
     private func triggerTripleHaptic() {
         HapticFeedback.success()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(250))
             HapticFeedback.impact()
-        }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            try? await Task.sleep(for: .milliseconds(250))
             HapticFeedback.success()
         }
     }

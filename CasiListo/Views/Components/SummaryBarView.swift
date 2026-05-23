@@ -42,7 +42,10 @@ struct SummaryBarView: View {
                     )
                     .labelStyle(.iconOnly)
                     .font(.system(size: 15 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
-                    .frame(width: 36 * CGFloat(accessibilityTextSizeScale), height: 32 * CGFloat(accessibilityTextSizeScale))
+                    .frame(
+                        width: max(Theme.minimumTouchTarget, 36 * CGFloat(accessibilityTextSizeScale)),
+                        height: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale))
+                    )
                 }
                 .buttonStyle(.plain)
                 .glassFilterSurface(cornerRadius: 16 * CGFloat(accessibilityTextSizeScale), interactive: true)

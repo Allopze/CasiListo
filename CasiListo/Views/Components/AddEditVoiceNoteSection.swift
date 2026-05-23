@@ -84,6 +84,14 @@ struct AddEditVoiceNoteSection: View {
         } header: {
             Label("Nota de Voz", systemImage: "mic.fill")
         }
+        .onDisappear {
+            if isRecording {
+                stopRecording()
+            } else {
+                recordingTimer?.invalidate()
+                recordingTimer = nil
+            }
+        }
     }
 
     private func startRecording() {

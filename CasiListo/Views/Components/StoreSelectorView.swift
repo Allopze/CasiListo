@@ -17,12 +17,13 @@ struct StoreSelectorView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 16, weight: .bold))
-                        .foregroundStyle(Color.appTextSecondary)
-                        .padding(10)
-                        .background(Color.white.opacity(0.08))
+                        .foregroundStyle(Color.shoppingModeText)
+                        .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                        .background(Color.shoppingModeControlBackground)
                         .clipShape(Circle())
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Cerrar modo compra")
             }
             .padding(.horizontal, 24)
             .padding(.top, 16)
@@ -31,11 +32,11 @@ struct StoreSelectorView: View {
             
             Text("🛒 Modo Compra")
                 .font(.system(size: 34 * CGFloat(accessibilityTextSizeScale), weight: .black))
-                .foregroundStyle(.white)
+                .foregroundStyle(Color.shoppingModeText)
             
             Text("Selecciona en qué supermercado estás comprando hoy para enfocar tu lista:")
                 .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(Color.appTextSecondary)
+                .foregroundStyle(Color.shoppingModeSecondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 32)
             
@@ -55,7 +56,7 @@ struct StoreSelectorView: View {
             } label: {
                 Text("Comenzar Compra")
                     .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(.black)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16 * CGFloat(accessibilityTextSizeScale))
                     .background(Theme.accentYellow)
@@ -99,5 +100,8 @@ struct StoreSelectorView: View {
             .shadow(color: isSelected ? activeColor.opacity(0.25) : .black.opacity(0.05), radius: 8, y: 4)
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(store.displayName)
+        .accessibilityValue(isSelected ? "Seleccionado" : "No seleccionado")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }

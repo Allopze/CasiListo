@@ -47,7 +47,10 @@ struct VoiceNotePlayerButton: View {
                         .foregroundStyle(Theme.accentYellow)
                 }
             }
-            .frame(width: 32 * CGFloat(accessibilityTextSizeScale), height: 32 * CGFloat(accessibilityTextSizeScale))
+            .frame(
+                width: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale)),
+                height: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale))
+            )
             .background(isPlaying ? Color.red.opacity(0.85) : Theme.accentYellow.opacity(0.12))
             .clipShape(Circle())
         }
