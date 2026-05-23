@@ -5,6 +5,7 @@ import SwiftData
 
 /// Servicio encargado de registrar y gestionar alertas geolocalizadas cuando el usuario
 /// pasa cerca de un supermercado con artículos pendientes.
+@MainActor
 final class GeofenceService: NSObject, CLLocationManagerDelegate {
     static let shared = GeofenceService()
     

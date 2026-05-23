@@ -9,10 +9,6 @@ final class ShoppingModeViewModel {
     let store: Store
     var items: [ShoppingItem] = []
     
-    // Timer
-    var elapsedTime: TimeInterval = 0
-    private var timerTask: Task<Void, Never>?
-    
     // Navegación de categorías
     var activeCategoryIndex: Int = 0
     var isCompleted: Bool = false
@@ -69,21 +65,11 @@ final class ShoppingModeViewModel {
     }
     
     func startSession() {
-        elapsedTime = 0
         isCompleted = false
-        timerTask?.cancel()
-        timerTask = Task { @MainActor in
-            while !Task.isCancelled {
-                try? await Task.sleep(for: .seconds(1))
-                if Task.isCancelled { break }
-                elapsedTime += 1
-            }
-        }
     }
     
     func stopSession() {
-        timerTask?.cancel()
-        timerTask = nil
+        // No-op
     }
     
     func toggleItem(_ item: ShoppingItem, context: ModelContext) {
@@ -104,7 +90,6 @@ final class ShoppingModeViewModel {
     private func checkCompletion() {
         // Se considera completado cuando todos los ítems de esta tienda están comprados
         if pendingCount == 0 && totalCount > 0 {
-            stopSession()
             withAnimation(.spring()) {
                 isCompleted = true
             }
@@ -141,11 +126,5 @@ final class ShoppingModeViewModel {
                 activeCategoryIndex -= 1
             }
         }
-    }
-    
-    var formattedTime: String {
-        let minutes = Int(elapsedTime) / 60
-        let seconds = Int(elapsedTime) % 60
-        return String(format: "%02d:%02d", minutes, seconds)
     }
 }

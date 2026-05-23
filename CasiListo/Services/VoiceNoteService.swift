@@ -1,20 +1,21 @@
 import Foundation
 import AVFoundation
+import Observation
 
 /// Servicio encargado de la grabación y reproducción de notas de voz asociadas a los productos.
+@Observable
+@MainActor
 final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     static let shared = VoiceNoteService()
     
-    private var audioRecorder: AVAudioRecorder?
-    private var audioPlayer: AVAudioPlayer?
-    private var playCompletion: (() -> Void)?
+    @ObservationIgnored private var audioRecorder: AVAudioRecorder?
+    @ObservationIgnored private var audioPlayer: AVAudioPlayer?
     
-    var isRecording: Bool {
-        audioRecorder?.isRecording ?? false
-    }
+    var isRecording: Bool = false
+    var currentlyPlayingFilename: String?
     
     var isPlaying: Bool {
-        audioPlayer?.isPlaying ?? false
+        currentlyPlayingFilename != nil
     }
     
     private override init() {
@@ -60,7 +61,11 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
             
             audioRecorder = try AVAudioRecorder(url: fileURL, settings: settings)
             audioRecorder?.prepareToRecord()
-            return audioRecorder?.record(forDuration: 30.0) ?? false // Límite de 30 segundos
+            let success = audioRecorder?.record(forDuration: 30.0) ?? false // Límite de 30 segundos
+            if success {
+                isRecording = true
+            }
+            return success
         } catch {
             print("Error al configurar la grabación de audio: \(error)")
             return false
@@ -70,6 +75,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     func stopRecording() {
         audioRecorder?.stop()
         audioRecorder = nil
+        isRecording = false
         
         // Desactivar la sesión de audio de forma segura
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
@@ -77,7 +83,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     
     // MARK: - Reproducción
     
-    func startPlaying(filename: String, onFinished: @escaping () -> Void) -> Bool {
+    func startPlaying(filename: String) -> Bool {
         stopPlaying()
         
         let fileURL = getAudioURL(for: filename)
@@ -88,11 +94,15 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
             try audioSession.setCategory(.playback, mode: .default)
             try audioSession.setActive(true)
             
-            self.playCompletion = onFinished
             audioPlayer = try AVAudioPlayer(contentsOf: fileURL)
             audioPlayer?.delegate = self
             audioPlayer?.prepareToPlay()
-            return audioPlayer?.play() ?? false
+            
+            let success = audioPlayer?.play() ?? false
+            if success {
+                currentlyPlayingFilename = filename
+            }
+            return success
         } catch {
             print("Error al reproducir audio: \(error)")
             return false
@@ -102,8 +112,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     func stopPlaying() {
         audioPlayer?.stop()
         audioPlayer = nil
-        playCompletion?()
-        playCompletion = nil
+        currentlyPlayingFilename = nil
         
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
     }
@@ -117,7 +126,9 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     
     // MARK: - AVAudioPlayerDelegate
     
-    func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
-        stopPlaying()
+    nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
+        Task { @MainActor in
+            VoiceNoteService.shared.stopPlaying()
+        }
     }
 }

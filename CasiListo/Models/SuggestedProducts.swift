@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 
 /// Productos frecuentes agrupados por categoría para autocompletado.
 struct SuggestedProducts {
@@ -148,6 +149,28 @@ struct SuggestedProducts {
     static func suggestedStore(for productName: String) -> Store {
         // En el futuro se pueden mapear productos específicos de Líder aquí
         return .jumbo
+    }
+
+    /// Siembra los productos sugeridos por defecto en la base de datos de SwiftData.
+    @MainActor
+    static func seedDefaultItems(in context: ModelContext) {
+        var order = 0
+        for category in Category.allCases {
+            guard let products = byCategory[category] else { continue }
+            for productName in products {
+                let newItem = ShoppingItem(
+                    name: productName,
+                    quantity: "",
+                    category: category,
+                    note: "",
+                    isPurchased: false,
+                    sortOrder: order
+                )
+                context.insert(newItem)
+                order += 1
+            }
+        }
+        try? context.save()
     }
 }
 

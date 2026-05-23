@@ -86,15 +86,18 @@ CasiListo utiliza un sistema de diseño centralizado en `Theme.swift`:
 ## 🚀 Instalación y ejecución
 
 1. **Clona el repositorio**:
+
    ```bash
    git clone https://github.com/tu-usuario/CasiListo.git
    cd CasiListo
    ```
 
 2. **Abre el proyecto en Xcode**:
+
    ```bash
    open CasiListo.xcodeproj
    ```
+
    > Si usas Swift Package Manager o un `.xcworkspace`, ajusta según corresponda.
 
 3. **Selecciona un simulador o dispositivo** con iOS 17+.
@@ -123,6 +126,7 @@ No se requieren dependencias externas — el proyecto utiliza únicamente framew
 ### `Category` (enum)
 
 9 categorías predefinidas, cada una con:
+
 - Nombre para mostrar (`displayName`)
 - Ícono SF Symbol (`sfSymbol`)
 - Índice de orden (`sortIndex`)
@@ -161,6 +165,7 @@ EmptyState  ShoppingList   AddEditSheet
 ## 📐 Normas del Repositorio / Código
 
 Para mantener la base de código limpia, modular y fácil de mantener:
+
 - **Límite de tamaño de archivo**: Los archivos de código (`.swift`) **no deben superar las 100 líneas** a menos que sea estrictamente necesario. Si un archivo empieza a crecer más allá de este límite, se debe considerar refactorizarlo o dividirlo en componentes o extensiones independientes.
 
 ---
