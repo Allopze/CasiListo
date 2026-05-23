@@ -82,9 +82,7 @@ struct UserStats: Codable {
         if totalProductsBought >= 200 {
             unlockedAchievements.insert("casilisto_oro")
         }
-        if UserDefaults.standard.bool(forKey: "budget_is_enabled") {
-            unlockedAchievements.insert("planificador")
-        }
+
         if currentStreak >= 2 {
             unlockedAchievements.insert("racha_activa")
         }
@@ -107,7 +105,7 @@ struct Achievement: Identifiable {
         Achievement(id: "gran_comprador", title: "El Gran Comprador", description: "Completa 15 compras en total.", emoji: "👑"),
         Achievement(id: "casilisto_bronce", title: "CasiListo de Bronce", description: "Compra un total de 50 productos.", emoji: "🥉"),
         Achievement(id: "casilisto_oro", title: "CasiListo de Oro", description: "Compra un total de 200 productos.", emoji: "🥇"),
-        Achievement(id: "planificador", title: "Planificador", description: "Habilita el presupuesto en Ajustes.", emoji: "📅"),
+
         Achievement(id: "racha_activa", title: "Racha Activa", description: "Mantén una racha de compras de 2 semanas.", emoji: "🔥"),
         Achievement(id: "super_racha", title: "Super Racha", description: "Mantén una racha de compras de 5 semanas.", emoji: "⚡")
     ]

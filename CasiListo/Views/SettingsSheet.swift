@@ -7,12 +7,7 @@ struct SettingsSheet: View {
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     @State private var mockItemPurchased = false
 
-    // Presupuesto
-    @AppStorage(BudgetConfig.isEnabledKey) private var isBudgetEnabled = true
-    @AppStorage(BudgetConfig.totalKey) private var totalBudget = BudgetConfig.defaultTotal
-    @AppStorage(BudgetConfig.jumboKey) private var jumboBudget = BudgetConfig.defaultJumbo
-    @AppStorage(BudgetConfig.liderKey) private var liderBudget = BudgetConfig.defaultLider
-    @AppStorage(BudgetConfig.warningThresholdKey) private var warningThreshold = BudgetConfig.defaultWarningThreshold
+
 
     // Localización
     @AppStorage("geofencing_enabled") private var isGeofencingEnabled = false
@@ -230,65 +225,7 @@ struct SettingsSheet: View {
                     }
                     .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
 
-                    // MARK: - Panel de Presupuesto (Budget Card)
-                    VStack(alignment: .leading, spacing: 16) {
-                        Text("PRESUPUESTO INTELIGENTE")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                            .foregroundStyle(Color.appTextSecondary)
-                            .padding(.leading, 6)
-                            .bold()
 
-                        VStack(alignment: .leading, spacing: 16 * CGFloat(accessibilityTextSizeScale)) {
-                            Toggle(isOn: $isBudgetEnabled) {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    Text("Habilitar presupuestos")
-                                        .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                                        .foregroundStyle(Color.appTextPrimary)
-                                    Text("Muestra el costo acumulado contra el límite establecido.")
-                                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                                        .foregroundStyle(Color.appTextSecondary)
-                                }
-                            }
-                            .tint(Theme.accentYellow)
-                            .onChange(of: isBudgetEnabled) { _, _ in
-                                HapticFeedback.selection()
-                            }
-                            
-                            if isBudgetEnabled {
-                                Divider().background(Color.white.opacity(0.1))
-                                
-                                budgetFieldRow(title: "Presupuesto General", value: $totalBudget)
-                                budgetFieldRow(title: "Presupuesto Jumbo", value: $jumboBudget)
-                                budgetFieldRow(title: "Presupuesto Líder", value: $liderBudget)
-                                
-                                Divider().background(Color.white.opacity(0.1))
-                                
-                                VStack(alignment: .leading, spacing: 8) {
-                                    HStack {
-                                        Text("Alerta al alcanzar")
-                                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                                            .foregroundStyle(Color.appTextPrimary)
-                                        Spacer()
-                                        Text("\(Int(warningThreshold * 100))%")
-                                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                                            .bold()
-                                            .foregroundStyle(Theme.accentYellow)
-                                    }
-                                    
-                                    Slider(value: $warningThreshold, in: 0.5...0.95, step: 0.05)
-                                        .tint(Theme.accentYellow)
-                                        .onChange(of: warningThreshold) { _, _ in
-                                            HapticFeedback.selection()
-                                        }
-                                }
-                            }
-                        }
-                        .padding(Theme.cardPadding(scale: accessibilityTextSizeScale))
-                        .background(Color.appCardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius(scale: accessibilityTextSizeScale), style: .continuous))
-                        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
-                    }
-                    .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
 
                     // MARK: - Panel de Localización (Location Card)
                     VStack(alignment: .leading, spacing: 16) {
@@ -409,27 +346,7 @@ struct SettingsSheet: View {
         }
     }
 
-    @ViewBuilder
-    private func budgetFieldRow(title: String, value: Binding<Double>) -> some View {
-        HStack {
-            Text(title)
-                .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(Color.appTextPrimary)
-            
-            Spacer()
-            
-            TextField("$0", value: value, format: .number)
-                .keyboardType(.numberPad)
-                .multilineTextAlignment(.trailing)
-                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(Theme.accentYellow)
-                .frame(width: 120)
-                .padding(.horizontal, 8)
-                .padding(.vertical, 4)
-                .background(Color.white.opacity(0.05))
-                .clipShape(RoundedRectangle(cornerRadius: 6))
-        }
-    }
+
 }
 
 #if DEBUG

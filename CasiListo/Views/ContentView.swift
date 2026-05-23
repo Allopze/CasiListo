@@ -526,11 +526,6 @@ private struct ShoppingListView: View {
                         purchasedTotal: purchasedTotal,
                         showPurchased: $viewModel.showPurchased
                     )
-                    
-                    BudgetMeterView(
-                        currentTotal: viewModel.grandTotal(from: allItems),
-                        selectedStore: viewModel.selectedStore
-                    )
                 }
                 .listRowInsets(.init(
                     top: 10 * CGFloat(accessibilityTextSizeScale),

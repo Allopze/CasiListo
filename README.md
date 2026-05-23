@@ -25,7 +25,6 @@
 | **Accesibilidad** | Labels, hints y acciones accesibles en todos los elementos interactivos |
 | **Filtro por Supermercado** | Asignación de cada producto a un supermercado (Jumbo o Líder) con filtro rápido en la cabecera. |
 | **Modo Compra 🛒** | Interfaz de pantalla completa enfocada categoría por categoría con checkboxes gigantes, temporizador y auto-avance. |
-| **Presupuesto Inteligente 💰** | Configuración de presupuestos por supermercado con medidores y alertas cuando se alcanzan límites establecidos en CLP. |
 | **Recordatorios Geolocalizados 📍** | Alertas cuando pasas cerca de Jumbo o Líder (Los Ángeles, Chile) con el recuento de artículos pendientes en esa tienda. |
 | **Notas de Voz por Producto 🎤** | Grabación inline de audios de hasta 30 segundos para añadir indicaciones de marcas o pasillos. |
 | **Mis Logros y Rachas 🏆** | Sistema de medallas y racha semanal para incentivar el hábito de compra. |
@@ -156,6 +155,13 @@ EmptyState  ShoppingList   AddEditSheet
         ▼
    ItemRowView
 ```
+
+---
+
+## 📐 Normas del Repositorio / Código
+
+Para mantener la base de código limpia, modular y fácil de mantener:
+- **Límite de tamaño de archivo**: Los archivos de código (`.swift`) **no deben superar las 100 líneas** a menos que sea estrictamente necesario. Si un archivo empieza a crecer más allá de este límite, se debe considerar refactorizarlo o dividirlo en componentes o extensiones independientes.
 
 ---
 
