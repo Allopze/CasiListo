@@ -8,6 +8,7 @@ struct ContentView: View {
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
+    @State private var showsShoppingMode = false
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
@@ -42,6 +43,10 @@ struct ContentView: View {
             .adaptiveSearchToolbarBehavior()
             .adaptiveSearchPresentationToolbarBehavior()
             .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    shoppingModeButton
+                }
+
                 ToolbarItem(placement: .topBarTrailing) {
                     menuButton
                 }
@@ -64,6 +69,9 @@ struct ContentView: View {
             ) {
                 Button("Borrar \(viewModel.itemCounts(from: allItems).purchased) comprados", role: .destructive) {
                     HapticFeedback.impact()
+                    let purchasedCount = viewModel.itemCounts(from: allItems).purchased
+                    var stats = UserStats.load()
+                    stats.recordPurchase(productsCount: purchasedCount)
                     withAnimation(Theme.defaultAnimation) {
                         viewModel.clearPurchased(items: allItems, context: modelContext)
                     }
@@ -74,8 +82,16 @@ struct ContentView: View {
                 Text("Esta acción elimina todos los productos marcados como comprados.")
             }
         }
+        .fullScreenCover(isPresented: $showsShoppingMode) {
+            ShoppingModeView(allItems: allItems) {
+                // Al finalizar
+            }
+        }
         .tint(Theme.accentYellow)
         .task {
+            // Inicializar el servicio de geolocalización con el contenedor de SwiftData
+            GeofenceService.shared.initialize(with: modelContext.container)
+            
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
             if !hasSeeded {
                 seedDefaultItems()
@@ -117,11 +133,28 @@ struct ContentView: View {
         .accessibilityLabel("Añadir producto")
     }
 
+    private var shoppingModeButton: some View {
+        Button {
+            HapticFeedback.selection()
+            showsShoppingMode = true
+        } label: {
+            HStack(spacing: 4) {
+                Image(systemName: "cart.fill")
+                    .fontWeight(.semibold)
+                Text("Comprar")
+                    .font(.system(size: 13, weight: .bold))
+            }
+        }
+        .adaptiveGlassButtonStyle()
+        .accessibilityLabel("Entrar a Modo Compra")
+    }
+
     private var formattedShareText: String {
         let groups = viewModel.groupedItems(from: allItems)
-        guard !groups.isEmpty else { return "Mi lista de compras en CasiListo está vacía." }
+        let storeTitle = viewModel.selectedStore?.displayName ?? "Todos"
+        guard !groups.isEmpty else { return "Mi lista de compras en CasiListo (\(storeTitle)) está vacía." }
         
-        var text = "📝 *Lista de Compras: CasiListo*\n\n"
+        var text = "📝 *Lista de Compras: CasiListo (\(storeTitle))*\n\n"
         for group in groups {
             text += "*\(group.category.displayName.uppercased())*\n"
             for item in group.items {
@@ -406,19 +439,72 @@ private struct ShoppingListView: View {
         guard !name.isEmpty else { return }
 
         let category = SuggestedProducts.suggestedCategory(for: name) ?? .varios
+        let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: name)
         let newItem = ShoppingItem(
             name: name,
             quantity: "",
             category: category,
             note: "",
             isPurchased: false,
-            sortOrder: viewModel.nextSortOrder(for: category, in: allItems)
+            sortOrder: viewModel.nextSortOrder(for: category, in: allItems),
+            store: store
         )
         withAnimation(Theme.defaultAnimation) {
             modelContext.insert(newItem)
             viewModel.quickAddText = ""
         }
         HapticFeedback.success()
+    }
+
+    private var storeFilterBar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {
+                filterChip(title: "Todos", store: nil, icon: "house.fill")
+                ForEach(Store.allCases) { store in
+                    filterChip(title: store.displayName, store: store, icon: store.sfSymbol)
+                }
+            }
+            .padding(.horizontal, 2)
+            .padding(.vertical, 4)
+        }
+    }
+
+    @ViewBuilder
+    private func filterChip(title: String, store: Store?, icon: String) -> some View {
+        let isSelected = viewModel.selectedStore == store
+        let activeColor = store?.color ?? Theme.accentYellow
+
+        Button {
+            HapticFeedback.selection()
+            withAnimation(Theme.defaultAnimation) {
+                viewModel.selectedStore = store
+            }
+        } label: {
+            HStack(spacing: 6 * CGFloat(accessibilityTextSizeScale)) {
+                Image(systemName: icon)
+                    .font(.system(size: 13 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                Text(title)
+                    .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                    .bold()
+            }
+            .padding(.horizontal, 14 * CGFloat(accessibilityTextSizeScale))
+            .padding(.vertical, 8 * CGFloat(accessibilityTextSizeScale))
+            .foregroundStyle(isSelected ? Color.white : Color.appTextPrimary)
+            .background {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 12 * CGFloat(accessibilityTextSizeScale), style: .continuous)
+                        .fill(activeColor)
+                } else {
+                    RoundedRectangle(cornerRadius: 12 * CGFloat(accessibilityTextSizeScale), style: .continuous)
+                        .fill(Color.appCardBackground.opacity(0.4))
+                        .overlay {
+                            RoundedRectangle(cornerRadius: 12 * CGFloat(accessibilityTextSizeScale), style: .continuous)
+                                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                        }
+                }
+            }
+        }
+        .buttonStyle(.plain)
     }
 
     var body: some View {
@@ -430,13 +516,22 @@ private struct ShoppingListView: View {
 
         List {
             Section {
-                SummaryBarView(
-                    pendingCount: counts.pending,
-                    purchasedCount: counts.purchased,
-                    pendingTotal: pendingTotal,
-                    purchasedTotal: purchasedTotal,
-                    showPurchased: $viewModel.showPurchased
-                )
+                VStack(alignment: .leading, spacing: 12 * CGFloat(accessibilityTextSizeScale)) {
+                    storeFilterBar
+                    
+                    SummaryBarView(
+                        pendingCount: counts.pending,
+                        purchasedCount: counts.purchased,
+                        pendingTotal: pendingTotal,
+                        purchasedTotal: purchasedTotal,
+                        showPurchased: $viewModel.showPurchased
+                    )
+                    
+                    BudgetMeterView(
+                        currentTotal: viewModel.grandTotal(from: allItems),
+                        selectedStore: viewModel.selectedStore
+                    )
+                }
                 .listRowInsets(.init(
                     top: 10 * CGFloat(accessibilityTextSizeScale),
                     leading: Theme.cardPadding(scale: accessibilityTextSizeScale),

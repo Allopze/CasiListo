@@ -9,16 +9,24 @@ final class ShoppingItem {
     var name: String
     var quantity: String
     var categoryRawValue: String
+    var storeRawValue: String
     var note: String
     var isPurchased: Bool
     var sortOrder: Int
     var price: Double?
+    var voiceNoteFilename: String?
     var createdAt: Date
 
     /// Categoría tipada, derivada de `categoryRawValue`.
     var category: Category {
         get { Category(rawValue: categoryRawValue) ?? .varios }
         set { categoryRawValue = newValue.rawValue }
+    }
+
+    /// Supermercado tipado, derivado de `storeRawValue`.
+    var store: Store {
+        get { Store(rawValue: storeRawValue) ?? .jumbo }
+        set { storeRawValue = newValue.rawValue }
     }
 
     init(
@@ -28,16 +36,20 @@ final class ShoppingItem {
         note: String = "",
         isPurchased: Bool = false,
         sortOrder: Int = 0,
-        price: Double? = nil
+        price: Double? = nil,
+        store: Store = .jumbo,
+        voiceNoteFilename: String? = nil
     ) {
         self.id = UUID()
         self.name = name
         self.quantity = quantity
         self.categoryRawValue = category.rawValue
+        self.storeRawValue = store.rawValue
         self.note = note
         self.isPurchased = isPurchased
         self.sortOrder = sortOrder
         self.price = price
+        self.voiceNoteFilename = voiceNoteFilename
         self.createdAt = Date()
     }
 }

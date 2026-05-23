@@ -143,5 +143,11 @@ struct SuggestedProducts {
         }
         return nil
     }
+
+    /// Devuelve el supermercado más probable para un nombre de producto (por defecto Jumbo).
+    static func suggestedStore(for productName: String) -> Store {
+        // En el futuro se pueden mapear productos específicos de Líder aquí
+        return .jumbo
+    }
 }
 

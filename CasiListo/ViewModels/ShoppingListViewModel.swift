@@ -29,6 +29,7 @@ final class ShoppingListViewModel {
 
     var searchText: String = ""
     var showPurchased: Bool = true
+    var selectedStore: Store? = nil
     var presentedSheet: ShoppingListSheetDestination?
     var collapsedCategories: Set<Category> = []
     var quickAddText: String = ""
@@ -39,6 +40,10 @@ final class ShoppingListViewModel {
     /// Retorna solo las categorías que tienen ítems.
     func groupedItems(from items: [ShoppingItem]) -> [(category: Category, items: [ShoppingItem])] {
         let filtered = items.filter { item in
+            // Filtro de supermercado
+            if let selectedStore = selectedStore, item.store != selectedStore {
+                return false
+            }
             // Filtro de comprado
             if !showPurchased && item.isPurchased {
                 return false
@@ -83,6 +88,9 @@ final class ShoppingListViewModel {
     func itemCounts(from items: [ShoppingItem]) -> ItemCounts {
         var pending = 0, purchased = 0
         for item in items {
+            if let selectedStore = selectedStore, item.store != selectedStore {
+                continue
+            }
             if item.isPurchased { purchased += 1 } else { pending += 1 }
         }
         return ItemCounts(pending: pending, purchased: purchased)
@@ -127,6 +135,9 @@ final class ShoppingListViewModel {
     /// Elimina todos los ítems marcados como comprados.
     func clearPurchased(items: [ShoppingItem], context: ModelContext) {
         for item in items where item.isPurchased {
+            if let selectedStore = selectedStore, item.store != selectedStore {
+                continue
+            }
             context.delete(item)
         }
     }
@@ -150,16 +161,31 @@ final class ShoppingListViewModel {
 
     /// Calcula la suma de precios de todos los artículos pendientes.
     func pendingTotal(from items: [ShoppingItem]) -> Double {
-        items.filter { !$0.isPurchased }.compactMap(\.price).reduce(0, +)
+        items.filter { item in
+            if let selectedStore = selectedStore, item.store != selectedStore {
+                return false
+            }
+            return !item.isPurchased
+        }.compactMap(\.price).reduce(0, +)
     }
 
     /// Calcula la suma de precios de todos los artículos comprados.
     func purchasedTotal(from items: [ShoppingItem]) -> Double {
-        items.filter { $0.isPurchased }.compactMap(\.price).reduce(0, +)
+        items.filter { item in
+            if let selectedStore = selectedStore, item.store != selectedStore {
+                return false
+            }
+            return item.isPurchased
+        }.compactMap(\.price).reduce(0, +)
     }
 
     /// Calcula el costo total general de la lista.
     func grandTotal(from items: [ShoppingItem]) -> Double {
-        items.compactMap(\.price).reduce(0, +)
+        items.filter { item in
+            if let selectedStore = selectedStore, item.store != selectedStore {
+                return false
+            }
+            return true
+        }.compactMap(\.price).reduce(0, +)
     }
 }

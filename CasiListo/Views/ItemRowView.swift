@@ -33,6 +33,10 @@ struct ItemRowView: View {
             .accessibilityValue(item.isPurchased ? "Comprado" : "Pendiente")
             .accessibilityHint("Toca para marcar o desmarcar el producto")
 
+            if let voiceNote = item.voiceNoteFilename {
+                VoiceNotePlayerButton(filename: voiceNote)
+            }
+
             // Lado derecho independiente que al tocar permite editar el producto.
             editButton
         }
@@ -86,6 +90,15 @@ struct ItemRowView: View {
                     .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
                     .strikethrough(item.isPurchased, color: Color.appTextPurchased)
                     .lineLimit(2)
+
+                Text(item.store.displayName)
+                    .font(.system(size: 9 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 6 * CGFloat(accessibilityTextSizeScale))
+                    .padding(.vertical, 2 * CGFloat(accessibilityTextSizeScale))
+                    .background(item.store.color.opacity(item.isPurchased ? 0.4 : 0.85))
+                    .clipShape(RoundedRectangle(cornerRadius: 4 * CGFloat(accessibilityTextSizeScale)))
+                    .accessibilityLabel("Tienda: \(item.store.displayName)")
 
                 if !item.quantity.isEmpty {
                     Text(item.quantity)
@@ -167,7 +180,7 @@ struct ItemRowView: View {
     }
 
     private var accessibilityLabel: String {
-        var parts = [item.name]
+        var parts = [item.name, "en \(item.store.displayName)"]
         if !item.quantity.isEmpty {
             parts.append(item.quantity)
         }
