@@ -163,11 +163,7 @@ struct AddEditItemSheet: View {
             quantity = item.quantity
             selectedCategory = item.category
             note = item.note
-            if let price = item.price {
-                priceString = price.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(price)) : String(format: "%.2f", price)
-            } else {
-                priceString = ""
-            }
+            priceString = item.price.formattedPriceOrEmpty
         }
     }
 

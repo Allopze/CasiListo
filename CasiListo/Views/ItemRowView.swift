@@ -99,15 +99,14 @@ struct ItemRowView: View {
                 }
 
                 if let price = item.price {
-                    let formattedPrice = price.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(price)) : String(format: "%.2f", price)
-                    Text("$\(formattedPrice)")
+                    Text(price.formattedPriceWithSymbol)
                         .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(item.isPurchased ? Color.appTextPurchased : .green)
                         .padding(.horizontal, 8 * CGFloat(accessibilityTextSizeScale))
                         .padding(.vertical, 3 * CGFloat(accessibilityTextSizeScale))
                         .background(item.isPurchased ? Color.appTextPurchased.opacity(0.1) : Color.green.opacity(0.12))
                         .clipShape(RoundedRectangle(cornerRadius: 6 * CGFloat(accessibilityTextSizeScale)))
-                        .accessibilityLabel("Precio \(formattedPrice)")
+                        .accessibilityLabel("Precio \(price.formattedPrice)")
                 }
             }
 
@@ -173,8 +172,7 @@ struct ItemRowView: View {
             parts.append(item.quantity)
         }
         if let price = item.price {
-            let formattedPrice = price.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(price)) : String(format: "%.2f", price)
-            parts.append("Precio $\(formattedPrice)")
+            parts.append("Precio \(price.formattedPriceWithSymbol)")
         }
         if !item.note.isEmpty {
             parts.append(item.note)

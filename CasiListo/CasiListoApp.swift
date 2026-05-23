@@ -8,6 +8,6 @@ struct CasiListoApp: App {
         WindowGroup {
             ContentView()
         }
-        .modelContainer(for: ShoppingItem.self)
+        .modelContainer(for: ShoppingItem.self, isUndoEnabled: true)
     }
 }

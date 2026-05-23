@@ -127,13 +127,7 @@ struct ContentView: View {
             for item in group.items {
                 let check = item.isPurchased ? "✅" : "⬜"
                 let qty = item.quantity.isEmpty ? "" : " (\(item.quantity))"
-                
-                var priceStr = ""
-                if let price = item.price {
-                    let formattedPrice = price.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(price)) : String(format: "%.2f", price)
-                    priceStr = " - $\(formattedPrice)"
-                }
-                
+                let priceStr = item.price.map { " - \($0.formattedPriceWithSymbol)" } ?? ""
                 let note = item.note.isEmpty ? "" : " [Nota: \(item.note)]"
                 text += "\(check) \(item.name)\(qty)\(priceStr)\(note)\n"
             }
@@ -220,8 +214,8 @@ private struct SummaryBarView: View {
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
-        let pendingTotalStr = pendingTotal.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(pendingTotal)) : String(format: "%.2f", pendingTotal)
-        let purchasedTotalStr = purchasedTotal.truncatingRemainder(dividingBy: 1) == 0 ? String(Int(purchasedTotal)) : String(format: "%.2f", purchasedTotal)
+        let pendingTotalStr = pendingTotal.formattedPrice
+        let purchasedTotalStr = purchasedTotal.formattedPrice
 
         let pendingLabel = pendingTotal > 0 ? "\(pendingCount) pendientes ($\(pendingTotalStr))" : "\(pendingCount) pendientes"
         let purchasedLabel = purchasedTotal > 0 ? "\(purchasedCount) comprados ($\(purchasedTotalStr))" : "\(purchasedCount) comprados"
@@ -297,12 +291,12 @@ private struct BottomAddBarView: View {
     let onAddQuick: () -> Void
     let onAddTapped: () -> Void
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @State private var suggestions: [String] = []
 
     var body: some View {
         AdaptiveGlassEffectContainer(spacing: 8) {
             VStack(spacing: 6) {
-                // Suggestions horizontal chip list
-                let suggestions = SuggestedProducts.suggestions(for: text)
+                // Suggestions horizontal chip list (debounced)
                 if !text.isEmpty && !suggestions.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {
                         HStack(spacing: 8) {
@@ -391,6 +385,11 @@ private struct BottomAddBarView: View {
             }
             .background(Color.appBackground.opacity(0.85))
         }
+        .task(id: text) {
+            // Debounce: espera 150ms antes de filtrar sugerencias
+            try? await Task.sleep(for: .milliseconds(150))
+            suggestions = SuggestedProducts.suggestions(for: text)
+        }
     }
 }
 
@@ -478,6 +477,5 @@ private struct ShoppingListView: View {
             )
         }
         .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
-        .animation(Theme.defaultAnimation, value: viewModel.searchText)
     }
 }

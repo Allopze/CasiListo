@@ -23,7 +23,7 @@ enum Theme {
     // MARK: - Fuentes Estáticas (Compatibilidad)
 
     static let titleFont = Font.system(size: 34, weight: .bold, design: .rounded)
-    static let sectionHeaderFont = Font.system(size: 15, weight: .semibold, design: .rounded)
+    static let sectionHeaderFont = Font.system(size: 20, weight: .bold, design: .rounded)
     static let bodyFont = Font.system(size: 17, weight: .regular, design: .rounded)
     static let bodyBoldFont = Font.system(size: 17, weight: .semibold, design: .rounded)
     static let captionFont = Font.system(size: 13, weight: .regular, design: .rounded)
@@ -36,7 +36,7 @@ enum Theme {
     }
 
     static func sectionHeaderFont(scale: Double) -> Font {
-        Font.system(size: 15 * CGFloat(scale), weight: .bold, design: .rounded)
+        Font.system(size: 20 * CGFloat(scale), weight: .bold, design: .rounded)
     }
 
     static func bodyFont(scale: Double) -> Font {

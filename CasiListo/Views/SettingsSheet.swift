@@ -118,8 +118,8 @@ struct SettingsSheet: View {
                         .padding(.vertical, 10 * CGFloat(accessibilityTextSizeScale))
                         .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
                         .background(Color.appCardBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius(scale: accessibilityTextSizeScale), style: .continuous))
-                        .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+                        .clipShape(RoundedRectangle(cornerRadius: Theme.smallCornerRadius(scale: accessibilityTextSizeScale), style: .continuous))
+                        .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 2)
                     }
                     .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
                     .padding(.top, 10)

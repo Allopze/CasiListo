@@ -41,3 +41,27 @@ final class ShoppingItem {
         self.createdAt = Date()
     }
 }
+
+// MARK: - Formateo de precio centralizado
+
+extension Double {
+    /// Formatea un precio: entero si no tiene decimales, 2 decimales si los tiene.
+    /// Ejemplo: 1500.0 → "1500", 3.50 → "3.50"
+    var formattedPrice: String {
+        truncatingRemainder(dividingBy: 1) == 0
+            ? String(Int(self))
+            : String(format: "%.2f", self)
+    }
+
+    /// Formatea con símbolo de moneda.
+    var formattedPriceWithSymbol: String {
+        "$\(formattedPrice)"
+    }
+}
+
+extension Optional where Wrapped == Double {
+    /// Formatea el precio si existe, o devuelve cadena vacía.
+    var formattedPriceOrEmpty: String {
+        self?.formattedPrice ?? ""
+    }
+}
