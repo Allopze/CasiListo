@@ -4,8 +4,6 @@ import SwiftUI
 struct SummaryBarView: View {
     let pendingCount: Int
     let purchasedCount: Int
-    let pendingTotal: Double
-    let purchasedTotal: Double
     @Binding var showPurchased: Bool
     var onArchivePurchased: (() -> Void)? = nil
 
@@ -21,8 +19,8 @@ struct SummaryBarView: View {
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
-        let pendingLabel = pendingTotal > 0 ? "\(pendingCount) pendientes (\(pendingTotal.formattedPriceWithSymbol))" : "\(pendingCount) pendientes"
-        let purchasedLabel = purchasedTotal > 0 ? "\(purchasedCount) comprados (\(purchasedTotal.formattedPriceWithSymbol))" : "\(purchasedCount) comprados"
+        let pendingLabel = "\(pendingCount) pendientes"
+        let purchasedLabel = "\(purchasedCount) comprados"
 
         return AdaptiveGlassEffectContainer(spacing: 12) {
             HStack(spacing: scaledSpacing) {

@@ -352,16 +352,18 @@ extension Color {
     static let shoppingModeText = Color.white
 
     /// Texto secundario del modo compra.
-    static let shoppingModeSecondaryText = Color.white.opacity(0.72)
+    static let shoppingModeSecondaryText = Color.white.opacity(0.80)
 
     // MARK: - Helpers
 
     /// Crea un color adaptativo para claro y oscuro.
     init(light: Color, dark: Color) {
+        let lightUIColor = UIColor(light)
+        let darkUIColor = UIColor(dark)
         self.init(uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark
-                ? UIColor(dark)
-                : UIColor(light)
+                ? darkUIColor
+                : lightUIColor
         })
     }
 

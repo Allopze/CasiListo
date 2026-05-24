@@ -11,7 +11,6 @@ struct ContentView: View {
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
     @State private var showsShoppingMode = false
-    @State private var editMode: EditMode = .inactive
 
     private var activeList: ShoppingList? {
         allLists.first { $0.status == .active }
@@ -54,7 +53,11 @@ struct ContentView: View {
                         Color.appBackground.ignoresSafeArea()
 
                         if activeItems.isEmpty {
-                            EmptyStateView { presentAddItem() }
+                            EmptyStateView(
+                                onAddTapped: { presentAddItem() },
+                                hasHistory: !completedLists.isEmpty,
+                                onShowHistory: { viewModel.presentHistory() }
+                            )
                         } else {
                             ShoppingListView(
                                 activeList: activeList,
@@ -77,20 +80,14 @@ struct ContentView: View {
                     .adaptiveSearchPresentationToolbarBehavior()
                     .toolbar {
                         ToolbarItem(placement: .topBarLeading) {
-                            if editMode.isEditing {
-                                doneOrderingButton
-                            } else {
-                                shoppingModeButton
-                            }
+                            shoppingModeButton
                         }
                         ToolbarItem(placement: .topBarTrailing) { menuButton }
                         if #available(iOS 26.0, *) {
                             ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         }
                         ToolbarItem(placement: .topBarTrailing) {
-                            if !editMode.isEditing {
-                                addButton
-                            }
+                            addButton
                         }
                     }
                     .sheet(item: $viewModel.presentedSheet) { sheetContent(for: $0) }
@@ -116,7 +113,6 @@ struct ContentView: View {
                     } message: {
                         Text("Esta acción mueve los productos comprados al historial y los quita de la lista actual.")
                     }
-                    .environment(\.editMode, $editMode)
                 }
                 .tint(Theme.accentYellow)
             }
@@ -129,7 +125,7 @@ struct ContentView: View {
             GeofenceService.shared.initialize(with: modelContext.container)
             let list = ShoppingListLifecycleService.bootstrap(context: modelContext)
             SuggestedProducts.seedCatalogItems(in: modelContext)
-            
+
             let itemDescriptor = FetchDescriptor<ShoppingItem>()
             let itemCount = (try? modelContext.fetchCount(itemDescriptor)) ?? 0
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
@@ -137,6 +133,10 @@ struct ContentView: View {
                 SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
                 UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
             }
+            WidgetDataBridge.write(items: activeItems)
+        }
+        .onChange(of: activeItems) { _, newItems in
+            WidgetDataBridge.write(items: newItems)
         }
     }
 
@@ -165,17 +165,6 @@ struct ContentView: View {
         .accessibilityLabel("Entrar a Modo Compra")
     }
 
-    private var doneOrderingButton: some View {
-        Button {
-            setOrderingMode(false)
-        } label: {
-            Text("Listo")
-                .font(.system(size: 13, weight: .bold))
-        }
-        .adaptiveGlassButtonStyle()
-        .accessibilityLabel("Terminar ordenamiento")
-    }
-
     private var formattedShareText: String {
         let groups = viewModel.groupedItems(from: activeItems, categories: categories)
         let storeTitle = viewModel.selectedStore?.displayName ?? "Todos"
@@ -187,9 +176,8 @@ struct ContentView: View {
             for item in group.items {
                 let check = item.isPurchased ? "✅" : "⬜"
                 let qty = item.quantity.isEmpty ? "" : " (\(item.quantity))"
-                let priceStr = item.price.map { " - \($0.formattedPriceWithSymbol)" } ?? ""
                 let note = item.note.isEmpty ? "" : " [Nota: \(item.note)]"
-                text += "\(check) \(item.name)\(qty)\(priceStr)\(note)\n"
+                text += "\(check) \(item.name)\(qty)\(note)\n"
             }
             text += "\n"
         }
@@ -198,15 +186,6 @@ struct ContentView: View {
 
     private var menuButton: some View {
         Menu {
-            Button {
-                setOrderingMode(!editMode.isEditing)
-            } label: {
-                Label(
-                    editMode.isEditing ? "Terminar ordenamiento" : "Ordenar productos",
-                    systemImage: editMode.isEditing ? "checkmark" : "arrow.up.arrow.down"
-                )
-            }
-
             Button {
                 HapticFeedback.selection()
                 withAnimation(Theme.defaultAnimation) {
@@ -288,13 +267,6 @@ struct ContentView: View {
     private func presentAddItem() {
         HapticFeedback.impact()
         viewModel.presentAddItem()
-    }
-
-    private func setOrderingMode(_ isActive: Bool) {
-        HapticFeedback.selection()
-        withAnimation(Theme.defaultAnimation) {
-            editMode = isActive ? .active : .inactive
-        }
     }
 
     @discardableResult

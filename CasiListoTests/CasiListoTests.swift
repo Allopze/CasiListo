@@ -5,256 +5,355 @@ import SwiftData
 @MainActor
 final class CasiListoTests: XCTestCase {
 
-    func testPriceTotals() {
-        let viewModel = ShoppingListViewModel()
-        let items = [
-            ShoppingItem(name: "Tomates", isPurchased: false, price: 1.50),
-            ShoppingItem(name: "Leche", isPurchased: false, price: 2.00),
-            ShoppingItem(name: "Pan", isPurchased: true, price: 1.20),
-            ShoppingItem(name: "Galletas", isPurchased: true, price: nil)
-        ]
-        
-        XCTAssertEqual(viewModel.pendingTotal(from: items), 3.50, accuracy: 0.001)
-        XCTAssertEqual(viewModel.purchasedTotal(from: items), 1.20, accuracy: 0.001)
-        XCTAssertEqual(viewModel.grandTotal(from: items), 4.70, accuracy: 0.001)
+    // MARK: - quickAddDraft parsing
+
+    func testQuickAddDraftParsesCommonQuantityPatterns() {
+        let vm = ShoppingListViewModel()
+
+        let leading = vm.quickAddDraft(from: "2 leche")
+        XCTAssertEqual(leading.name, "leche")
+        XCTAssertEqual(leading.quantity, "2")
+
+        let trailingMultiplier = vm.quickAddDraft(from: "pan x3")
+        XCTAssertEqual(trailingMultiplier.name, "pan")
+        XCTAssertEqual(trailingMultiplier.quantity, "3")
+
+        let trailingUnit = vm.quickAddDraft(from: "tomates 1 kg")
+        XCTAssertEqual(trailingUnit.name, "tomates")
+        XCTAssertEqual(trailingUnit.quantity, "1 kg")
     }
 
+    func testQuickAddDraftSingleWordReturnsNameOnly() {
+        let vm = ShoppingListViewModel()
+        let draft = vm.quickAddDraft(from: "pan")
+        XCTAssertEqual(draft.name, "pan")
+        XCTAssertEqual(draft.quantity, "")
+    }
+
+    func testQuickAddDraftNormalizesCommaDecimalSeparator() {
+        let vm = ShoppingListViewModel()
+        let draft = vm.quickAddDraft(from: "2,5 aceite")
+        XCTAssertEqual(draft.name, "aceite")
+        XCTAssertEqual(draft.quantity, "2.5")
+    }
+
+    func testQuickAddDraftCompactUnitSuffix() {
+        // "aceite 500ml" → quantity "500ml", name "aceite"
+        let vm = ShoppingListViewModel()
+        let draft = vm.quickAddDraft(from: "aceite 500ml")
+        XCTAssertEqual(draft.name, "aceite")
+        XCTAssertEqual(draft.quantity, "500ml")
+    }
+
+    func testQuickAddDraftXPrefixCapitalCaseMultiplier() {
+        let vm = ShoppingListViewModel()
+        let draft = vm.quickAddDraft(from: "yogur X4")
+        XCTAssertEqual(draft.name, "yogur")
+        XCTAssertEqual(draft.quantity, "4")
+    }
+
+    func testQuickAddDraftLeadingQuantityWithUnit() {
+        let vm = ShoppingListViewModel()
+        let draft = vm.quickAddDraft(from: "1 kg harina")
+        XCTAssertEqual(draft.name, "harina")
+        XCTAssertEqual(draft.quantity, "1 kg")
+    }
+
+    func testQuickAddDraftNoQuantityMultiWordName() {
+        let vm = ShoppingListViewModel()
+        let draft = vm.quickAddDraft(from: "leche sin lactosa")
+        XCTAssertEqual(draft.name, "leche sin lactosa")
+        XCTAssertEqual(draft.quantity, "")
+    }
+
+    // MARK: - Counts and summary
+
     func testItemCounts() {
-        let viewModel = ShoppingListViewModel()
+        let vm = ShoppingListViewModel()
         let items = [
             ShoppingItem(name: "Tomates", isPurchased: false),
             ShoppingItem(name: "Leche", isPurchased: false),
             ShoppingItem(name: "Pan", isPurchased: true)
         ]
-        
-        let counts = viewModel.itemCounts(from: items)
+        let counts = vm.itemCounts(from: items)
         XCTAssertEqual(counts.pending, 2)
         XCTAssertEqual(counts.purchased, 1)
     }
 
-    func testListSummaryCalculatesCountsAndTotalsInOnePass() {
-        let viewModel = ShoppingListViewModel()
-        let items = [
-            ShoppingItem(name: "Tomates", isPurchased: false, price: 1.50),
-            ShoppingItem(name: "Leche", isPurchased: false, price: nil),
-            ShoppingItem(name: "Pan", isPurchased: true, price: 1.20),
-            ShoppingItem(name: "Cafe", isPurchased: true, price: 4.00)
-        ]
-
-        let summary = viewModel.summary(from: items)
-
-        XCTAssertEqual(summary.pendingCount, 2)
-        XCTAssertEqual(summary.purchasedCount, 2)
-        XCTAssertEqual(summary.pendingTotal, 1.50, accuracy: 0.001)
-        XCTAssertEqual(summary.purchasedTotal, 5.20, accuracy: 0.001)
-    }
-
-    func testNextSortOrder() {
-        let viewModel = ShoppingListViewModel()
-        let catFrutas = Category(name: "Frutas y verduras", sfSymbol: "leaf.fill", sortIndex: 0)
-        let catLacteos = Category(name: "Lácteos y huevos", sfSymbol: "egg.fill", sortIndex: 1)
-        let catDespensa = Category(name: "Despensa", sfSymbol: "archivebox", sortIndex: 2)
-
-        let items = [
-            ShoppingItem(name: "Tomates", category: catFrutas, sortOrder: 0),
-            ShoppingItem(name: "Lechuga", category: catFrutas, sortOrder: 2),
-            ShoppingItem(name: "Leche", category: catLacteos, sortOrder: 1)
-        ]
-
-        XCTAssertEqual(viewModel.nextSortOrder(for: catFrutas, in: items), 3)
-        XCTAssertEqual(viewModel.nextSortOrder(for: catLacteos, in: items), 2)
-        XCTAssertEqual(viewModel.nextSortOrder(for: catDespensa, in: items), 0)
-    }
-
-    func testQuickAddDraftParsesCommonQuantityPatterns() {
-        let viewModel = ShoppingListViewModel()
-
-        let leading = viewModel.quickAddDraft(from: "2 leche")
-        XCTAssertEqual(leading.name, "leche")
-        XCTAssertEqual(leading.quantity, "2")
-
-        let trailingMultiplier = viewModel.quickAddDraft(from: "pan x3")
-        XCTAssertEqual(trailingMultiplier.name, "pan")
-        XCTAssertEqual(trailingMultiplier.quantity, "3")
-
-        let trailingUnit = viewModel.quickAddDraft(from: "tomates 1 kg")
-        XCTAssertEqual(trailingUnit.name, "tomates")
-        XCTAssertEqual(trailingUnit.quantity, "1 kg")
-    }
-
     func testSummaryTracksSkippedAndUnavailableStates() {
-        let viewModel = ShoppingListViewModel()
+        let vm = ShoppingListViewModel()
         let items = [
             ShoppingItem(name: "Leche", status: .pending),
             ShoppingItem(name: "Pan", status: .purchased),
             ShoppingItem(name: "Tomates", status: .skipped),
             ShoppingItem(name: "Cafe", status: .unavailable)
         ]
-
-        let summary = viewModel.summary(from: items)
-
+        let summary = vm.summary(from: items)
         XCTAssertEqual(summary.pendingCount, 1)
         XCTAssertEqual(summary.purchasedCount, 1)
         XCTAssertEqual(summary.skippedCount, 1)
         XCTAssertEqual(summary.unavailableCount, 1)
     }
 
-    func testArchivePurchasedItemsCreatesCompletedHistoryList() throws {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
-            for: ShoppingItem.self,
-            ShoppingList.self,
-            ProductCatalogItem.self,
-            Category.self,
-            configurations: configuration
-        )
-        let context = container.mainContext
-        let activeList = ShoppingList(title: "Compra actual")
-        let purchasedItem = ShoppingItem(name: "Pan", listID: activeList.id, status: .purchased, price: 2)
-        let pendingItem = ShoppingItem(name: "Leche", listID: activeList.id, status: .pending, price: 1)
-        context.insert(activeList)
-        context.insert(purchasedItem)
-        context.insert(pendingItem)
-
-        ShoppingListLifecycleService.archivePurchasedItems(
-            from: [purchasedItem, pendingItem],
-            activeList: activeList,
-            context: context
-        )
-
-        let descriptor = FetchDescriptor<ShoppingList>()
-        let lists = try context.fetch(descriptor)
-        let completed = lists.first { $0.status == .completed }
-
-        XCTAssertNotNil(completed)
-        XCTAssertEqual(completed?.purchasedCount, 1)
-        XCTAssertEqual(completed?.totalSpent, 2)
-        XCTAssertEqual(purchasedItem.listID, completed?.id)
-        XCTAssertEqual(pendingItem.listID, activeList.id)
-    }
-
-    func testPriceFormatting() {
-        let wholePrice: Double = 1500.00
-        let decimalPrice: Double = 3.50
-        
-        // formattedPrice
-        let formattedWhole = wholePrice.formattedPrice.replacingOccurrences(of: "\u{00a0}", with: " ")
-        XCTAssertTrue(formattedWhole == "1.500" || formattedWhole == "1,500" || formattedWhole == "1500")
-        
-        let formattedDecimal = decimalPrice.formattedPrice.replacingOccurrences(of: "\u{00a0}", with: " ")
-        XCTAssertTrue(formattedDecimal == "3,5" || formattedDecimal == "3.5")
-        
-        // formattedPriceWithSymbol
-        let formattedWholeSymbol = wholePrice.formattedPriceWithSymbol.replacingOccurrences(of: "\u{00a0}", with: " ")
-        let formattedDecimalSymbol = decimalPrice.formattedPriceWithSymbol.replacingOccurrences(of: "\u{00a0}", with: " ")
-        XCTAssertTrue(formattedWholeSymbol.contains("1.500") || formattedWholeSymbol.contains("1,500") || formattedWholeSymbol.contains("1500"))
-        XCTAssertTrue(formattedDecimalSymbol.contains("3,5") || formattedDecimalSymbol.contains("3.5"))
-    }
-
-    func testArchivePurchasedItemsVerifyingCounters() throws {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
-            for: ShoppingItem.self,
-            ShoppingList.self,
-            ProductCatalogItem.self,
-            Category.self,
-            configurations: configuration
-        )
-        let context = container.mainContext
-        let activeList = ShoppingList(title: "Compra actual")
-        let purchased1 = ShoppingItem(name: "Tomates", listID: activeList.id, status: .purchased, price: 1.5)
-        let purchased2 = ShoppingItem(name: "Manzanas", listID: activeList.id, status: .purchased, price: 2.5)
-        let pending = ShoppingItem(name: "Leche", listID: activeList.id, status: .pending, price: 1.0)
-        let skipped = ShoppingItem(name: "Pan", listID: activeList.id, status: .skipped, price: 1.2)
-        let unavailable = ShoppingItem(name: "Jugo", listID: activeList.id, status: .unavailable, price: 2.0)
-        
-        context.insert(activeList)
-        context.insert(purchased1)
-        context.insert(purchased2)
-        context.insert(pending)
-        context.insert(skipped)
-        context.insert(unavailable)
-        
-        ShoppingListLifecycleService.archivePurchasedItems(
-            from: [purchased1, purchased2, pending, skipped, unavailable],
-            activeList: activeList,
-            context: context
-        )
-        
-        let descriptor = FetchDescriptor<ShoppingList>()
-        let lists = try context.fetch(descriptor)
-        let completed = lists.first { $0.status == .completed }
-        
-        XCTAssertNotNil(completed)
-        XCTAssertEqual(completed?.purchasedCount, 2)
-        XCTAssertEqual(completed?.totalSpent ?? 0.0, 4.0, accuracy: 0.001)
-        XCTAssertEqual(completed?.pendingCount, 0)
-        XCTAssertEqual(completed?.skippedCount, 0)
-        XCTAssertEqual(completed?.unavailableCount, 0)
-    }
-
-    func testDuplicateItemNormalizesNameAndRespectsStore() {
-        let viewModel = ShoppingListViewModel()
+    func testSummaryFiltersItemsBySelectedStore() {
+        let vm = ShoppingListViewModel()
+        vm.selectedStore = .jumbo
         let items = [
-            ShoppingItem(name: "Leche sin lactosa", store: .jumbo),
-            ShoppingItem(name: "Leche sin lactosa", store: .lider)
+            ShoppingItem(name: "Tomates", status: .pending, store: .jumbo),
+            ShoppingItem(name: "Leche", status: .pending, store: .lider),
+            ShoppingItem(name: "Pan", status: .purchased, store: .jumbo)
         ]
-
-        let jumboDuplicate = viewModel.duplicateItem(named: " leche SIN lactosa ", store: .jumbo, in: items)
-        XCTAssertEqual(jumboDuplicate?.store, .jumbo)
-
-        let liderDuplicate = viewModel.duplicateItem(named: "Leche sin lactosa", store: .lider, in: items)
-        XCTAssertEqual(liderDuplicate?.store, .lider)
-
-        let missing = viewModel.duplicateItem(named: "Pan", store: .jumbo, in: items)
-        XCTAssertNil(missing)
+        let summary = vm.summary(from: items)
+        XCTAssertEqual(summary.pendingCount, 1)
+        XCTAssertEqual(summary.purchasedCount, 1)
     }
 
-    func testShoppingModePurchasedStatsIgnoreSkippedAndUnavailableItems() {
-        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+    // MARK: - nextSortOrder
+
+    func testNextSortOrder() {
+        let vm = ShoppingListViewModel()
+        let catFrutas = Category(name: "Frutas y verduras", sfSymbol: "leaf.fill", sortIndex: 0)
+        let catLacteos = Category(name: "Lácteos y huevos", sfSymbol: "egg.fill", sortIndex: 1)
+        let catDespensa = Category(name: "Despensa", sfSymbol: "archivebox", sortIndex: 2)
         let items = [
-            ShoppingItem(name: "Pan", category: category, status: .purchased, price: 2, store: .jumbo),
-            ShoppingItem(name: "Leche", category: category, status: .skipped, price: 5, store: .jumbo),
-            ShoppingItem(name: "Cafe", category: category, status: .unavailable, price: 7, store: .jumbo)
+            ShoppingItem(name: "Tomates", category: catFrutas, sortOrder: 0),
+            ShoppingItem(name: "Lechuga", category: catFrutas, sortOrder: 2),
+            ShoppingItem(name: "Leche", category: catLacteos, sortOrder: 1)
         ]
-        let viewModel = ShoppingModeViewModel(store: .jumbo, allItems: items, allCategories: [category])
-
-        XCTAssertEqual(viewModel.purchasedCount, 1)
-        XCTAssertEqual(viewModel.purchasedTotal, 2, accuracy: 0.001)
-        XCTAssertEqual(viewModel.actionableCount, 0)
+        XCTAssertEqual(vm.nextSortOrder(for: catFrutas, in: items), 3)
+        XCTAssertEqual(vm.nextSortOrder(for: catLacteos, in: items), 2)
+        XCTAssertEqual(vm.nextSortOrder(for: catDespensa, in: items), 0)
     }
+
+    // MARK: - groupedItems
 
     func testGroupedItemsStoreFilters() {
-        let viewModel = ShoppingListViewModel()
+        let vm = ShoppingListViewModel()
         let items = [
             ShoppingItem(name: "Tomates Jumbo", store: .jumbo),
             ShoppingItem(name: "Manzanas Lider", store: .lider),
             ShoppingItem(name: "Leche Jumbo", store: .jumbo)
         ]
-
         let catVarios = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
         let categories = [catVarios]
 
-        // Sin filtro de tienda
-        viewModel.selectedStore = nil
-        let allGroups = viewModel.groupedItems(from: items, categories: categories)
-        let totalAllItems = allGroups.flatMap(\.items).count
-        XCTAssertEqual(totalAllItems, 3)
+        vm.selectedStore = nil
+        let allGroups = vm.groupedItems(from: items, categories: categories)
+        XCTAssertEqual(allGroups.flatMap(\.items).count, 3)
 
-        // Filtrado por Jumbo
-        viewModel.selectedStore = .jumbo
-        let jumboGroups = viewModel.groupedItems(from: items, categories: categories)
-        let totalJumboItems = jumboGroups.flatMap(\.items).count
-        XCTAssertEqual(totalJumboItems, 2)
+        vm.selectedStore = .jumbo
+        let jumboGroups = vm.groupedItems(from: items, categories: categories)
+        XCTAssertEqual(jumboGroups.flatMap(\.items).count, 2)
         XCTAssertTrue(jumboGroups.flatMap(\.items).allSatisfy { $0.store == .jumbo })
 
-        // Filtrado por Lider
-        viewModel.selectedStore = .lider
-        let liderGroups = viewModel.groupedItems(from: items, categories: categories)
-        let totalLiderItems = liderGroups.flatMap(\.items).count
-        XCTAssertEqual(totalLiderItems, 1)
-        XCTAssertTrue(liderGroups.flatMap(\.items).allSatisfy { $0.store == .lider })
+        vm.selectedStore = .lider
+        let liderGroups = vm.groupedItems(from: items, categories: categories)
+        XCTAssertEqual(liderGroups.flatMap(\.items).count, 1)
     }
+
+    func testGroupedItemsAlphabeticalOrder() {
+        let vm = ShoppingListViewModel()
+        let cat = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let items = [
+            ShoppingItem(name: "Zanahorias", category: cat),
+            ShoppingItem(name: "Aceite", category: cat),
+            ShoppingItem(name: "Manzanas", category: cat)
+        ]
+        let groups = vm.groupedItems(from: items, categories: [cat])
+        let names = groups.first!.items.map(\.name)
+        XCTAssertEqual(names, ["Aceite", "Manzanas", "Zanahorias"])
+    }
+
+    func testGroupedItemsHidesPurchasedWhenFlagOff() {
+        let vm = ShoppingListViewModel()
+        vm.showPurchased = false
+        let cat = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let items = [
+            ShoppingItem(name: "Pan", category: cat, status: .pending),
+            ShoppingItem(name: "Leche", category: cat, status: .purchased)
+        ]
+        let groups = vm.groupedItems(from: items, categories: [cat])
+        XCTAssertEqual(groups.flatMap(\.items).count, 1)
+        XCTAssertEqual(groups.first?.items.first?.name, "Pan")
+    }
+
+    // MARK: - duplicateItem
+
+    func testDuplicateItemNormalizesNameAndRespectsStore() {
+        let vm = ShoppingListViewModel()
+        let items = [
+            ShoppingItem(name: "Leche sin lactosa", store: .jumbo),
+            ShoppingItem(name: "Leche sin lactosa", store: .lider)
+        ]
+        XCTAssertEqual(vm.duplicateItem(named: " leche SIN lactosa ", store: .jumbo, in: items)?.store, .jumbo)
+        XCTAssertEqual(vm.duplicateItem(named: "Leche sin lactosa", store: .lider, in: items)?.store, .lider)
+        XCTAssertNil(vm.duplicateItem(named: "Pan", store: .jumbo, in: items))
+    }
+
+    func testDuplicateItemExcludesSpecifiedID() {
+        let vm = ShoppingListViewModel()
+        let item = ShoppingItem(name: "Leche", store: .jumbo)
+        let items = [item]
+        XCTAssertNil(vm.duplicateItem(named: "Leche", store: .jumbo, in: items, excluding: item.id))
+    }
+
+    // MARK: - Archivado y ciclo de vida de lista
+
+    func testArchivePurchasedItemsCreatesCompletedList() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let activeList = ShoppingList(title: "Compra actual")
+        let purchased = ShoppingItem(name: "Pan", listID: activeList.id, status: .purchased)
+        let pending = ShoppingItem(name: "Leche", listID: activeList.id, status: .pending)
+        context.insert(activeList)
+        context.insert(purchased)
+        context.insert(pending)
+
+        ShoppingListLifecycleService.archivePurchasedItems(
+            from: [purchased, pending],
+            activeList: activeList,
+            context: context
+        )
+
+        let lists = try context.fetch(FetchDescriptor<ShoppingList>())
+        let completed = lists.first { $0.status == .completed }
+        XCTAssertNotNil(completed)
+        XCTAssertEqual(completed?.purchasedCount, 1)
+        XCTAssertEqual(purchased.listID, completed?.id)
+        XCTAssertEqual(pending.listID, activeList.id)
+    }
+
+    func testArchivePurchasedItemsCountersExcludeSkippedAndUnavailable() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let activeList = ShoppingList(title: "Compra actual")
+        let p1 = ShoppingItem(name: "Tomates", listID: activeList.id, status: .purchased)
+        let p2 = ShoppingItem(name: "Manzanas", listID: activeList.id, status: .purchased)
+        let pending = ShoppingItem(name: "Leche", listID: activeList.id, status: .pending)
+        let skipped = ShoppingItem(name: "Pan", listID: activeList.id, status: .skipped)
+        let unavailable = ShoppingItem(name: "Jugo", listID: activeList.id, status: .unavailable)
+
+        context.insert(activeList)
+        [p1, p2, pending, skipped, unavailable].forEach { context.insert($0) }
+
+        ShoppingListLifecycleService.archivePurchasedItems(
+            from: [p1, p2, pending, skipped, unavailable],
+            activeList: activeList,
+            context: context
+        )
+
+        let lists = try context.fetch(FetchDescriptor<ShoppingList>())
+        let completed = lists.first { $0.status == .completed }
+        XCTAssertNotNil(completed)
+        XCTAssertEqual(completed?.purchasedCount, 2)
+        XCTAssertEqual(completed?.pendingCount, 0)
+        XCTAssertEqual(completed?.skippedCount, 0)
+        XCTAssertEqual(completed?.unavailableCount, 0)
+    }
+
+    // MARK: - CategoryBootstrapService — reconciliación de sfSymbols
+
+    func testBootstrapReconcilesSfSymbolsForExistingCategories() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        // Sembrar categoría con sfSymbol incorrecto
+        let stale = Category(name: DefaultCategory.condimentos.rawValue, sfSymbol: "wrong.symbol", sortIndex: 0)
+        let varios = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999)
+        context.insert(stale)
+        context.insert(varios)
+        try context.save()
+
+        CategoryBootstrapService.bootstrap(context: context)
+
+        var catDescriptor = FetchDescriptor<CasiListo.Category>()
+        let fetched = try context.fetch(catDescriptor)
+        let reconciled = fetched.first { $0.name == DefaultCategory.condimentos.rawValue }
+        XCTAssertEqual(reconciled?.sfSymbol, DefaultCategory.condimentos.sfSymbol)
+    }
+
+    func testBootstrapCreatesDefaultCategoriesOnEmptyDB() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        CategoryBootstrapService.bootstrap(context: context)
+
+        let catDescriptor2 = FetchDescriptor<CasiListo.Category>()
+        let categories = try context.fetch(catDescriptor2)
+        XCTAssertEqual(categories.count, DefaultCategory.allCases.count)
+    }
+
+    // MARK: - ShoppingModeViewModel — transiciones de estado
+
+    func testShoppingModeActionableCountIgnoresSkippedAndUnavailable() {
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let items = [
+            ShoppingItem(name: "Pan", category: category, status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Leche", category: category, status: .skipped, store: .jumbo),
+            ShoppingItem(name: "Cafe", category: category, status: .unavailable, store: .jumbo)
+        ]
+        let vm = ShoppingModeViewModel(store: .jumbo, allItems: items, allCategories: [category])
+
+        XCTAssertEqual(vm.purchasedCount, 1)
+        XCTAssertEqual(vm.actionableCount, 0)
+    }
+
+    func testShoppingModeCompletesWhenNoActionableItemsRemain() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let item = ShoppingItem(name: "Pan", category: category, status: .pending, store: .jumbo)
+        context.insert(category)
+        context.insert(item)
+
+        let vm = ShoppingModeViewModel(store: .jumbo, allItems: [item], allCategories: [category])
+        XCTAssertFalse(vm.isCompleted)
+
+        vm.toggleItem(item, context: context)
+
+        XCTAssertTrue(vm.isCompleted)
+    }
+
+    func testShoppingModeMarkSkippedDoesNotCompleteSession() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let item1 = ShoppingItem(name: "Pan", category: category, status: .pending, store: .jumbo)
+        let item2 = ShoppingItem(name: "Leche", category: category, status: .pending, store: .jumbo)
+        context.insert(category)
+        context.insert(item1)
+        context.insert(item2)
+
+        let vm = ShoppingModeViewModel(store: .jumbo, allItems: [item1, item2], allCategories: [category])
+        vm.markItem(item1, as: .skipped, context: context)
+
+        // Todavía queda item2 pendiente → no completado
+        XCTAssertFalse(vm.isCompleted)
+    }
+
+    func testShoppingModeProgressAdvancesOnPurchase() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let item1 = ShoppingItem(name: "Pan", category: category, status: .pending, store: .jumbo)
+        let item2 = ShoppingItem(name: "Leche", category: category, status: .pending, store: .jumbo)
+        context.insert(category)
+        context.insert(item1)
+        context.insert(item2)
+
+        let vm = ShoppingModeViewModel(store: .jumbo, allItems: [item1, item2], allCategories: [category])
+        XCTAssertEqual(vm.progress, 0.0, accuracy: 0.001)
+
+        vm.toggleItem(item1, context: context)
+        XCTAssertEqual(vm.progress, 0.5, accuracy: 0.001)
+    }
+
+    // MARK: - CategoryIconMapper
 
     func testCategoryIconMapper() {
         XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "cerveza mistral"), "wineglass.fill")
@@ -265,6 +364,34 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "manzanas rojas"), "leaf.fill")
         XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "detergente liquido"), "house.fill")
         XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "comida para gatos"), "pawprint.fill")
-        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "caja de clavos"), "tag.fill") // Fallback
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "caja de clavos"), "tag.fill")
+    }
+
+    // MARK: - Price formatting (Double extension — field still in SwiftData model)
+
+    func testPriceFormattingExtensions() {
+        let whole: Double = 1500.0
+        let decimal: Double = 3.50
+
+        let formattedWhole = whole.formattedPrice.replacingOccurrences(of: "\u{00a0}", with: " ")
+        XCTAssertTrue(
+            formattedWhole == "1.500" || formattedWhole == "1,500" || formattedWhole == "1500",
+            "Unexpected: \(formattedWhole)"
+        )
+
+        let formattedDecimal = decimal.formattedPrice.replacingOccurrences(of: "\u{00a0}", with: " ")
+        XCTAssertTrue(
+            formattedDecimal == "3,5" || formattedDecimal == "3.5",
+            "Unexpected: \(formattedDecimal)"
+        )
+    }
+
+    // MARK: - Helpers
+
+    private func makeInMemoryContainer() throws -> ModelContainer {
+        try ModelContainer(
+            for: ShoppingItem.self, ShoppingList.self, ProductCatalogItem.self, Category.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
     }
 }

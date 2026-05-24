@@ -3,6 +3,9 @@ import SwiftUI
 /// Pantalla vacía mostrada cuando no hay productos en la lista.
 struct EmptyStateView: View {
     let onAddTapped: () -> Void
+    var hasHistory: Bool = false
+    var onShowHistory: (() -> Void)? = nil
+
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
@@ -30,6 +33,17 @@ struct EmptyStateView: View {
                         .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                 }
                 .adaptiveGlassProminentButtonStyle()
+
+                if hasHistory, let showHistory = onShowHistory {
+                    Button {
+                        HapticFeedback.selection()
+                        showHistory()
+                    } label: {
+                        Label("Ver última compra", systemImage: "clock.arrow.circlepath")
+                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                    }
+                    .adaptiveGlassButtonStyle()
+                }
             }
             .padding(.top, 8)
 

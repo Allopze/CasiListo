@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import SwiftUI
 
 /// Categorías predefinidas para sembrado inicial.
 enum DefaultCategory: String, CaseIterable, Codable, Identifiable {
@@ -29,10 +30,10 @@ enum DefaultCategory: String, CaseIterable, Codable, Identifiable {
         case .aseoPersonal: return "sparkles"
         case .bebidas: return "cup.and.saucer.fill"
         case .carnes: return "fork.knife"
-        case .condimentos: return "cookingspoon"
+        case .condimentos: return "flame.fill"
         case .congelados: return "snowflake"
         case .conservas: return "archivebox.fill"
-        case .despensa: return "archivebox"
+        case .despensa: return "tray.full.fill"
         case .frutasVerduras: return "leaf.fill"
         case .hogarLimpieza: return "house.fill"
         case .lacteosHuevos: return "egg.fill"
@@ -40,6 +41,26 @@ enum DefaultCategory: String, CaseIterable, Codable, Identifiable {
         case .panaderiaDulces: return "birthday.cake.fill"
         case .pescados: return "fish.fill"
         case .varios: return "bag.fill"
+        }
+    }
+
+    @MainActor var color: Color {
+        switch self {
+        case .vinos: return Color(hue: 0.75, saturation: 0.65, brightness: 0.70)
+        case .aseoPersonal: return Color(hue: 0.58, saturation: 0.60, brightness: 0.80)
+        case .bebidas: return Color(hue: 0.52, saturation: 0.65, brightness: 0.70)
+        case .carnes: return Color(hue: 0.02, saturation: 0.75, brightness: 0.75)
+        case .condimentos: return Color(hue: 0.07, saturation: 0.80, brightness: 0.88)
+        case .congelados: return Color(hue: 0.56, saturation: 0.45, brightness: 0.85)
+        case .conservas: return Color(hue: 0.08, saturation: 0.55, brightness: 0.62)
+        case .despensa: return Color(hue: 0.11, saturation: 0.70, brightness: 0.78)
+        case .frutasVerduras: return Color(hue: 0.35, saturation: 0.70, brightness: 0.60)
+        case .hogarLimpieza: return Color(hue: 0.47, saturation: 0.55, brightness: 0.68)
+        case .lacteosHuevos: return Color(hue: 0.13, saturation: 0.60, brightness: 0.88)
+        case .mascotas: return Color(hue: 0.08, saturation: 0.50, brightness: 0.68)
+        case .panaderiaDulces: return Color(hue: 0.95, saturation: 0.60, brightness: 0.82)
+        case .pescados: return Color(hue: 0.60, saturation: 0.65, brightness: 0.72)
+        case .varios: return Color(hue: 0.65, saturation: 0.15, brightness: 0.55)
         }
     }
 
@@ -76,6 +97,10 @@ extension Category {
     var rawValue: String { name }
     static var fallback: Category {
         Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+    }
+
+    @MainActor var accentColor: Color {
+        DefaultCategory.allCases.first { $0.rawValue == name }?.color ?? Color(hue: 0.13, saturation: 0.80, brightness: 0.95)
     }
 }
 

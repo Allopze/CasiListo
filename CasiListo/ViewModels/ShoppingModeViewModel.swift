@@ -47,13 +47,6 @@ final class ShoppingModeViewModel {
         items.filter { $0.status == .purchased }.count
     }
 
-    var purchasedTotal: Double {
-        items
-            .filter { $0.status == .purchased }
-            .compactMap(\.price)
-            .reduce(0, +)
-    }
-
     var pendingCount: Int {
         items.filter { $0.status == .pending }.count
     }

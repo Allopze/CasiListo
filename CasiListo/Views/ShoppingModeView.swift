@@ -23,7 +23,6 @@ struct ShoppingModeView: View {
                     CompletionCelebrationView(
                         storeName: viewModel.store.displayName,
                         productsCount: viewModel.purchasedCount,
-                        totalSpent: viewModel.purchasedTotal,
                         onDismiss: {
                             finishSession(viewModel: viewModel, clearPurchased: false)
                         },

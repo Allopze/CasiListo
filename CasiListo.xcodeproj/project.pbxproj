@@ -21,17 +21,50 @@
 			remoteGlobalIDString = 89DA05EE2FC112FA0037C4D0;
 			remoteInfo = CasiListo;
 		};
+		89DA07082FC112FD0037C008 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 89DA05E72FC112FA0037C4D0 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 89DA07042FC112FD0037C004;
+			remoteInfo = CasiListoWidget;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXBuildFile section */
+		89DA07002FC112FD0037C4D0 /* CasiListoWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 89DA07012FC112FD0037C001 /* CasiListoWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		89DA05EF2FC112FA0037C4D0 /* CasiListo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CasiListo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		89DA05FE2FC112FD0037C4D0 /* CasiListoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CasiListoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		89DA06082FC112FD0037C4D0 /* CasiListoUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = CasiListoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		89DA07012FC112FD0037C001 /* CasiListoWidget.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CasiListoWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		89DA070E2FC112FD0037C00E /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				CasiListoWidget.entitlements,
+				Info.plist,
+			);
+			target = 89DA07042FC112FD0037C004 /* CasiListoWidget */;
+		};
+		89DA070F2FC112FD0037C00F /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				CasiListo.entitlements,
+			);
+			target = 89DA05EE2FC112FA0037C4D0 /* CasiListo */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		89DA05F12FC112FA0037C4D0 /* CasiListo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				89DA070F2FC112FD0037C00F,
+			);
 			path = CasiListo;
 			sourceTree = "<group>";
 		};
@@ -45,7 +78,29 @@
 			path = CasiListoUITests;
 			sourceTree = "<group>";
 		};
+		89DA07022FC112FD0037C002 /* CasiListoWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				89DA070E2FC112FD0037C00E,
+			);
+			path = CasiListoWidget;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		89DA070C2FC112FD0037C00C /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				89DA07002FC112FD0037C4D0 /* CasiListoWidget.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		89DA05EC2FC112FA0037C4D0 /* Frameworks */ = {
@@ -69,6 +124,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		89DA07032FC112FD0037C003 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -78,6 +140,7 @@
 				89DA05F12FC112FA0037C4D0 /* CasiListo */,
 				89DA06012FC112FD0037C4D0 /* CasiListoTests */,
 				89DA060B2FC112FD0037C4D0 /* CasiListoUITests */,
+				89DA07022FC112FD0037C002 /* CasiListoWidget */,
 				89DA05F02FC112FA0037C4D0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -88,6 +151,7 @@
 				89DA05EF2FC112FA0037C4D0 /* CasiListo.app */,
 				89DA05FE2FC112FD0037C4D0 /* CasiListoTests.xctest */,
 				89DA06082FC112FD0037C4D0 /* CasiListoUITests.xctest */,
+				89DA07012FC112FD0037C001 /* CasiListoWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -102,10 +166,12 @@
 				89DA05EB2FC112FA0037C4D0 /* Sources */,
 				89DA05EC2FC112FA0037C4D0 /* Frameworks */,
 				89DA05ED2FC112FA0037C4D0 /* Resources */,
+				89DA070C2FC112FD0037C00C /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				89DA07072FC112FD0037C007 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				89DA05F12FC112FA0037C4D0 /* CasiListo */,
@@ -116,6 +182,28 @@
 			productName = CasiListo;
 			productReference = 89DA05EF2FC112FA0037C4D0 /* CasiListo.app */;
 			productType = "com.apple.product-type.application";
+		};
+		89DA07042FC112FD0037C004 /* CasiListoWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 89DA070B2FC112FD0037C00B /* Build configuration list for PBXNativeTarget "CasiListoWidget" */;
+			buildPhases = (
+				89DA07062FC112FD0037C006 /* Sources */,
+				89DA07032FC112FD0037C003 /* Frameworks */,
+				89DA07052FC112FD0037C005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				89DA07022FC112FD0037C002 /* CasiListoWidget */,
+			);
+			name = CasiListoWidget;
+			packageProductDependencies = (
+			);
+			productName = CasiListoWidget;
+			productReference = 89DA07012FC112FD0037C001 /* CasiListoWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 		89DA05FD2FC112FD0037C4D0 /* CasiListoTests */ = {
 			isa = PBXNativeTarget;
@@ -184,6 +272,9 @@
 						CreatedOnToolsVersion = 26.5;
 						TestTargetID = 89DA05EE2FC112FA0037C4D0;
 					};
+					89DA07042FC112FD0037C004 = {
+						CreatedOnToolsVersion = 26.5;
+					};
 				};
 			};
 			buildConfigurationList = 89DA05EA2FC112FA0037C4D0 /* Build configuration list for PBXProject "CasiListo" */;
@@ -203,6 +294,7 @@
 				89DA05EE2FC112FA0037C4D0 /* CasiListo */,
 				89DA05FD2FC112FD0037C4D0 /* CasiListoTests */,
 				89DA06072FC112FD0037C4D0 /* CasiListoUITests */,
+				89DA07042FC112FD0037C004 /* CasiListoWidget */,
 			);
 		};
 /* End PBXProject section */
@@ -223,6 +315,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		89DA06062FC112FD0037C4D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		89DA07052FC112FD0037C005 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -253,6 +352,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		89DA07062FC112FD0037C006 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -265,6 +371,11 @@
 			isa = PBXTargetDependency;
 			target = 89DA05EE2FC112FA0037C4D0 /* CasiListo */;
 			targetProxy = 89DA06092FC112FD0037C4D0 /* PBXContainerItemProxy */;
+		};
+		89DA07072FC112FD0037C007 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 89DA07042FC112FD0037C004 /* CasiListoWidget */;
+			targetProxy = 89DA07082FC112FD0037C008 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -395,6 +506,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CasiListo/CasiListo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
@@ -431,6 +543,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = CasiListo/CasiListo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
@@ -550,6 +663,54 @@
 			};
 			name = Release;
 		};
+		89DA07092FC112FD0037C009 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = CasiListoWidget/CasiListoWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GKVPN3HBMN;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CasiListoWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.allopze.CasiListo.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		89DA070A2FC112FD0037C00A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = CasiListoWidget/CasiListoWidget.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = GKVPN3HBMN;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = CasiListoWidget/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.allopze.CasiListo.widget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -585,6 +746,15 @@
 			buildConfigurations = (
 				89DA06192FC112FD0037C4D0 /* Debug */,
 				89DA061A2FC112FD0037C4D0 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		89DA070B2FC112FD0037C00B /* Build configuration list for PBXNativeTarget "CasiListoWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				89DA07092FC112FD0037C009 /* Debug */,
+				89DA070A2FC112FD0037C00A /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

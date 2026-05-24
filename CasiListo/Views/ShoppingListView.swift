@@ -18,25 +18,15 @@ struct ShoppingListView: View {
     @ScaledMetric(relativeTo: .body) private var listRowInsetBottom: CGFloat = 4
     @ScaledMetric(relativeTo: .body) private var noResultsVerticalPadding: CGFloat = 60
 
-    private var groups: [(category: Category, items: [ShoppingItem])] {
-        viewModel.groupedItems(from: allItems, categories: categories)
-    }
-
-    private var summary: ShoppingListViewModel.ListSummary {
-        viewModel.summary(from: allItems)
-    }
-
     var body: some View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: filterSpacing) {
                     StoreFilterBar(selectedStore: $viewModel.selectedStore)
-                    
+
                     SummaryBarView(
-                        pendingCount: summary.pendingCount,
-                        purchasedCount: summary.purchasedCount,
-                        pendingTotal: summary.pendingTotal,
-                        purchasedTotal: summary.purchasedTotal,
+                        pendingCount: viewModel.derivedSummary.pendingCount,
+                        purchasedCount: viewModel.derivedSummary.purchasedCount,
                         showPurchased: $viewModel.showPurchased,
                         onArchivePurchased: onArchivePurchased
                     )
@@ -51,7 +41,7 @@ struct ShoppingListView: View {
                 .listRowBackground(Color.clear)
             }
 
-            if groups.isEmpty {
+            if viewModel.derivedGroups.isEmpty {
                 NoResultsView(
                     searchText: viewModel.searchText,
                     onAddSearch: {
@@ -68,7 +58,7 @@ struct ShoppingListView: View {
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
             } else {
-                ForEach(groups, id: \.category) { group in
+                ForEach(viewModel.derivedGroups, id: \.category) { group in
                     CategorySectionView(
                         category: group.category,
                         items: group.items,
@@ -85,9 +75,6 @@ struct ShoppingListView: View {
                         },
                         onMarkStatus: { item, status in
                             viewModel.markItem(item, as: status, context: modelContext)
-                        },
-                        onMove: { source, destination in
-                            viewModel.moveItem(from: source, to: destination, within: group.items, context: modelContext)
                         }
                     )
                 }
@@ -113,5 +100,23 @@ struct ShoppingListView: View {
             )
         }
         .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
+        .onAppear {
+            viewModel.updateDerivedState(items: allItems, categories: categories)
+        }
+        .onChange(of: allItems) { _, _ in
+            viewModel.updateDerivedState(items: allItems, categories: categories)
+        }
+        .onChange(of: categories) { _, _ in
+            viewModel.updateDerivedState(items: allItems, categories: categories)
+        }
+        .onChange(of: viewModel.selectedStore) { _, _ in
+            viewModel.rederiveFilters()
+        }
+        .onChange(of: viewModel.showPurchased) { _, _ in
+            viewModel.rederiveFilters()
+        }
+        .onChange(of: viewModel.searchText) { _, _ in
+            viewModel.rederiveFilters()
+        }
     }
 }

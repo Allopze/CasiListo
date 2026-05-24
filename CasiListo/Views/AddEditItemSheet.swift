@@ -32,7 +32,6 @@ struct AddEditItemSheet: View {
 
     @State private var name: String = ""
     @State private var quantity: String = ""
-    @State private var priceString: String = ""
     @State private var selectedCategory: Category = Category.fallback
     @State private var selectedStore: Store = .jumbo
     @State private var note: String = ""
@@ -51,7 +50,7 @@ struct AddEditItemSheet: View {
     }
 
     private var isValid: Bool {
-        !trimmedName.isEmpty && duplicateItem == nil && isPriceValid
+        !trimmedName.isEmpty && duplicateItem == nil
     }
 
     private var suggestions: [String] {
@@ -71,11 +70,6 @@ struct AddEditItemSheet: View {
 
     private var duplicateItem: ShoppingItem? {
         checkDuplicate(name, selectedStore, excludedDuplicateID)
-    }
-
-    private var isPriceValid: Bool {
-        let trimmedPrice = priceString.trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmedPrice.isEmpty || Double(trimmedPrice.replacingOccurrences(of: ",", with: ".")) != nil
     }
 
     var body: some View {
@@ -200,17 +194,10 @@ struct AddEditItemSheet: View {
             TextField("Cantidad, ej: 2, 1 kg, 500 g", text: $quantity)
                 .textInputAutocapitalization(.never)
 
-            TextField("Precio opcional, ej: 1.50", text: $priceString)
-                .keyboardType(.decimalPad)
-
             TextField("Nota", text: $note, axis: .vertical)
                 .lineLimit(2...4)
         } header: {
             Label("Detalles", systemImage: "text.justify.left")
-        } footer: {
-            if !isPriceValid {
-                Text("Ingresa un precio válido o deja el campo vacío.")
-            }
         }
     }
 
@@ -231,7 +218,6 @@ struct AddEditItemSheet: View {
             selectedCategory = item.category
             selectedStore = item.store
             note = item.note
-            priceString = item.price.formattedPriceOrEmpty
             voiceNoteFilename = item.voiceNoteFilename
             initialVoiceNoteFilename = item.voiceNoteFilename
         }
@@ -239,9 +225,7 @@ struct AddEditItemSheet: View {
 
     private func saveItem() {
         guard !trimmedName.isEmpty else { return }
-        guard duplicateItem == nil, isPriceValid else { return }
-
-        let parsedPrice = parsedPriceForSave()
+        guard duplicateItem == nil else { return }
 
         switch mode {
         case .add:
@@ -252,7 +236,7 @@ struct AddEditItemSheet: View {
                 category: selectedCategory,
                 note: note.trimmingCharacters(in: .whitespaces),
                 sortOrder: nextSortOrder(selectedCategory),
-                price: parsedPrice,
+                price: nil,
                 store: selectedStore,
                 voiceNoteFilename: voiceNoteFilename
             )
@@ -268,7 +252,6 @@ struct AddEditItemSheet: View {
             item.category = selectedCategory
             item.store = selectedStore
             item.note = note.trimmingCharacters(in: .whitespaces)
-            item.price = parsedPrice
             
             if item.voiceNoteFilename != voiceNoteFilename {
                 if let oldFile = item.voiceNoteFilename {
@@ -281,12 +264,6 @@ struct AddEditItemSheet: View {
             }
             modelContext.safeSave()
         }
-    }
-
-    private func parsedPriceForSave() -> Double? {
-        let trimmedPrice = priceString.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedPrice.isEmpty else { return nil }
-        return Double(trimmedPrice.replacingOccurrences(of: ",", with: "."))
     }
 
     private func handleRecordedVoiceNote(_ filename: String) {

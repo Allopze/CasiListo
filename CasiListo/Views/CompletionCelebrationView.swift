@@ -4,7 +4,6 @@ import SwiftUI
 struct CompletionCelebrationView: View {
     let storeName: String
     let productsCount: Int
-    let totalSpent: Double
     let onDismiss: () -> Void
     let onClearPurchasedAndDismiss: () -> Void
     
@@ -78,11 +77,6 @@ struct CompletionCelebrationView: View {
                 // Tarjeta de estadísticas con Glassmorphic style
                 VStack(spacing: cardSpacing) {
                     statRow(title: "Productos Comprados", value: "\(productsCount)", icon: "cart.fill", color: .green)
-                    
-                    if totalSpent > 0 {
-                        Divider().background(Color.white.opacity(0.1))
-                        statRow(title: "Gasto Estimado", value: totalSpent.formattedPriceWithSymbol, icon: "dollarsign.circle.fill", color: .yellow)
-                    }
                 }
                 .padding(cardPadding)
                 .background {
@@ -201,9 +195,6 @@ struct CompletionCelebrationView: View {
         var text = "🏆 *¡Compra terminada en CasiListo!*\n\n"
         text += "🏪 Supermercado: *\(storeName)*\n"
         text += "📦 Productos: *\(productsCount)*\n"
-        if totalSpent > 0 {
-            text += "💰 Total Estimado: *\(totalSpent.formattedPriceWithSymbol)*\n"
-        }
         return text
     }
     

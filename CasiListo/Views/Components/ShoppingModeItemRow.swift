@@ -18,6 +18,7 @@ struct ShoppingModeItemRow: View {
     @ScaledMetric(relativeTo: .caption) private var quantityPaddingVertical: CGFloat = 3
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: scaledSpacing) {
@@ -70,7 +71,6 @@ struct ShoppingModeItemRow: View {
         .background(Color.shoppingModeSurface)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.14), radius: 4, y: 2)
-        .opacity(item.isPurchased ? 0.68 : 1.0)
         .accessibilityAction(named: item.isPurchased ? "Marcar pendiente" : "Marcar comprado") {
             onToggle()
         }
@@ -90,7 +90,7 @@ struct ShoppingModeItemRow: View {
             if item.isPurchased {
                 Circle()
                     .fill(Theme.accentYellow)
-                    .transition(.scale.combined(with: .opacity))
+                    .transition(reduceMotion ? .opacity : .scale.combined(with: .opacity))
 
                 Image(systemName: "checkmark")
                     .font(.system(size: checkmarkSize, weight: .bold))

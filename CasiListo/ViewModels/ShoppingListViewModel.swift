@@ -37,6 +37,32 @@ final class ShoppingListViewModel {
     var collapsedCategories: Set<String> = []
     var quickAddText: String = ""
 
+    // MARK: - Snapshot derivado
+
+    /// Grupos cacheados — actualizados explícitamente desde la vista para no
+    /// recalcular en cada re-render. La vista llama `updateDerivedState` al
+    /// cambiar items, categorías o filtros.
+    private(set) var derivedGroups: [(category: Category, items: [ShoppingItem])] = []
+    private(set) var derivedSummary: ListSummary = ListSummary(pendingCount: 0, purchasedCount: 0, skippedCount: 0, unavailableCount: 0)
+
+    @ObservationIgnored private var latestItems: [ShoppingItem] = []
+    @ObservationIgnored private var latestCategories: [Category] = []
+
+    func updateDerivedState(items: [ShoppingItem], categories: [Category]) {
+        latestItems = items
+        latestCategories = categories
+        recomputeSnapshot()
+    }
+
+    func rederiveFilters() {
+        recomputeSnapshot()
+    }
+
+    private func recomputeSnapshot() {
+        derivedGroups = groupedItems(from: latestItems, categories: latestCategories)
+        derivedSummary = summary(from: latestItems)
+    }
+
     // MARK: - Filtrado y agrupación
 
     /// Agrupa los ítems visibles por categoría, respetando filtros de búsqueda y estado.
@@ -67,18 +93,14 @@ final class ShoppingListViewModel {
         // Agrupar por categoría
         let grouped = Dictionary(grouping: filtered) { $0.category.name }
 
-        // Ordenar categorías por sortIndex, y dentro de cada categoría por sortOrder y luego nombre
+        // Ordenar categorías e ítems alfabéticamente
         return categories
             .compactMap { category in
                 guard let items = grouped[category.name], !items.isEmpty else { return nil }
-                let sorted = items.sorted { a, b in
-                    if a.sortOrder != b.sortOrder {
-                        return a.sortOrder < b.sortOrder
-                    }
-                    return a.name.localizedCompare(b.name) == .orderedAscending
-                }
+                let sorted = items.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
                 return (category: category, items: sorted)
             }
+            .sorted { $0.category.name.localizedCompare($1.category.name) == .orderedAscending }
     }
 
     /// Conteos de ítems en un solo pase.
@@ -90,8 +112,6 @@ final class ShoppingListViewModel {
     struct ListSummary {
         let pendingCount: Int
         let purchasedCount: Int
-        let pendingTotal: Double
-        let purchasedTotal: Double
         let skippedCount: Int
         let unavailableCount: Int
 
@@ -105,14 +125,12 @@ final class ShoppingListViewModel {
         let quantity: String
     }
 
-    /// Calcula conteos y totales visibles en un solo recorrido.
+    /// Calcula conteos visibles en un solo recorrido.
     func summary(from items: [ShoppingItem]) -> ListSummary {
         var pendingCount = 0
         var purchasedCount = 0
         var skippedCount = 0
         var unavailableCount = 0
-        var pendingTotal = 0.0
-        var purchasedTotal = 0.0
 
         for item in items {
             if let selectedStore = selectedStore, item.store != selectedStore {
@@ -122,10 +140,8 @@ final class ShoppingListViewModel {
             switch item.status {
             case .purchased:
                 purchasedCount += 1
-                purchasedTotal += item.price ?? 0
             case .pending:
                 pendingCount += 1
-                pendingTotal += item.price ?? 0
             case .skipped:
                 skippedCount += 1
             case .unavailable:
@@ -136,8 +152,6 @@ final class ShoppingListViewModel {
         return ListSummary(
             pendingCount: pendingCount,
             purchasedCount: purchasedCount,
-            pendingTotal: pendingTotal,
-            purchasedTotal: purchasedTotal,
             skippedCount: skippedCount,
             unavailableCount: unavailableCount
         )
@@ -292,36 +306,6 @@ final class ShoppingListViewModel {
         let categoryItems = items.filter { $0.category.name == category.name }
         let maxOrder = categoryItems.map(\.sortOrder).max() ?? -1
         return maxOrder + 1
-    }
-
-    /// Reordena los ítems dentro de una categoría y actualiza sus valores de `sortOrder`.
-    func moveItem(from source: IndexSet, to destination: Int, within items: [ShoppingItem], context: ModelContext) {
-        var mutableItems = items
-        mutableItems.move(fromOffsets: source, toOffset: destination)
-        for (index, item) in mutableItems.enumerated() {
-            item.sortOrder = index
-        }
-        context.safeSave()
-    }
-
-    /// Calcula la suma de precios de todos los artículos pendientes.
-    func pendingTotal(from items: [ShoppingItem]) -> Double {
-        summary(from: items).pendingTotal
-    }
-
-    /// Calcula la suma de precios de todos los artículos comprados.
-    func purchasedTotal(from items: [ShoppingItem]) -> Double {
-        summary(from: items).purchasedTotal
-    }
-
-    /// Calcula el costo total general de la lista.
-    func grandTotal(from items: [ShoppingItem]) -> Double {
-        items.filter { item in
-            if let selectedStore = selectedStore, item.store != selectedStore {
-                return false
-            }
-            return true
-        }.compactMap(\.price).reduce(0, +)
     }
 
     private func parseTrailingMultiplier(_ parts: [String]) -> QuickAddDraft? {

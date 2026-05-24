@@ -124,10 +124,20 @@ struct SuggestedProducts {
     }
 
     /// Devuelve la categoría más probable para un nombre de producto.
+    /// Primero intenta coincidencia exacta; si no hay, prueba coincidencia por prefijo
+    /// para cubrir variantes como "Tomates cherry" → "Tomates" (Frutas y verduras).
     static func suggestedCategory(for productName: String, in categories: [Category]) -> Category? {
         let lowered = productName.lowercased()
         for (defaultCat, products) in byCategory {
             if products.contains(where: { $0.lowercased() == lowered }) {
+                return categories.first { $0.name == defaultCat.rawValue }
+            }
+        }
+        for (defaultCat, products) in byCategory {
+            if products.contains(where: {
+                let p = $0.lowercased()
+                return lowered.hasPrefix(p) || p.hasPrefix(lowered)
+            }) {
                 return categories.first { $0.name == defaultCat.rawValue }
             }
         }

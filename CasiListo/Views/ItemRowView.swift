@@ -22,6 +22,7 @@ struct ItemRowView: View {
     @ScaledMetric(relativeTo: .body) private var editButtonSymbolSize: CGFloat = 13
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: scaledSpacing) {
@@ -109,8 +110,7 @@ struct ItemRowView: View {
                 onDelete()
             }
         }
-        .opacity(item.isPurchased ? 0.72 : 1.0)
-        .animation(Theme.quickAnimation, value: item.isPurchased)
+        .animation(reduceMotion ? nil : Theme.quickAnimation, value: item.isPurchased)
     }
 
     private var rowContent: some View {
@@ -152,17 +152,6 @@ struct ItemRowView: View {
                     .background(quantityBackground)
                     .clipShape(Capsule())
                     .accessibilityLabel("Cantidad \(item.quantity)")
-            }
-
-            if let price = item.price {
-                Text(price.formattedPriceWithSymbol)
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : .green)
-                    .padding(.horizontal, pillPaddingHorizontal)
-                    .padding(.vertical, pillPaddingVertical)
-                    .background(item.isPurchased ? Color.appTextPurchased.opacity(0.1) : Color.green.opacity(0.10))
-                    .clipShape(Capsule())
-                    .accessibilityLabel("Precio \(price.formattedPrice)")
             }
 
             if item.status == .skipped || item.status == .unavailable {
@@ -208,7 +197,8 @@ struct ItemRowView: View {
             Image(systemName: "pencil")
                 .font(.system(size: editButtonSymbolSize, weight: .semibold))
                 .foregroundStyle(Theme.accentYellow)
-                .frame(width: scaledEditButtonSize, height: scaledEditButtonSize)
+                .frame(width: max(Theme.minimumTouchTarget, scaledEditButtonSize),
+                       height: max(Theme.minimumTouchTarget, scaledEditButtonSize))
                 .background(Theme.accentYellow.opacity(0.12))
                 .clipShape(Circle())
         }
@@ -226,9 +216,6 @@ struct ItemRowView: View {
         var parts = [item.name, "en \(item.store.displayName)"]
         if !item.quantity.isEmpty {
             parts.append(item.quantity)
-        }
-        if let price = item.price {
-            parts.append("Precio \(price.formattedPriceWithSymbol)")
         }
         if item.status == .skipped || item.status == .unavailable {
             parts.append(item.status.rawValue)

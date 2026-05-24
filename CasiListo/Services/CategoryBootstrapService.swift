@@ -44,6 +44,19 @@ final class CategoryBootstrapService {
                     categoryMap[fallback.name] = fallback
                     try context.save()
                 }
+                // Reconciliar sfSymbol con la definición actual de DefaultCategory
+                var sfSymbolsUpdated = false
+                for category in existingCategories {
+                    if let match = DefaultCategory.allCases.first(where: { $0.rawValue == category.name }),
+                       category.sfSymbol != match.sfSymbol {
+                        category.sfSymbol = match.sfSymbol
+                        sfSymbolsUpdated = true
+                    }
+                }
+                if sfSymbolsUpdated {
+                    try context.save()
+                    logger.info("sfSymbols de categorías actualizados a las definiciones más recientes.")
+                }
             }
             
             // 2. Curar ShoppingItems que no tengan la relación `categoryRelation` establecida

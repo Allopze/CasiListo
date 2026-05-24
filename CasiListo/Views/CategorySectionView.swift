@@ -12,7 +12,6 @@ struct CategorySectionView: View {
     let onEdit: (ShoppingItem) -> Void
     let onDelete: (ShoppingItem) -> Void
     let onMarkStatus: (ShoppingItem, ShoppingItemStatus) -> Void
-    let onMove: (IndexSet, Int) -> Void
 
     @Environment(\.modelContext) private var modelContext
     
@@ -31,8 +30,8 @@ struct CategorySectionView: View {
     @ScaledMetric(relativeTo: .body) private var rowBackgroundPaddingVertical: CGFloat = 3
     @ScaledMetric(relativeTo: .body) private var topPadding: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 4
-    @ScaledMetric(relativeTo: .body) private var collapsedPaddingVertical: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var collapsedOuterPadding: CGFloat = 2
+    @ScaledMetric(relativeTo: .body) private var collapsedPaddingVertical: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var collapsedOuterPadding: CGFloat = 1
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
@@ -100,9 +99,6 @@ struct CategorySectionView: View {
                         removal: .move(edge: .leading).combined(with: .opacity)
                     ))
                 }
-                .onMove { source, destination in
-                    onMove(source, destination)
-                }
             }
         } header: {
             sectionHeader
@@ -119,8 +115,10 @@ struct CategorySectionView: View {
             HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: sfSymbolSize, weight: .bold))
-                    .foregroundStyle(Theme.accentYellow)
-                    .frame(width: imageWidth, alignment: .center)
+                    .foregroundStyle(category.accentColor)
+                    .frame(width: imageWidth, height: imageWidth)
+                    .background(category.accentColor.opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 Text(category.displayName)
                     .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
@@ -129,15 +127,7 @@ struct CategorySectionView: View {
 
                 Spacer()
 
-                Text("\(items.count)")
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(Color.black)
-                    .bold()
-                    .monospacedDigit()
-                    .padding(.horizontal, countPaddingHorizontal)
-                    .padding(.vertical, countPaddingVertical)
-                    .background(Theme.accentYellow)
-                    .clipShape(Capsule())
+                categoryBadge
                 
                 Image(systemName: "chevron.down")
                     .font(.system(size: chevronSize, weight: .bold))
@@ -150,7 +140,7 @@ struct CategorySectionView: View {
             .padding(.horizontal, cardPadding)
             .background(Color.appCardBackground)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
+            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
             .padding(.horizontal, cardPadding)
             .padding(.top, isCollapsed ? collapsedOuterPadding : topPadding)
             .padding(.bottom, isCollapsed ? collapsedOuterPadding : bottomPadding)
@@ -158,9 +148,62 @@ struct CategorySectionView: View {
         }
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(category.displayName), \(items.count) productos")
+        .accessibilityLabel({
+            var label = "\(category.displayName), \(pendingCount) pendientes"
+            if purchasedCount > 0 { label += ", \(purchasedCount) comprados" }
+            return label
+        }())
         .accessibilityValue(isCollapsed ? "Colapsada" : "Expandida")
         .accessibilityHint(isCollapsed ? "Toca para expandir la categoría" : "Toca para colapsar la categoría")
+    }
+
+    private var pendingCount: Int { items.filter { !$0.isPurchased }.count }
+    private var purchasedCount: Int { items.filter { $0.isPurchased }.count }
+
+    @ViewBuilder
+    private var categoryBadge: some View {
+        if pendingCount == 0 {
+            Label("\(purchasedCount)", systemImage: "checkmark")
+                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .foregroundStyle(.white)
+                .bold()
+                .monospacedDigit()
+                .padding(.horizontal, countPaddingHorizontal)
+                .padding(.vertical, countPaddingVertical)
+                .background(Color.green)
+                .clipShape(Capsule())
+        } else if purchasedCount > 0 {
+            HStack(spacing: 4) {
+                Text("\(pendingCount)")
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .foregroundStyle(Color.black)
+                    .bold()
+                    .monospacedDigit()
+                    .padding(.horizontal, countPaddingHorizontal)
+                    .padding(.vertical, countPaddingVertical)
+                    .background(Theme.accentYellow)
+                    .clipShape(Capsule())
+                Label("\(purchasedCount)", systemImage: "checkmark")
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .foregroundStyle(.white)
+                    .bold()
+                    .monospacedDigit()
+                    .padding(.horizontal, countPaddingHorizontal)
+                    .padding(.vertical, countPaddingVertical)
+                    .background(Color.green)
+                    .clipShape(Capsule())
+            }
+        } else {
+            Text("\(pendingCount)")
+                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .foregroundStyle(Color.black)
+                .bold()
+                .monospacedDigit()
+                .padding(.horizontal, countPaddingHorizontal)
+                .padding(.vertical, countPaddingVertical)
+                .background(Theme.accentYellow)
+                .clipShape(Capsule())
+        }
     }
 
     private var rowBackground: some View {
@@ -168,6 +211,6 @@ struct CategorySectionView: View {
             .fill(Color.appCardBackground)
             .padding(.horizontal, cardPadding)
             .padding(.vertical, rowBackgroundPaddingVertical)
-            .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 2)
+            .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 1)
     }
 }

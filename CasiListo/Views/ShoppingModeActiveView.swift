@@ -136,7 +136,7 @@ struct ShoppingModeActiveView: View {
             }
             .buttonStyle(.plain)
             .disabled(viewModel.activeCategoryIndex == 0)
-            .opacity(viewModel.activeCategoryIndex == 0 ? 0.3 : 1.0)
+            .opacity(viewModel.activeCategoryIndex == 0 ? 0.45 : 1.0)
             .accessibilityLabel("Categoría anterior")
             
             Spacer()
@@ -178,7 +178,7 @@ struct ShoppingModeActiveView: View {
             }
             .buttonStyle(.plain)
             .disabled(viewModel.activeCategoryIndex == viewModel.categories.count - 1)
-            .opacity(viewModel.activeCategoryIndex == viewModel.categories.count - 1 ? 0.3 : 1.0)
+            .opacity(viewModel.activeCategoryIndex == viewModel.categories.count - 1 ? 0.45 : 1.0)
             .accessibilityLabel("Categoría siguiente")
         }
         .padding(.horizontal, 24)
