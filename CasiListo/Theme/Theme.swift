@@ -271,7 +271,7 @@ extension Color {
     static let appTextSecondary = Color(light: Color(hex: "8A8A8A"), dark: Color(hex: "A0A0A0"))
 
     /// Texto para ítems comprados.
-    static let appTextPurchased = Color(light: Color(hex: "C0C0C0"), dark: Color(hex: "666666"))
+    static let appTextPurchased = Color(light: Color(hex: "6F6F6F"), dark: Color(hex: "A8A8A8"))
 
     /// Separador sutil.
     static let appSeparator = Color(light: Color(hex: "ECECEC"), dark: Color(hex: "3A3938"))

@@ -5,9 +5,27 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
+    @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
+    @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
     @State private var showsShoppingMode = false
+    @State private var editMode: EditMode = .inactive
+
+    private var activeList: ShoppingList? {
+        allLists.first { $0.status == .active }
+    }
+
+    private var activeItems: [ShoppingItem] {
+        guard let activeList else { return [] }
+        return allItems.filter { $0.listID == activeList.id }
+    }
+
+    private var completedLists: [ShoppingList] {
+        allLists
+            .filter { $0.status == .completed }
+            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
 
     var body: some View {
         ZStack {
@@ -15,7 +33,8 @@ struct ContentView: View {
 
             if showsShoppingMode {
                 ShoppingModeView(
-                    allItems: allItems,
+                    activeList: activeList,
+                    allItems: activeItems,
                     onFinished: {
                         withAnimation(.easeInOut) {
                             showsShoppingMode = false
@@ -33,11 +52,12 @@ struct ContentView: View {
                     ZStack {
                         Color.appBackground.ignoresSafeArea()
 
-                        if allItems.isEmpty {
+                        if activeItems.isEmpty {
                             EmptyStateView { presentAddItem() }
                         } else {
                             ShoppingListView(
-                                allItems: allItems,
+                                activeList: activeList,
+                                allItems: activeItems,
                                 viewModel: viewModel,
                                 onEdit: { viewModel.presentEditItem($0) },
                                 onAddTapped: { presentAddItem() }
@@ -53,12 +73,22 @@ struct ContentView: View {
                     .adaptiveSearchToolbarBehavior()
                     .adaptiveSearchPresentationToolbarBehavior()
                     .toolbar {
-                        ToolbarItem(placement: .topBarLeading) { shoppingModeButton }
+                        ToolbarItem(placement: .topBarLeading) {
+                            if editMode.isEditing {
+                                doneOrderingButton
+                            } else {
+                                shoppingModeButton
+                            }
+                        }
                         ToolbarItem(placement: .topBarTrailing) { menuButton }
                         if #available(iOS 26.0, *) {
                             ToolbarSpacer(.fixed, placement: .topBarTrailing)
                         }
-                        ToolbarItem(placement: .topBarTrailing) { addButton }
+                        ToolbarItem(placement: .topBarTrailing) {
+                            if !editMode.isEditing {
+                                addButton
+                            }
+                        }
                     }
                     .sheet(item: $viewModel.presentedSheet) { sheetContent(for: $0) }
                     .confirmationDialog(
@@ -66,28 +96,42 @@ struct ContentView: View {
                         isPresented: $showsClearPurchasedDialog,
                         titleVisibility: .visible
                     ) {
-                        Button("Borrar \(viewModel.itemCounts(from: allItems).purchased) comprados", role: .destructive) {
+                        Button("Archivar \(viewModel.itemCounts(from: activeItems).purchased) comprados", role: .destructive) {
                             HapticFeedback.impact()
-                            let purchasedCount = viewModel.itemCounts(from: allItems).purchased
+                            let purchasedCount = viewModel.itemCounts(from: activeItems).purchased
                             var stats = UserStats.load()
                             stats.recordPurchase(productsCount: purchasedCount)
                             withAnimation(Theme.defaultAnimation) {
-                                viewModel.clearPurchased(items: allItems, context: modelContext)
+                                ShoppingListLifecycleService.archivePurchasedItems(
+                                    from: activeItems,
+                                    activeList: activeList,
+                                    context: modelContext
+                                )
                             }
                         }
                         Button("Cancelar", role: .cancel) {}
                     } message: {
                         Text("Esta acción elimina todos los productos marcados como comprados.")
                     }
+                    .environment(\.editMode, $editMode)
                 }
                 .tint(Theme.accentYellow)
             }
         }
         .task {
+            if resetStorageForUITestsIfNeeded() {
+                return
+            }
             GeofenceService.shared.initialize(with: modelContext.container)
+            let list = ShoppingListLifecycleService.bootstrap(
+                lists: allLists,
+                items: allItems,
+                context: modelContext
+            )
+            SuggestedProducts.seedCatalogItems(in: modelContext, existingCatalog: catalogItems)
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
             if !hasSeeded {
-                SuggestedProducts.seedDefaultItems(in: modelContext)
+                SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
                 UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
             }
         }
@@ -99,6 +143,7 @@ struct ContentView: View {
         }
         .adaptiveGlassButtonStyle()
         .accessibilityLabel("Añadir producto")
+        .accessibilityIdentifier("toolbar-add-product")
     }
 
     private var shoppingModeButton: some View {
@@ -117,8 +162,19 @@ struct ContentView: View {
         .accessibilityLabel("Entrar a Modo Compra")
     }
 
+    private var doneOrderingButton: some View {
+        Button {
+            setOrderingMode(false)
+        } label: {
+            Text("Listo")
+                .font(.system(size: 13, weight: .bold))
+        }
+        .adaptiveGlassButtonStyle()
+        .accessibilityLabel("Terminar ordenamiento")
+    }
+
     private var formattedShareText: String {
-        let groups = viewModel.groupedItems(from: allItems)
+        let groups = viewModel.groupedItems(from: activeItems)
         let storeTitle = viewModel.selectedStore?.displayName ?? "Todos"
         guard !groups.isEmpty else { return "Mi lista de compras en CasiListo (\(storeTitle)) está vacía." }
         
@@ -140,6 +196,15 @@ struct ContentView: View {
     private var menuButton: some View {
         Menu {
             Button {
+                setOrderingMode(!editMode.isEditing)
+            } label: {
+                Label(
+                    editMode.isEditing ? "Terminar ordenamiento" : "Ordenar productos",
+                    systemImage: editMode.isEditing ? "checkmark" : "arrow.up.arrow.down"
+                )
+            }
+
+            Button {
                 HapticFeedback.selection()
                 withAnimation(Theme.defaultAnimation) {
                     viewModel.showPurchased.toggle()
@@ -157,14 +222,21 @@ struct ContentView: View {
 
             Button {
                 HapticFeedback.selection()
+                viewModel.presentHistory()
+            } label: {
+                Label("Historial", systemImage: "clock.arrow.circlepath")
+            }
+
+            Button {
+                HapticFeedback.selection()
                 viewModel.presentSettings()
             } label: {
                 Label("Ajustes", systemImage: "gearshape")
             }
 
-            if viewModel.itemCounts(from: allItems).purchased > 0 {
+            if viewModel.itemCounts(from: activeItems).purchased > 0 {
                 Button(role: .destructive) { showsClearPurchasedDialog = true } label: {
-                    Label("Borrar comprados", systemImage: "trash")
+                    Label("Archivar comprados", systemImage: "archivebox")
                 }
             }
         } label: {
@@ -172,22 +244,57 @@ struct ContentView: View {
         }
         .adaptiveGlassButtonStyle()
         .accessibilityLabel("Opciones")
+        .accessibilityIdentifier("toolbar-options-menu")
     }
 
     @ViewBuilder
     private func sheetContent(for destination: ShoppingListSheetDestination) -> some View {
         switch destination {
         case .addItem:
-            AddEditItemSheet(mode: .add, allItems: allItems, viewModel: viewModel)
+            AddEditItemSheet(mode: .add, activeList: activeList, allItems: activeItems, viewModel: viewModel)
         case .editItem(let item):
-            AddEditItemSheet(mode: .edit(item), allItems: allItems, viewModel: viewModel)
+            AddEditItemSheet(mode: .edit(item), activeList: activeList, allItems: activeItems, viewModel: viewModel)
         case .settings:
             SettingsSheet()
+        case .history:
+            ShoppingHistoryView(completedLists: completedLists)
         }
     }
 
     private func presentAddItem() {
         HapticFeedback.impact()
         viewModel.presentAddItem()
+    }
+
+    private func setOrderingMode(_ isActive: Bool) {
+        HapticFeedback.selection()
+        withAnimation(Theme.defaultAnimation) {
+            editMode = isActive ? .active : .inactive
+        }
+    }
+
+    @discardableResult
+    private func resetStorageForUITestsIfNeeded() -> Bool {
+        guard ProcessInfo.processInfo.arguments.contains("-ui-testing-reset") else {
+            return false
+        }
+
+        for item in allItems {
+            modelContext.delete(item)
+        }
+        for list in allLists {
+            modelContext.delete(list)
+        }
+        for catalogItem in catalogItems {
+            modelContext.delete(catalogItem)
+        }
+
+        UserDefaults.standard.set(false, forKey: "hasSeededDefaultProducts")
+        let list = ShoppingListLifecycleService.createActiveList(in: modelContext)
+        SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
+        SuggestedProducts.seedCatalogItems(in: modelContext, existingCatalog: [])
+        UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
+        try? modelContext.save()
+        return true
     }
 }

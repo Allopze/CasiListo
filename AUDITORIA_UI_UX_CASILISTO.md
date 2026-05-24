@@ -401,6 +401,118 @@ Para medidas no tipograficas, usar `@ScaledMetric`:
 - `CompletionCelebrationView.triggerTripleHaptic()` reemplazo callbacks con `DispatchQueue` por `Task.sleep` en MainActor.
 - `AddEditVoiceNoteSection` invalida el timer y detiene la grabacion al desaparecer la vista para evitar timers vivos o grabacion colgante.
 
+## Fixes aplicados en segunda pasada - 2026-05-23
+
+### Ordenamiento descubrible
+
+- `ContentView` ahora gestiona un `EditMode` local y lo inyecta en la jerarquia para activar el reordenamiento nativo del `List`.
+- El menu de opciones incluye una accion visible "Ordenar productos".
+- Al entrar en ordenamiento, el boton principal de la barra cambia a "Listo" para salir del modo de organizacion sin tener que descubrir gestos ocultos.
+- Durante el modo de ordenamiento se oculta el boton de anadir para evitar acciones competitivas en la barra superior.
+
+### Finalizacion de compra mas clara
+
+- `CompletionCelebrationView` ahora ofrece una accion explicita "Limpiar Comprados" al terminar una compra.
+- `ShoppingModeView` pasa una accion de limpieza que registra la compra, elimina los productos comprados de la sesion activa y vuelve a la lista.
+- Se mantiene la opcion "Volver a la Lista" para usuarios que quieran conservar los items comprados visibles o gestionarlos luego desde el menu.
+
+### Performance de resumen
+
+- `ShoppingListViewModel` ahora expone `ListSummary`, que calcula conteos y totales en un solo recorrido.
+- `ShoppingListView` usa `summary(from:)` para alimentar `SummaryBarView`, evitando recorridos separados para conteos, total pendiente y total comprado.
+- `itemCounts(from:)`, `pendingTotal(from:)` y `purchasedTotal(from:)` quedan como API compatible, pero delegan en el resumen.
+- Se agrego un unit test para validar `summary(from:)` en `CasiListoTests`.
+
+## Fixes aplicados en tercera pasada - 2026-05-23
+
+### Concurrencia Swift 6 y ciclo de vida
+
+- `CasiListo.xcodeproj/project.pbxproj` ahora usa `SWIFT_VERSION = 6.0` y `SWIFT_STRICT_CONCURRENCY = complete` en app, unit tests y UI tests.
+- Se mantuvo `SWIFT_APPROACHABLE_CONCURRENCY = YES` y `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` en el target principal para alinear el proyecto con SwiftUI/SwiftData moderno.
+- `ShoppingModeViewModel` ahora cancela cualquier tarea de autoavance pendiente al detener la sesion o programar un nuevo autoavance.
+- El autoavance valida que la categoria activa siga siendo la misma despues del `Task.sleep`, evitando saltos tardios si el usuario navega manualmente.
+- `AddEditVoiceNoteSection` reemplazo el `Timer` por una `Task` cancelable en MainActor para el contador de grabacion.
+
+### Performance y renders
+
+- `VoiceNotePlayerButton` dejo de calcular alturas con `CGFloat.random` dentro del `body`; ahora usa una secuencia estable de barras para evitar invalidaciones visuales no deterministas.
+- `ShoppingModeActiveView` usa `categoryProgress(for:)` para obtener el progreso de categoria en un solo recorrido encapsulado en el view model.
+- `Color.appTextPurchased` subio contraste en claro y oscuro para que los items comprados sigan siendo legibles.
+
+### Entrada rapida y presupuesto
+
+- `ShoppingListViewModel` ahora expone `quickAddDraft(from:)`, que interpreta entradas como `2 leche`, `pan x3` y `tomates 1 kg`.
+- `ShoppingListView.addQuickItem()` usa ese parser para separar nombre y cantidad al crear items rapidos.
+- `AddEditItemSheet` tambien usa el parser cuando se abre desde el CTA de busqueda sin resultados o desde la barra inferior.
+- `Double.formattedPrice` y `formattedPriceWithSymbol` ahora usan `NumberFormatter` con `Locale.autoupdatingCurrent`, mejorando separadores y moneda respecto al formato manual anterior.
+- `SummaryBarView` usa el formato monetario centralizado en vez de interpolar `"$"` manualmente.
+
+### Reduce Motion y accesibilidad fina
+
+- `CompletionCelebrationView` ya no solo oculta confeti con Reduce Motion: tambien elimina las animaciones de escala, opacidad y desplazamiento cuando `accessibilityReduceMotion` esta activo.
+- Los controles de grabacion, borrado de nota de voz y microfono en `AddEditVoiceNoteSection` usan area tactil minima de 44 pt.
+
+### Tests agregados
+
+- `CasiListoTests.testQuickAddDraftParsesCommonQuantityPatterns()` valida los patrones principales de entrada rapida con cantidad.
+
+## Fixes aplicados en cuarta pasada - 2026-05-23
+
+### Listas reales e historial
+
+- Se agrego `ShoppingList` como entidad SwiftData con `active/completed`, fechas, tienda, resumen de items y total gastado.
+- `ShoppingItem` ahora guarda `listID`, lo que separa la lista activa de listas archivadas sin romper el modelo actual de items.
+- `ShoppingListLifecycleService` centraliza bootstrap de lista activa, adopcion de items huerfanos, actualizacion de contadores y archivado de comprados.
+- `ContentView` ahora trabaja sobre `activeItems` y `completedLists`, no sobre todos los items globales.
+- Se agrego `ShoppingHistoryView` y una accion "Historial" en el menu principal.
+- "Archivar comprados" ya no borra sin trazabilidad: mueve comprados a una lista completada con `completedAt`.
+- Al finalizar modo compra, la accion de limpieza archiva la compra de esa tienda en historial.
+
+### Catalogo/frecuentes separado
+
+- Se agrego `ProductCatalogItem` como entidad SwiftData para catalogo/frecuentes.
+- `SuggestedProducts.seedCatalogItems` crea catalogo separado de los items pendientes.
+- El seeding de productos pendientes ahora se asocia a la lista activa mediante `listID`, y el catalogo queda disponible para evolucionar a frecuentes reales sin contaminar la compra activa.
+
+### Estados de compra reales
+
+- `ShoppingItem` ahora tiene `ShoppingItemStatus`: `pending`, `purchased`, `skipped` y `unavailable`.
+- La compatibilidad con `isPurchased` se mantiene, pero el estado persistido permite distinguir comprado, pospuesto y no encontrado.
+- `ItemRowView` y `ShoppingModeItemRow` agregan acciones para "Posponer" y "No encontrado".
+- Los resumenes y conteos incluyen pospuestos/no encontrados; se agrego unit test para esos estados.
+- `ShoppingModeViewModel` filtra progreso, avance, categorias y conteos usando `status`, no solo `isPurchased`.
+
+### Dynamic Type y medidas escalables
+
+- `ItemRowView` usa `@ScaledMetric` para checkbox y boton de edicion.
+- `ShoppingModeItemRow` usa `@ScaledMetric` para el control principal y mantiene targets tactiles estables.
+- Se dejaron identificadores de accesibilidad dedicados para los botones criticos de toolbar y el campo de nombre, reduciendo fragilidad de UI tests.
+
+### Permisos de ubicacion con onboarding gradual
+
+- `GeofenceService` separa solicitud de notificaciones, ubicacion When In Use y Always.
+- `SettingsSheet` ya no pide permisos de ubicacion de golpe al activar geofencing; presenta un onboarding antes de iniciar monitoreo.
+- Se agrego `LocationPermissionOnboardingView` con pasos visibles para notificaciones, ubicacion en uso y recordatorios en segundo plano.
+- El conteo de productos pendientes para geofencing ahora ignora items comprados, pospuestos y no encontrados.
+
+### UI tests end-to-end
+
+- `CasiListoUITests` ahora reinicia datos con `-ui-testing-reset` antes de cada flujo.
+- Se agrego test E2E de crear producto, marcarlo comprado, archivar comprados y abrir historial.
+- Se agrego test E2E de modo compra que entra al flujo y valida acciones de "Posponer".
+- `ContentView` implementa un reset controlado para UI tests que limpia listas/items/catalogo y reseedea una lista activa limpia.
+
+## Faltante despues de las cuatro pasadas
+
+- Validar migracion SwiftData contra una store real existente antes de enviar a usuarios: el modelo ya tiene `ShoppingList`, `ProductCatalogItem`, `listID` y `statusRawValue`, pero falta probar escenarios de datos previos en dispositivo.
+- Convertir `ProductCatalogItem` en una UI completa de frecuentes: incrementar `timesAdded`, editar/ocultar frecuentes, y ofrecer "crear lista desde frecuentes".
+- Agregar vista de detalle de historial con productos archivados por compra; hoy el historial muestra resumen de listas completadas.
+- Migrar el resto del sistema visual desde fuentes manuales de `Theme` hacia Dynamic Type nativo y `@ScaledMetric`, especialmente headers, chips, resumen y formularios.
+- Completar UX de permisos denegados/restringidos con CTA a Ajustes y estados visibles en `SettingsSheet`.
+- Ampliar UI tests a borrar, ordenar, finalizar compra con pendientes, busqueda sin resultados y onboarding de ubicacion.
+- Estabilizar el runner de UI tests en CI/local: en esta maquina el simulador reporta fallos de lanzamiento del `xctrunner` aunque el target compila.
+- Si se busca compatibilidad con iOS 17/18, bajar `IPHONEOS_DEPLOYMENT_TARGET`; si la app sera iOS 26+, se pueden simplificar varios fallbacks `#available`.
+
 ## Fuentes usadas
 
 - Codigo fuente local de `CasiListo`.
@@ -413,6 +525,13 @@ Para medidas no tipograficas, usar `@ScaledMetric`:
 ## Validacion ejecutada
 
 - `xcodebuild -list -project CasiListo.xcodeproj`: correcto; esquema disponible `CasiListo`.
-- `xcodebuild build -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17'`: correcto, `BUILD SUCCEEDED` tras los fixes.
-- `xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17'`: en la auditoria inicial la build avanzo y compilo targets, pero la ejecucion de pruebas quedo bloqueada en el entorno local repitiendo `DebuggerLLDB.DebuggerVersionStore.StoreError` / `no debugger version`; se interrumpio para no dejar el proceso vivo.
-- `xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:CasiListoTests`: en esta pasada tambien compilo, pero fallo al lanzar la app en el simulador con `NSMachErrorDomain Code=-308` / `(ipc/mig) server died`; se interrumpio. No hay evidencia de fallo de compilacion, pero la ejecucion de tests sigue bloqueada por el entorno de simulador.
+- `xcodebuild build -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17'`: correcto, `BUILD SUCCEEDED` tras los fixes de la primera y segunda pasada.
+- `xcodebuild build-for-testing -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17'`: correcto, `TEST BUILD SUCCEEDED`; los tests unitarios nuevos compilan.
+- `xcodebuild build-for-testing -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17'`: correcto en tercera pasada con Swift 6 y strict concurrency, `TEST BUILD SUCCEEDED`.
+- `xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:CasiListoTests`: correcto en tercera pasada; 5 unit tests pasaron, incluido `testQuickAddDraftParsesCommonQuantityPatterns`.
+- `xcodebuild build-for-testing -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17'`: correcto en cuarta pasada con los nuevos modelos SwiftData y UI tests, `TEST BUILD SUCCEEDED`.
+- `xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:CasiListoTests`: correcto en cuarta pasada; 7 unit tests pasaron, incluidos historial y estados pospuesto/no encontrado.
+- `xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:CasiListoUITests/CasiListoUITests/testShoppingModeSupportsSkippedAndUnavailableActions`: correcto en cuarta pasada antes del ajuste final de identificadores; el flujo de modo compra y accion "Posponer" paso.
+- `xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo -destination 'platform=iOS Simulator,name=iPhone 17' -only-testing:CasiListoUITests/CasiListoUITests/testCreateMarkArchiveAndOpenHistory`: el test compila, pero el runner falla en infraestructura de simulador con `FBSOpenApplicationServiceErrorDomain Code=1` al lanzar `com.allopze.CasiListoUITests.xctrunner`; no hay assertion de flujo de app registrada.
+- Incidencia historica: en la auditoria inicial, `xcodebuild test` quedo bloqueado por `DebuggerLLDB.DebuggerVersionStore.StoreError` / `no debugger version`.
+- Incidencia historica: en segunda pasada, `xcodebuild test ... -only-testing:CasiListoTests` fallo al lanzar la app en el simulador con `NSMachErrorDomain Code=-308` / `(ipc/mig) server died`.

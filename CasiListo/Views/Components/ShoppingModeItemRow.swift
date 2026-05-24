@@ -4,7 +4,10 @@ import SwiftUI
 struct ShoppingModeItemRow: View {
     let item: ShoppingItem
     let onToggle: () -> Void
+    let onMarkSkipped: () -> Void
+    let onMarkUnavailable: () -> Void
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @ScaledMetric(relativeTo: .body) private var scaledCheckboxSize = 42
 
     var body: some View {
         HStack(spacing: 16) {
@@ -28,6 +31,28 @@ struct ShoppingModeItemRow: View {
             if let voiceNote = item.voiceNoteFilename {
                 VoiceNotePlayerButton(filename: voiceNote)
             }
+
+            Menu {
+                Button {
+                    onMarkSkipped()
+                } label: {
+                    Label("Posponer", systemImage: "clock")
+                }
+
+                Button {
+                    onMarkUnavailable()
+                } label: {
+                    Label("No encontrado", systemImage: "exclamationmark.triangle")
+                }
+            } label: {
+                Image(systemName: "ellipsis")
+                    .font(.system(size: 15, weight: .bold))
+                    .foregroundStyle(Color.shoppingModeText)
+                    .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                    .background(Color.shoppingModeControlBackground)
+                    .clipShape(Circle())
+            }
+            .accessibilityLabel("Mas acciones para \(item.name)")
         }
         .padding(.vertical, 14 * CGFloat(accessibilityTextSizeScale))
         .padding(.horizontal, 18 * CGFloat(accessibilityTextSizeScale))
@@ -58,7 +83,7 @@ struct ShoppingModeItemRow: View {
         }
         .frame(
             width: max(Theme.minimumTouchTarget, 42 * CGFloat(accessibilityTextSizeScale)),
-            height: max(Theme.minimumTouchTarget, 42 * CGFloat(accessibilityTextSizeScale))
+            height: max(Theme.minimumTouchTarget, scaledCheckboxSize, 42 * CGFloat(accessibilityTextSizeScale))
         )
     }
 

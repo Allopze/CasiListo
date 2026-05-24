@@ -27,16 +27,28 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         }
     }
     
-    func requestPermissions() {
-        // Solicitar permisos de notificación
-        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, error in
-            if granted {
-                print("Permisos de notificación concedidos")
-            }
+    func requestNotificationPermission() async -> Bool {
+        do {
+            return try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
+        } catch {
+            print("Error solicitando notificaciones: \(error)")
+            return false
         }
-        
-        // Solicitar localización siempre (Always) necesaria para geofencing en segundo plano
+    }
+
+    func requestWhenInUsePermission() {
+        locationManager.requestWhenInUseAuthorization()
+    }
+
+    func requestAlwaysPermissionForBackgroundReminders() {
         locationManager.requestAlwaysAuthorization()
+    }
+
+    func requestPermissions() {
+        Task { @MainActor in
+            _ = await requestNotificationPermission()
+            requestWhenInUsePermission()
+        }
     }
     
     func startMonitoringAll() {
@@ -82,11 +94,14 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         let context = ModelContext(container)
         
         let storeRawValue = store.rawValue
+        let pendingStatusRawValue = ShoppingItemStatus.pending.rawValue
         
         // Usar FetchDescriptor simple
         var descriptor = FetchDescriptor<ShoppingItem>()
         descriptor.predicate = #Predicate<ShoppingItem> { item in
-            item.storeRawValue == storeRawValue && !item.isPurchased
+            item.storeRawValue == storeRawValue
+                && !item.isPurchased
+                && (item.statusRawValue == nil || item.statusRawValue == pendingStatusRawValue)
         }
         
         do {

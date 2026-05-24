@@ -3,6 +3,7 @@ import SwiftData
 
 /// Pantalla en pantalla completa para enfocar la experiencia de compra en el supermercado.
 struct ShoppingModeView: View {
+    let activeList: ShoppingList?
     let allItems: [ShoppingItem]
     let onFinished: () -> Void
     let onCancel: () -> Void
@@ -23,8 +24,10 @@ struct ShoppingModeView: View {
                         productsCount: viewModel.totalCount,
                         totalSpent: viewModel.items.compactMap(\.price).reduce(0, +),
                         onDismiss: {
-                            recordCompletedPurchase(viewModel: viewModel)
-                            onFinished()
+                            finishSession(viewModel: viewModel, clearPurchased: false)
+                        },
+                        onClearPurchasedAndDismiss: {
+                            finishSession(viewModel: viewModel, clearPurchased: true)
                         }
                     )
                     .transition(.opacity)
@@ -60,8 +63,19 @@ struct ShoppingModeView: View {
         .animation(.easeInOut, value: sessionViewModel == nil)
     }
     
-    private func recordCompletedPurchase(viewModel: ShoppingModeViewModel) {
+    private func finishSession(viewModel: ShoppingModeViewModel, clearPurchased: Bool) {
         var stats = UserStats.load()
         stats.recordPurchase(productsCount: viewModel.totalCount)
+
+        if clearPurchased {
+            ShoppingListLifecycleService.archivePurchasedItems(
+                from: viewModel.items,
+                activeList: activeList,
+                store: viewModel.store,
+                context: modelContext
+            )
+        }
+
+        onFinished()
     }
 }

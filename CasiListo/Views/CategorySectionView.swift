@@ -28,6 +28,9 @@ struct CategorySectionView: View {
                         },
                         onDelete: {
                             viewModel.deleteItem(item, context: modelContext)
+                        },
+                        onMarkStatus: { status in
+                            viewModel.markItem(item, as: status)
                         }
                     )
                     .listRowInsets(.init(

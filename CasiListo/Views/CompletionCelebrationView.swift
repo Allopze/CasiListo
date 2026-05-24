@@ -6,6 +6,7 @@ struct CompletionCelebrationView: View {
     let productsCount: Int
     let totalSpent: Double
     let onDismiss: () -> Void
+    let onClearPurchasedAndDismiss: () -> Void
     
     @State private var confettiOffset: CGFloat = -100
     @State private var animateStats: Bool = false
@@ -49,7 +50,7 @@ struct CompletionCelebrationView: View {
                         .font(.system(size: 70 * CGFloat(accessibilityTextSizeScale)))
                         .rotationEffect(.degrees(animateStats ? 0 : -35))
                 }
-                .animation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.2), value: animateStats)
+                .animation(motionAnimation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.2)), value: animateStats)
                 
                 VStack(spacing: 8) {
                     Text("¡Compra Completada!")
@@ -62,7 +63,7 @@ struct CompletionCelebrationView: View {
                 }
                 .opacity(animateStats ? 1.0 : 0.0)
                 .offset(y: animateStats ? 0 : 20)
-                .animation(.easeOut(duration: 0.5).delay(0.4), value: animateStats)
+                .animation(motionAnimation(.easeOut(duration: 0.5).delay(0.4)), value: animateStats)
                 
                 // Tarjeta de estadísticas con Glassmorphic style
                 VStack(spacing: 16 * CGFloat(accessibilityTextSizeScale)) {
@@ -86,7 +87,7 @@ struct CompletionCelebrationView: View {
                 .padding(.horizontal, 24)
                 .opacity(animateStats ? 1.0 : 0.0)
                 .offset(y: animateStats ? 0 : 30)
-                .animation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.6), value: animateStats)
+                .animation(motionAnimation(.spring(response: 0.7, dampingFraction: 0.7).delay(0.6)), value: animateStats)
                 
                 Spacer()
                 
@@ -107,6 +108,25 @@ struct CompletionCelebrationView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                     }
                     .buttonStyle(.plain)
+
+                    Button {
+                        HapticFeedback.impact()
+                        onClearPurchasedAndDismiss()
+                    } label: {
+                        HStack {
+                            Image(systemName: "checkmark.bin.fill")
+                                .fontWeight(.semibold)
+                            Text("Limpiar Comprados")
+                                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 16 * CGFloat(accessibilityTextSizeScale))
+                        .background(Theme.accentYellow)
+                        .foregroundStyle(.black)
+                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityHint("Elimina los productos comprados de esta compra y vuelve a la lista")
                     
                     // Botón Volver
                     Button {
@@ -131,7 +151,7 @@ struct CompletionCelebrationView: View {
                 .padding(.bottom, 24)
                 .opacity(animateStats ? 1.0 : 0.0)
                 .offset(y: animateStats ? 0 : 40)
-                .animation(.easeOut(duration: 0.5).delay(0.8), value: animateStats)
+                .animation(motionAnimation(.easeOut(duration: 0.5).delay(0.8)), value: animateStats)
             }
         }
         .onAppear {
@@ -203,6 +223,10 @@ struct CompletionCelebrationView: View {
             try? await Task.sleep(for: .milliseconds(250))
             HapticFeedback.success()
         }
+    }
+
+    private func motionAnimation(_ animation: Animation) -> Animation? {
+        reduceMotion ? nil : animation
     }
 }
 

@@ -19,6 +19,7 @@ struct AddEditItemSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     let mode: Mode
+    let activeList: ShoppingList?
     let allItems: [ShoppingItem]
     let viewModel: ShoppingListViewModel
 
@@ -84,7 +85,9 @@ struct AddEditItemSheet: View {
                         selectedStore = store
                     }
                     if !viewModel.quickAddText.isEmpty {
-                        name = viewModel.quickAddText
+                        let draft = viewModel.quickAddDraft(from: viewModel.quickAddText)
+                        name = draft.name
+                        quantity = draft.quantity
                         viewModel.quickAddText = ""
                         if let suggested = SuggestedProducts.suggestedCategory(for: name) {
                             selectedCategory = suggested
@@ -122,6 +125,7 @@ struct AddEditItemSheet: View {
                 .textInputAutocapitalization(.sentences)
                 .autocorrectionDisabled()
                 .submitLabel(.done)
+                .accessibilityIdentifier("item-name-field")
                 .onChange(of: name) { _, newValue in
                     let nextSuggestions = SuggestedProducts.suggestions(for: newValue)
                     showSuggestions = !newValue.isEmpty && !nextSuggestions.isEmpty
@@ -197,6 +201,7 @@ struct AddEditItemSheet: View {
         case .add:
             let newItem = ShoppingItem(
                 name: trimmedName,
+                listID: activeList?.id,
                 quantity: quantity.trimmingCharacters(in: .whitespaces),
                 category: selectedCategory,
                 note: note.trimmingCharacters(in: .whitespaces),
@@ -206,6 +211,9 @@ struct AddEditItemSheet: View {
                 voiceNoteFilename: voiceNoteFilename
             )
             modelContext.insert(newItem)
+            if let activeList {
+                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
+            }
 
         case .edit(let item):
             item.name = trimmedName
@@ -220,6 +228,9 @@ struct AddEditItemSheet: View {
                     VoiceNoteService.shared.deleteVoiceNote(filename: oldFile)
                 }
                 item.voiceNoteFilename = voiceNoteFilename
+            }
+            if let activeList {
+                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems)
             }
         }
     }

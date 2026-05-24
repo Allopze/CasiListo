@@ -31,7 +31,12 @@ enum PreviewFixtures {
 
     static func modelContainer(seed items: [ShoppingItem] = []) -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(for: ShoppingItem.self, configurations: configuration)
+        let container = try! ModelContainer(
+            for: ShoppingItem.self,
+            ShoppingList.self,
+            ProductCatalogItem.self,
+            configurations: configuration
+        )
 
         for item in items {
             container.mainContext.insert(item)
@@ -54,6 +59,7 @@ enum PreviewFixtures {
 #Preview("Nuevo producto") {
     AddEditItemSheet(
         mode: .add,
+        activeList: nil,
         allItems: PreviewFixtures.shoppingItems,
         viewModel: ShoppingListViewModel()
     )
@@ -63,6 +69,7 @@ enum PreviewFixtures {
 #Preview("Editar producto") {
     AddEditItemSheet(
         mode: .edit(PreviewFixtures.shoppingItems[0]),
+        activeList: nil,
         allItems: PreviewFixtures.shoppingItems,
         viewModel: ShoppingListViewModel()
     )

@@ -7,11 +7,14 @@ struct ItemRowView: View {
     let onToggle: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
+    let onMarkStatus: (ShoppingItemStatus) -> Void
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @ScaledMetric(relativeTo: .body) private var scaledCheckboxSize = 28
+    @ScaledMetric(relativeTo: .body) private var scaledEditButtonSize = 44
 
     private var checkboxSize: CGFloat {
-        28 * CGFloat(accessibilityTextSizeScale)
+        max(28 * CGFloat(accessibilityTextSizeScale), scaledCheckboxSize)
     }
 
     var body: some View {
@@ -56,6 +59,18 @@ struct ItemRowView: View {
                     item.isPurchased ? "Marcar como pendiente" : "Marcar como comprado",
                     systemImage: item.isPurchased ? "circle" : "checkmark.circle"
                 )
+            }
+
+            Button {
+                markStatus(.skipped)
+            } label: {
+                Label("Posponer", systemImage: "clock")
+            }
+
+            Button {
+                markStatus(.unavailable)
+            } label: {
+                Label("No encontrado", systemImage: "exclamationmark.triangle")
             }
 
             Divider()
@@ -121,6 +136,17 @@ struct ItemRowView: View {
                         .clipShape(RoundedRectangle(cornerRadius: 6 * CGFloat(accessibilityTextSizeScale)))
                         .accessibilityLabel("Precio \(price.formattedPrice)")
                 }
+
+                if item.status == .skipped || item.status == .unavailable {
+                    Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .foregroundStyle(item.status == .skipped ? Color.orange : Color.red)
+                        .labelStyle(.titleAndIcon)
+                        .padding(.horizontal, 8 * CGFloat(accessibilityTextSizeScale))
+                        .padding(.vertical, 3 * CGFloat(accessibilityTextSizeScale))
+                        .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.12))
+                        .clipShape(RoundedRectangle(cornerRadius: 6 * CGFloat(accessibilityTextSizeScale)))
+                }
             }
 
             if !item.note.isEmpty {
@@ -163,8 +189,8 @@ struct ItemRowView: View {
                     .font(.system(size: 13 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
                     .foregroundStyle(Theme.accentYellow)
                     .frame(
-                    width: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale)),
-                    height: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale))
+                    width: max(Theme.minimumTouchTarget, scaledEditButtonSize, 32 * CGFloat(accessibilityTextSizeScale)),
+                    height: max(Theme.minimumTouchTarget, scaledEditButtonSize, 32 * CGFloat(accessibilityTextSizeScale))
                 )
                 .background(Theme.accentYellow.opacity(0.12))
                 .clipShape(Circle())
@@ -187,6 +213,9 @@ struct ItemRowView: View {
         if let price = item.price {
             parts.append("Precio \(price.formattedPriceWithSymbol)")
         }
+        if item.status == .skipped || item.status == .unavailable {
+            parts.append(item.status.rawValue)
+        }
         if !item.note.isEmpty {
             parts.append(item.note)
         }
@@ -197,6 +226,13 @@ struct ItemRowView: View {
         HapticFeedback.selection()
         withAnimation(Theme.defaultAnimation) {
             onToggle()
+        }
+    }
+
+    private func markStatus(_ status: ShoppingItemStatus) {
+        HapticFeedback.selection()
+        withAnimation(Theme.defaultAnimation) {
+            onMarkStatus(status)
         }
     }
 }

@@ -6,6 +6,8 @@ struct VoiceNotePlayerButton: View {
     
     @State private var waveAnimation = false
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
+    private let waveBarHeights: [CGFloat] = [8, 16, 11, 18]
     
     var body: some View {
         let isPlaying = VoiceNoteService.shared.currentlyPlayingFilename == filename
@@ -22,10 +24,10 @@ struct VoiceNotePlayerButton: View {
                 // Waveform animado si está reproduciendo, o ícono de play si no
                 if isPlaying {
                     HStack(spacing: 2) {
-                        ForEach(0..<4) { index in
+                        ForEach(waveBarHeights.indices, id: \.self) { index in
                             RoundedRectangle(cornerRadius: 1)
                                 .fill(.white)
-                                .frame(width: 2, height: waveAnimation ? CGFloat.random(in: 6...18) : 10)
+                                .frame(width: 2, height: waveAnimation ? waveBarHeights[index] : 10)
                                 .animation(
                                     Animation.easeInOut(duration: 0.3)
                                         .repeatForever(autoreverses: true)

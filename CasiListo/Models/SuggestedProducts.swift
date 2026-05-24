@@ -153,13 +153,14 @@ struct SuggestedProducts {
 
     /// Siembra los productos sugeridos por defecto en la base de datos de SwiftData.
     @MainActor
-    static func seedDefaultItems(in context: ModelContext) {
+    static func seedDefaultItems(in context: ModelContext, listID: UUID? = nil) {
         var order = 0
         for category in Category.allCases {
             guard let products = byCategory[category] else { continue }
             for productName in products {
                 let newItem = ShoppingItem(
                     name: productName,
+                    listID: listID,
                     quantity: "",
                     category: category,
                     note: "",
@@ -172,5 +173,22 @@ struct SuggestedProducts {
         }
         try? context.save()
     }
-}
 
+    @MainActor
+    static func seedCatalogItems(in context: ModelContext, existingCatalog: [ProductCatalogItem]) {
+        let existingNames = Set(existingCatalog.map { $0.name.lowercased() })
+
+        for (category, products) in byCategory {
+            for productName in products where !existingNames.contains(productName.lowercased()) {
+                let catalogItem = ProductCatalogItem(
+                    name: productName,
+                    category: category,
+                    store: suggestedStore(for: productName)
+                )
+                context.insert(catalogItem)
+            }
+        }
+
+        try? context.save()
+    }
+}

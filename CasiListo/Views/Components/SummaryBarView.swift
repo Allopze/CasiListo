@@ -10,11 +10,8 @@ struct SummaryBarView: View {
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
-        let pendingTotalStr = pendingTotal.formattedPrice
-        let purchasedTotalStr = purchasedTotal.formattedPrice
-
-        let pendingLabel = pendingTotal > 0 ? "\(pendingCount) pendientes ($\(pendingTotalStr))" : "\(pendingCount) pendientes"
-        let purchasedLabel = purchasedTotal > 0 ? "\(purchasedCount) comprados ($\(purchasedTotalStr))" : "\(purchasedCount) comprados"
+        let pendingLabel = pendingTotal > 0 ? "\(pendingCount) pendientes (\(pendingTotal.formattedPriceWithSymbol))" : "\(pendingCount) pendientes"
+        let purchasedLabel = purchasedTotal > 0 ? "\(purchasedCount) comprados (\(purchasedTotal.formattedPriceWithSymbol))" : "\(purchasedCount) comprados"
 
         return AdaptiveGlassEffectContainer(spacing: 12) {
             HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {

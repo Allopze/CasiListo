@@ -8,7 +8,7 @@ struct AddEditVoiceNoteSection: View {
     @State private var isRecording = false
     @State private var recordingPulse = false
     @State private var recordingDuration = 0
-    @State private var recordingTimer: Timer? = nil
+    @State private var recordingDurationTask: Task<Void, Never>? = nil
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
@@ -35,8 +35,8 @@ struct AddEditVoiceNoteSection: View {
                             .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                             .bold()
                             .foregroundStyle(.white)
+                            .frame(minWidth: Theme.minimumTouchTarget, minHeight: Theme.minimumTouchTarget)
                             .padding(.horizontal, 12)
-                            .padding(.vertical, 6)
                             .background(Color.red)
                             .clipShape(Capsule())
                     }
@@ -58,7 +58,7 @@ struct AddEditVoiceNoteSection: View {
                         Image(systemName: "trash")
                             .font(.system(size: 14))
                             .foregroundStyle(.red)
-                            .frame(width: 32, height: 32)
+                            .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                             .background(Color.red.opacity(0.12))
                             .clipShape(Circle())
                     }
@@ -76,6 +76,7 @@ struct AddEditVoiceNoteSection: View {
                         Image(systemName: "mic.circle.fill")
                             .font(.system(size: 28))
                             .foregroundStyle(Theme.accentYellow)
+                            .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                     }
                     .buttonStyle(.plain)
                 }
@@ -85,15 +86,11 @@ struct AddEditVoiceNoteSection: View {
             Label("Nota de Voz", systemImage: "mic.fill")
         }
         .onDisappear {
-            if isRecording {
-                stopRecording()
-            } else {
-                recordingTimer?.invalidate()
-                recordingTimer = nil
-            }
+            stopRecordingIfNeeded()
         }
     }
 
+    @MainActor
     private func startRecording() {
         let filename = "voice_\(UUID().uuidString).m4a"
         if #available(iOS 17.0, *) {
@@ -106,24 +103,47 @@ struct AddEditVoiceNoteSection: View {
                         self.voiceNoteFilename = filename
                         self.isRecording = true
                         self.recordingDuration = 0
-                        self.recordingTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-                            self.recordingDuration += 1
-                            if self.recordingDuration >= 30 {
-                                self.stopRecording()
-                            }
-                        }
+                        self.startRecordingDurationTask()
                     }
                 }
             }
         }
     }
     
+    @MainActor
     private func stopRecording() {
         HapticFeedback.success()
-        recordingTimer?.invalidate()
-        recordingTimer = nil
+        recordingDurationTask?.cancel()
+        recordingDurationTask = nil
         VoiceNoteService.shared.stopRecording()
         isRecording = false
+    }
+
+    @MainActor
+    private func stopRecordingIfNeeded() {
+        if isRecording {
+            stopRecording()
+        } else {
+            recordingDurationTask?.cancel()
+            recordingDurationTask = nil
+        }
+    }
+
+    @MainActor
+    private func startRecordingDurationTask() {
+        recordingDurationTask?.cancel()
+        recordingDurationTask = Task { @MainActor in
+            while !Task.isCancelled && isRecording {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled else { return }
+                recordingDuration += 1
+
+                if recordingDuration >= 30 {
+                    stopRecording()
+                    return
+                }
+            }
+        }
     }
     
     private func deleteVoiceNote() {

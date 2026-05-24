@@ -3,6 +3,7 @@ import SwiftData
 
 /// Vista que organiza y muestra la lista de compras con filtros, barra de adición rápida y categorías.
 struct ShoppingListView: View {
+    let activeList: ShoppingList?
     let allItems: [ShoppingItem]
     @Bindable var viewModel: ShoppingListViewModel
     let onEdit: (ShoppingItem) -> Void
@@ -12,7 +13,7 @@ struct ShoppingListView: View {
 
     var body: some View {
         let groups = viewModel.groupedItems(from: allItems)
-        let counts = viewModel.itemCounts(from: allItems)
+        let summary = viewModel.summary(from: allItems)
 
         List {
             Section {
@@ -20,10 +21,10 @@ struct ShoppingListView: View {
                     StoreFilterBar(selectedStore: $viewModel.selectedStore)
                     
                     SummaryBarView(
-                        pendingCount: counts.pending,
-                        purchasedCount: counts.purchased,
-                        pendingTotal: viewModel.pendingTotal(from: allItems),
-                        purchasedTotal: viewModel.purchasedTotal(from: allItems),
+                        pendingCount: summary.pendingCount,
+                        purchasedCount: summary.purchasedCount,
+                        pendingTotal: summary.pendingTotal,
+                        purchasedTotal: summary.purchasedTotal,
                         showPurchased: $viewModel.showPurchased
                     )
                 }
@@ -74,14 +75,15 @@ struct ShoppingListView: View {
     }
 
     private func addQuickItem() {
-        let name = viewModel.quickAddText.trimmingCharacters(in: .whitespaces)
-        guard !name.isEmpty else { return }
+        let draft = viewModel.quickAddDraft(from: viewModel.quickAddText)
+        guard !draft.name.isEmpty else { return }
 
-        let category = SuggestedProducts.suggestedCategory(for: name) ?? .varios
-        let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: name)
+        let category = SuggestedProducts.suggestedCategory(for: draft.name) ?? .varios
+        let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: draft.name)
         let newItem = ShoppingItem(
-            name: name,
-            quantity: "",
+            name: draft.name,
+            listID: activeList?.id,
+            quantity: draft.quantity,
             category: category,
             note: "",
             isPurchased: false,
@@ -90,6 +92,9 @@ struct ShoppingListView: View {
         )
         withAnimation(Theme.defaultAnimation) {
             modelContext.insert(newItem)
+            if let activeList {
+                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
+            }
             viewModel.quickAddText = ""
         }
         HapticFeedback.success()

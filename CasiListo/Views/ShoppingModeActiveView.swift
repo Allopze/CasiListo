@@ -80,9 +80,8 @@ struct ShoppingModeActiveView: View {
                     
                     Spacer()
                     
-                    let categoryItems = viewModel.items.filter { $0.category == activeCategory }
-                    let catPurchased = categoryItems.filter { $0.isPurchased }.count
-                    Text("\(catPurchased)/\(categoryItems.count)")
+                    let categoryProgress = viewModel.categoryProgress(for: activeCategory)
+                    Text("\(categoryProgress.purchased)/\(categoryProgress.total)")
                         .font(.system(size: 13, weight: .semibold).monospacedDigit())
                         .foregroundStyle(Color.shoppingModeText)
                         .padding(.horizontal, 8)
@@ -99,6 +98,10 @@ struct ShoppingModeActiveView: View {
                         ForEach(viewModel.activeItems) { item in
                             ShoppingModeItemRow(item: item) {
                                 viewModel.toggleItem(item, context: modelContext)
+                            } onMarkSkipped: {
+                                viewModel.markItem(item, as: .skipped, context: modelContext)
+                            } onMarkUnavailable: {
+                                viewModel.markItem(item, as: .unavailable, context: modelContext)
                             }
                         }
                     }

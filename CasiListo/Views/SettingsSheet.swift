@@ -11,6 +11,7 @@ struct SettingsSheet: View {
 
     // Localización
     @AppStorage("geofencing_enabled") private var isGeofencingEnabled = false
+    @State private var showsLocationOnboarding = false
 
     private var scaleLevelLabel: String {
         let percent = Int(accessibilityTextSizeScale * 100)
@@ -250,7 +251,7 @@ struct SettingsSheet: View {
                             .onChange(of: isGeofencingEnabled) { _, newValue in
                                 HapticFeedback.selection()
                                 if newValue {
-                                    GeofenceService.shared.requestPermissions()
+                                    showsLocationOnboarding = true
                                 } else {
                                     GeofenceService.shared.stopMonitoringAll()
                                 }
@@ -324,6 +325,16 @@ struct SettingsSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showsLocationOnboarding, onDismiss: {
+            if !isGeofencingEnabled {
+                GeofenceService.shared.stopMonitoringAll()
+            }
+        }) {
+            LocationPermissionOnboardingView {
+                isGeofencingEnabled = true
+                GeofenceService.shared.startMonitoringAll()
+            }
+        }
     }
 
     private func gestoInfoRow(icon: String, title: String, description: String) -> some View {
