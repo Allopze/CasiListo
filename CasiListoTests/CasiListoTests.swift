@@ -51,15 +51,19 @@ final class CasiListoTests: XCTestCase {
 
     func testNextSortOrder() {
         let viewModel = ShoppingListViewModel()
+        let catFrutas = Category(name: "Frutas y verduras", sfSymbol: "leaf.fill", sortIndex: 0)
+        let catLacteos = Category(name: "Lácteos y huevos", sfSymbol: "egg.fill", sortIndex: 1)
+        let catDespensa = Category(name: "Despensa", sfSymbol: "archivebox", sortIndex: 2)
+
         let items = [
-            ShoppingItem(name: "Tomates", category: .frutasVerduras, sortOrder: 0),
-            ShoppingItem(name: "Lechuga", category: .frutasVerduras, sortOrder: 2),
-            ShoppingItem(name: "Leche", category: .lacteosHuevos, sortOrder: 1)
+            ShoppingItem(name: "Tomates", category: catFrutas, sortOrder: 0),
+            ShoppingItem(name: "Lechuga", category: catFrutas, sortOrder: 2),
+            ShoppingItem(name: "Leche", category: catLacteos, sortOrder: 1)
         ]
-        
-        XCTAssertEqual(viewModel.nextSortOrder(for: .frutasVerduras, in: items), 3)
-        XCTAssertEqual(viewModel.nextSortOrder(for: .lacteosHuevos, in: items), 2)
-        XCTAssertEqual(viewModel.nextSortOrder(for: .despensa, in: items), 0)
+
+        XCTAssertEqual(viewModel.nextSortOrder(for: catFrutas, in: items), 3)
+        XCTAssertEqual(viewModel.nextSortOrder(for: catLacteos, in: items), 2)
+        XCTAssertEqual(viewModel.nextSortOrder(for: catDespensa, in: items), 0)
     }
 
     func testQuickAddDraftParsesCommonQuantityPatterns() {
@@ -101,6 +105,7 @@ final class CasiListoTests: XCTestCase {
             for: ShoppingItem.self,
             ShoppingList.self,
             ProductCatalogItem.self,
+            Category.self,
             configurations: configuration
         )
         let context = container.mainContext
@@ -152,6 +157,7 @@ final class CasiListoTests: XCTestCase {
             for: ShoppingItem.self,
             ShoppingList.self,
             ProductCatalogItem.self,
+            Category.self,
             configurations: configuration
         )
         let context = container.mainContext
@@ -159,14 +165,18 @@ final class CasiListoTests: XCTestCase {
         let purchased1 = ShoppingItem(name: "Tomates", listID: activeList.id, status: .purchased, price: 1.5)
         let purchased2 = ShoppingItem(name: "Manzanas", listID: activeList.id, status: .purchased, price: 2.5)
         let pending = ShoppingItem(name: "Leche", listID: activeList.id, status: .pending, price: 1.0)
+        let skipped = ShoppingItem(name: "Pan", listID: activeList.id, status: .skipped, price: 1.2)
+        let unavailable = ShoppingItem(name: "Jugo", listID: activeList.id, status: .unavailable, price: 2.0)
         
         context.insert(activeList)
         context.insert(purchased1)
         context.insert(purchased2)
         context.insert(pending)
+        context.insert(skipped)
+        context.insert(unavailable)
         
         ShoppingListLifecycleService.archivePurchasedItems(
-            from: [purchased1, purchased2, pending],
+            from: [purchased1, purchased2, pending, skipped, unavailable],
             activeList: activeList,
             context: context
         )
@@ -179,8 +189,8 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(completed?.purchasedCount, 2)
         XCTAssertEqual(completed?.totalSpent ?? 0.0, 4.0, accuracy: 0.001)
         XCTAssertEqual(completed?.pendingCount, 1)
-        XCTAssertEqual(completed?.skippedCount, 0)
-        XCTAssertEqual(completed?.unavailableCount, 0)
+        XCTAssertEqual(completed?.skippedCount, 1)
+        XCTAssertEqual(completed?.unavailableCount, 1)
     }
 
     func testGroupedItemsStoreFilters() {
@@ -190,25 +200,40 @@ final class CasiListoTests: XCTestCase {
             ShoppingItem(name: "Manzanas Lider", store: .lider),
             ShoppingItem(name: "Leche Jumbo", store: .jumbo)
         ]
-        
+
+        let catVarios = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let categories = [catVarios]
+
         // Sin filtro de tienda
         viewModel.selectedStore = nil
-        let allGroups = viewModel.groupedItems(from: items)
+        let allGroups = viewModel.groupedItems(from: items, categories: categories)
         let totalAllItems = allGroups.flatMap(\.items).count
         XCTAssertEqual(totalAllItems, 3)
-        
+
         // Filtrado por Jumbo
         viewModel.selectedStore = .jumbo
-        let jumboGroups = viewModel.groupedItems(from: items)
+        let jumboGroups = viewModel.groupedItems(from: items, categories: categories)
         let totalJumboItems = jumboGroups.flatMap(\.items).count
         XCTAssertEqual(totalJumboItems, 2)
         XCTAssertTrue(jumboGroups.flatMap(\.items).allSatisfy { $0.store == .jumbo })
-        
+
         // Filtrado por Lider
         viewModel.selectedStore = .lider
-        let liderGroups = viewModel.groupedItems(from: items)
+        let liderGroups = viewModel.groupedItems(from: items, categories: categories)
         let totalLiderItems = liderGroups.flatMap(\.items).count
         XCTAssertEqual(totalLiderItems, 1)
         XCTAssertTrue(liderGroups.flatMap(\.items).allSatisfy { $0.store == .lider })
+    }
+
+    func testCategoryIconMapper() {
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "cerveza mistral"), "wineglass.fill")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "Coca cola zero"), "cup.and.saucer.fill")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "pechuga de pollo"), "fork.knife")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "filete de salmon"), "fish.fill")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "pan marraqueta"), "birthday.cake.fill")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "manzanas rojas"), "leaf.fill")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "detergente liquido"), "house.fill")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "comida para gatos"), "pawprint.fill")
+        XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "caja de clavos"), "tag.fill") // Fallback
     }
 }

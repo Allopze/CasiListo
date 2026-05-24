@@ -34,14 +34,14 @@ final class ShoppingListViewModel {
     var showPurchased: Bool = true
     var selectedStore: Store? = nil
     var presentedSheet: ShoppingListSheetDestination?
-    var collapsedCategories: Set<Category> = []
+    var collapsedCategories: Set<String> = []
     var quickAddText: String = ""
 
     // MARK: - Filtrado y agrupación
 
     /// Agrupa los ítems visibles por categoría, respetando filtros de búsqueda y estado.
     /// Retorna solo las categorías que tienen ítems.
-    func groupedItems(from items: [ShoppingItem]) -> [(category: Category, items: [ShoppingItem])] {
+    func groupedItems(from items: [ShoppingItem], categories: [Category]) -> [(category: Category, items: [ShoppingItem])] {
         let filtered = items.filter { item in
             // Filtro de supermercado
             if let selectedStore = selectedStore, item.store != selectedStore {
@@ -65,12 +65,12 @@ final class ShoppingListViewModel {
         }
 
         // Agrupar por categoría
-        let grouped = Dictionary(grouping: filtered) { $0.category }
+        let grouped = Dictionary(grouping: filtered) { $0.category.name }
 
         // Ordenar categorías por sortIndex, y dentro de cada categoría por sortOrder y luego nombre
-        return Category.allCases
+        return categories
             .compactMap { category in
-                guard let items = grouped[category], !items.isEmpty else { return nil }
+                guard let items = grouped[category.name], !items.isEmpty else { return nil }
                 let sorted = items.sorted { a, b in
                     if a.status != b.status {
                         return a.status.sortPriority < b.status.sortPriority
@@ -202,14 +202,14 @@ final class ShoppingListViewModel {
     }
 
     func isCategoryCollapsed(_ category: Category) -> Bool {
-        collapsedCategories.contains(category)
+        collapsedCategories.contains(category.name)
     }
 
     func toggleCategoryCollapse(_ category: Category) {
-        if collapsedCategories.contains(category) {
-            collapsedCategories.remove(category)
+        if collapsedCategories.contains(category.name) {
+            collapsedCategories.remove(category.name)
         } else {
-            collapsedCategories.insert(category)
+            collapsedCategories.insert(category.name)
         }
     }
 
@@ -236,7 +236,7 @@ final class ShoppingListViewModel {
 
     /// Calcula el siguiente sortOrder disponible para una categoría.
     func nextSortOrder(for category: Category, in items: [ShoppingItem]) -> Int {
-        let categoryItems = items.filter { $0.category == category }
+        let categoryItems = items.filter { $0.category.name == category.name }
         let maxOrder = categoryItems.map(\.sortOrder).max() ?? -1
         return maxOrder + 1
     }

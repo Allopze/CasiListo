@@ -1,9 +1,11 @@
 import SwiftUI
+import SwiftData
 
 /// Selector visual de categorías usando chips horizontales con scroll.
 /// El chip seleccionado se resalta en amarillo.
 struct CategoryPickerView: View {
     @Binding var selectedCategory: Category
+    @Query(sort: \Category.sortIndex) private var categories: [Category]
 
     @ScaledMetric(relativeTo: .body) private var minWidth: CGFloat = 160
     @ScaledMetric(relativeTo: .body) private var chipPaddingHorizontal: CGFloat = 12
@@ -18,7 +20,7 @@ struct CategoryPickerView: View {
     var body: some View {
         AdaptiveGlassEffectContainer(spacing: 10) {
             LazyVGrid(columns: columns, spacing: 10) {
-                ForEach(Category.allCases) { category in
+                ForEach(categories) { category in
                     chipButton(for: category)
                 }
             }
@@ -26,7 +28,7 @@ struct CategoryPickerView: View {
     }
 
     private func chipButton(for category: Category) -> some View {
-        let isSelected = selectedCategory == category
+        let isSelected = selectedCategory.id == category.id
 
         return Button {
             withAnimation(Theme.quickAnimation) {
@@ -62,3 +64,4 @@ struct CategoryPickerView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
+

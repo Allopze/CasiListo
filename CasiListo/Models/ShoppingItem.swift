@@ -32,10 +32,16 @@ final class ShoppingItem {
     var voiceNoteFilename: String?
     var createdAt: Date
 
-    /// Categoría tipada, derivada de `categoryRawValue`.
+    /// Relación de categoría persistida.
+    @Relationship(deleteRule: .nullify) var categoryRelation: Category?
+
+    /// Categoría tipada, derivada de la relación o fallback.
     var category: Category {
-        get { Category(rawValue: categoryRawValue) ?? .varios }
-        set { categoryRawValue = newValue.rawValue }
+        get { categoryRelation ?? Category.fallback }
+        set {
+            categoryRelation = newValue
+            categoryRawValue = newValue.name
+        }
     }
 
     /// Supermercado tipado, derivado de `storeRawValue`.
@@ -61,7 +67,7 @@ final class ShoppingItem {
         name: String,
         listID: UUID? = nil,
         quantity: String = "",
-        category: Category = .varios,
+        category: Category? = nil,
         note: String = "",
         isPurchased: Bool = false,
         status: ShoppingItemStatus? = nil,
@@ -74,7 +80,8 @@ final class ShoppingItem {
         self.listID = listID
         self.name = name
         self.quantity = quantity
-        self.categoryRawValue = category.rawValue
+        self.categoryRelation = category
+        self.categoryRawValue = category?.name ?? "Varios"
         self.storeRawValue = store.rawValue
         self.note = note
         self.isPurchased = isPurchased

@@ -5,120 +5,109 @@ import SwiftData
 struct SuggestedProducts {
 
     /// Diccionario de categoría → lista de productos sugeridos.
-    static let byCategory: [Category: [String]] = [
+    static let byCategory: [DefaultCategory: [String]] = [
         .vinos: [
-            "Vino", "Vino blanco", "Vino blanco cocina"
-        ],
-        .bebidasAlcoholicas: [
-            "Cerveza", "Pisco sour", "Pisco", "Ginebra", "Wisky", "Mistral ICE"
+            "Vino", "Botellines 187,5", "Botellines 350", "Tío Pepe", "Vino blanco", "Vino blanco cocina"
         ],
         .aseoPersonal: [
-            "Jabón líquido Dove", "Jabón pastilla Dove", "Crema corporal St. Ives",
-            "Acondicionador pelo Gabriel", "Cacao labial", "Pasta de dientes Pepsoden",
-            "Pasta de dientes VITIS", "Cepillo de dientes Pepsodent suave",
-            "Cepillo de dientes Vitis", "Cepillo de dientes bambú", "Desodorante",
-            "Desodorante Dove", "Champú Alejandro", "Champú", "Acondicionador",
-            "Toallitas húmedas", "Hisopos", "Papel higiénico.", "Papel higiénico 25 m.",
-            "Maquinilla de afeitar", "Maquinilla de afeitar BIC 4", "Repuestos afeitar",
-            "Pañuelos caja", "Pañuelos bolsillo", "Palillos dentales", "Tintura pelo",
-            "Gotas ojos"
+            "Acondicionador", "Acondicionador L'Oréal", "Acondicionador pelo Gabriel", "Cacao labial", 
+            "Cepillo de dientes bambú", "Cepillo de dientes Pepsodent suave", "Cepillo de dientes Vitis", 
+            "Champú", "Champú Alejandro", "Champú L'Oréal", "Crema corporal", "Crema corporal St. Ives", 
+            "Crema humectante", "Desodorante", "Desodorante Dove", "Fijador", "Gotas ojos", "Hisopos", 
+            "Jabón líquido Dove", "Jabón pastilla Dove", "Maquinilla de afeitar", "Maquinilla de afeitar BIC 4", 
+            "Palillos dentales", "Pasta de dientes Pepsodent", "Pasta de dientes Vitis", "Repuestos afeitar", 
+            "Tintura pelo", "Tiras adhesivas", "Toallitas húmedas"
         ],
         .bebidas: [
-            "Sprite", "Jugos", "Coca cola", "Orange", "Tónica", "Aloe vera",
-            "Monster", "Gatorade", "Colacao bajo calorías", "Te", "Café vainilla",
-            "Café capuccino", "Descafeinado bote", "Café Nescafé bote", "Café express"
+            "Aloe vera", "Cerveza", "Cerveza sin alcohol", "Coca cola", "Gatorade", "Ginebra", "Hielo", 
+            "Jugos", "Mistral ICE", "Monster", "Orange", "Orange Zero", "Pisco", "Pisco sour", "Sprite", 
+            "Sprite Zero", "Tónica", "Whisky"
         ],
         .carnes: [
-            "Jamon Colonial", "Jamón de pavo", "Jamón Colonial Acaramelado", "Tocino",
-            "Tocino parrillero", "Chorizo bocata", "Salchichón", "Chorizo cocinar",
-            "Jamón serrano", "Lomo curado", "Lomo curado ibérico", "Ibéricos",
-            "Taco de jamón.", "Pollo asado", "Pollo", "Trutros cortos",
-            "Pechugas de pollo", "Trutos de Pollo", "Asiento", "Costilla de cerdo",
-            "Chuletas de cerdo", "Lomo de cerdo", "Filete de cerdo", "Carne guisar",
-            "Corte americano", "Bistec", "Lomo liso", "Anticuchos", "Osobuco",
-            "Plateada", "Carne cachopo", "Filete vacuno", "Tira", "Longaniza",
-            "Prietas", "Morcilla", "Hueso carnudo", "Carne molida"
+            "Anticuchos", "Asiento", "Bistec", "Callos", "Carne cachopo", "Carne guisar", "Carne molida", 
+            "Chorizo bocata", "Chorizo cocinar", "Chuletas de cerdo", "Corte americano", "Costilla de cerdo", 
+            "Filete de cerdo", "Filete vacuno", "Hueso carnudo", "Ibéricos", "Jamón Colonial", 
+            "Jamón Colonial Acaramelado", "Jamón de pavo", "Jamón serrano", "Lomo curado", "Lomo curado ibérico", 
+            "Lomo de cerdo", "Lomo liso", "Longaniza", "Morcilla", "Osobuco", "Pechugas de pollo", "Plateada", 
+            "Pollo", "Pollo asado", "Prietas", "Salchichas", "Salchichón", "Taco de jamón", "Tira", "Tocino", 
+            "Tocino parrillero", "Trutros de pollo", "Trutros cortos"
         ],
-        .despensa: [
-            "Palillos", "Pan rallado", "Almendras", "Nueces peladas", "Castañas cajú",
-            "Mix de verduras", "Aceite girasol", "Aceite de oliva", "Vinagre corriente",
-            "Vinagre blanco Carbonel", "Vinagre de jerez Carbonel", "Vinagre de arroz",
-            "Bicarbonato", "Salsa de soja", "Alioli", "Mayonesa", "Mayonesa con ajo",
-            "Salsa de tomate", "Salsa salmón", "Salsa ensalada cesar", "Crema champiñones",
-            "Crema espárragos", "Kepchup tarro", "Kepchup bolsa", "Orégano",
-            "Pimienta negra", "Pimentón dulce", "Pimentón picante", "Sesamo tostado",
-            "Canela en rama", "Sal fina", "Sal entrefina", "Sal gruesa", "Levadura",
-            "Pote de sal", "Pasta sashuy", "Puré de patatas",
-            "Arroz", "Arroz paella", "Macarrones", "Espagueti", "Fideos", "Corbatas",
-            "Mariposas", "Sopas", "Caldo de pollo", "Caldo de carne", "Lentejas",
-            "Alubias", "Garbanzos", "Mejillones escabeche", "Sardinas salsa de tomate",
-            "Sardinas en aceite", "Atún", "Anchoas", "Aceitunas rellenas",
-            "Aceitunas con hueso", "Paté", "Guisantes", "Pimiento morrón",
-            "Pimientos Piquillo", "Champiñones enteros", "Champiñones laminados",
-            "Tuco", "Latas picoteo (calamares, pulpo, etc.)",
-            "Sopas de pollo", "Cereales Zucaritas", "Azúcar", "Endulzante",
-            "Harina de maíz", "Harina de trigo", "Harina con polvos de hornear",
-            "Pasta lasaña", "Pasta china"
-        ],
-        .frutasVerduras: [
-            "Patatas", "Manzanas verdes", "Manzanas Fuji", "Kiwis", "Plátanos",
-            "Mandarinas", "Naranjas", "Tomates", "Cebolla", "Cebolla morada",
-            "Ajos", "Repollo", "Puerro", "Zapallo", "Palta", "Frutas temporada",
-            "Mangos", "Limones", "Albahaca", "Jengibre", "Perejil", "Zanahorias",
-            "Lechuga", "Pimiento rojo", "Pimiento verde", "Setas",
-            "Champiñones frescos", "Champiñones frescos laminados", "Uvas"
-        ],
-        .hogarLimpieza: [
-            "Carbón", "Cloro normal", "Cloro color", "Detergente",
-            "Clorox desinfectante", "CID Cream", "M. Músculo spray", "Suavizante",
-            "Ambientador automático", "Ambientador", "Ambientador desinfectante",
-            "Insecticida", "Limpiasuelo", "Quita grasa", "Cloro gel",
-            "Balleta gamuza", "Toallas desinfectante", "Toallas desinfectantes suelo",
-            "Rodillo quita pelos Scotch", "Repuestos quita pelos", "Estropajos",
-            "Estropajos metálicos", "Lavavajillas", "Bolsas medianas",
-            "Bolsas pequeñas", "Bolsas basura grandes", "Bolsas basura pequeñas",
-            "Plumero", "Servilletas", "Servilletas buenas", "Papel de cocina",
-            "Paño de secar"
-        ],
-        .lacteosHuevos: [
-            "Queso Laminado", "Queso mezcla semi", "Queso Manchego", "Queso fresco",
-            "Queso cheddar", "Queso Camenbert", "Queso", "Queso rallado",
-            "Queso La Vaquita", "Margarina", "Mantequilla", "Postres",
-            "Leche sin lactosa", "Leche semi", "Crema de leche (nata)",
-            "Crema de leche sin lactosa", "Yogures", "Huevos", "Postre"
+        .condimentos: [
+            "Albahaca", "Azafrán", "Bicarbonato", "Canela polvo", "Canela rama", "Colorante", "Comino", 
+            "Cúrcuma", "Guindilla cayena", "Nuez moscada", "Orégano", "Paellero", "Pastillas caldo carne", 
+            "Pastillas caldo pollo", "Pastillas caldo verduras", "Pimentón dulce", "Pimentón picante", 
+            "Pimienta blanca", "Pimienta negra grano", "Pimienta negra molida", "Romero", "Sal Biosal", 
+            "Sal entrefina", "Sal fina", "Sal gruesa", "Sésamo tostado", "Tomillo"
         ],
         .congelados: [
-            "Hielo", "Judias verdes congeladas", "Maíz en grano congelado", "Maíz (panoja) congelado",
-            "Patatas duquesa", "Pollo crispi", "Hamburguesas congeladas", "Pizzas congeladas",
-            "Helado de vainilla", "Helado de chocolate", "Mix de verduras congelado",
-            "Pescado congelado", "Empanadas congeladas", "Papas fritas congeladas"
+            "Camarones apanados", "Camarones crudos enteros", "Colas de camarón crudo", "Guisantes", 
+            "Hamburguesas", "Helado", "Judías verdes", "Maíz en grano", "Mix de verduras", 
+            "Palitos de mar (cangrejo)", "Panoja", "Pescado", "Postre", "Pulpo"
+        ],
+        .conservas: [
+            "Anchoas", "Atún en aceite", "Atún grande", "Calamares", "Champiñones enteros", 
+            "Champiñones laminados", "Espárragos blancos", "Espárragos verdes", "Guisantes", 
+            "Jurel", "Mejillones escabeche", "Paté", "Pimientos Morrones", "Pimientos Piquillo", 
+            "Sardinas en aceite", "Sardinas en tomate"
+        ],
+        .despensa: [
+            "Aceite de oliva", "Aceite girasol", "Aceitunas con hueso", "Aceitunas rellenas", "Alioli", 
+            "Almendras", "Alubias", "Arroz", "Arroz paella", "Azúcar", "Café capuchino", "Café descafeinado", 
+            "Café grano", "Café Nescafé bote", "Café vainilla", "Castañas cajú", "Colacao bajo calorías", 
+            "Corbatas", "Crema champiñones", "Crema espárragos", "Doritos", "Endulzante", "Espagueti", 
+            "Fetuchini", "Fideo", "Fideos preparados", "Garbanzos", "Guisantes", "Harina con polvos de hornear", 
+            "Harina de maíz", "Harina de trigo", "Ketchup bolsa", "Ketchup tarro", "Legumbres cocidas", 
+            "Lentejas", "Levadura", "Macarrones", "Mariposas", "Mayonesa", "Mayonesa con ajo", 
+            "Mayonesa Ybarra", "Nueces peladas", "Pasta china", "Pasta Chop suey", "Pasta lasaña", 
+            "Patatas duquesa", "Patatas fritas", "Pipas", "Pistachos", "Pollo crispi", "Puré de patatas", 
+            "Salsa Alfredo", "Salsa blanca", "Salsa de soja", "Salsa de tomate", "Salsa ensalada césar", 
+            "Salsa salmón", "Sopas", "Sopas de pollo", "Tuco", "Vinagre blanco Carbonel", "Vinagre corriente", 
+            "Vinagre de arroz", "Vinagre de jerez Carbonel"
+        ],
+        .frutasVerduras: [
+            "Ajos", "Albahaca", "Cebolla", "Cebolla morada", "Champiñones frescos", "Champiñones frescos laminados", 
+            "Frutas temporada", "Jengibre", "Kiwis", "Lechuga", "Limones", "Mandarinas", "Mangos", 
+            "Manzanas Fuji", "Manzanas verdes", "Naranjas", "Palta", "Patatas", "Perejil", "Pimiento rojo", 
+            "Pimiento verde", "Plátanos", "Puerro", "Repollo", "Setas", "Tomates", "Uvas", "Zanahorias", 
+            "Zapallo"
+        ],
+        .hogarLimpieza: [
+            "Ambientador", "Ambientador automático", "Ambientador desinfectante", "Balleta gamuza", 
+            "Bolsas basura grandes", "Bolsas basura pequeñas", "Bolsas medianas", "Bolsas pequeñas", 
+            "Bombillas", "Carbón", "Cerillas", "CIF Crema", "Cloro color", "Cloro gel", "Cloro normal", 
+            "Clorox desinfectante", "Colgadores adhesivos", "Detergente", "Encendedor cocina", "Estropajos", 
+            "Estropajos metálicos", "Insecticida", "La Gotita", "Lavavajillas", "Limpiasuelo", 
+            "Mr. Músculo spray", "Papel de cocina", "Papel de regalo", "Papel higiénico", "Papel higiénico 25 m.", 
+            "Pasa puré", "Paño de secar", "Pañuelos bolsillo", "Pañuelos caja", "Pegamento cerámica", 
+            "Pegamento Ecole (zapatos)", "Pilas AA", "Pilas AAA", "Pinzas tendal", "Plumero", "Quita grasa", 
+            "Repuestos quita pelos", "Rodillo quita pelos Scotch", "Scotch", "Servilletas", "Servilletas buenas", 
+            "Suavizante", "Taper vidrio", "Tijera", "Toallas desinfectante", "Toallas desinfectantes suelo"
+        ],
+        .lacteosHuevos: [
+            "Crema de leche (nata)", "Crema de leche sin lactosa", "Huevos", "Leche semi", 
+            "Leche sin lactosa", "Mantequilla", "Mantequilla untable", "Margarina", "Postres", 
+            "Queso", "Queso Camembert", "Queso cheddar", "Queso fresco", "Queso La Vaquita", 
+            "Queso Laminado", "Queso laminado 250 Gr.", "Queso Manchego", "Queso mezcla semi", 
+            "Queso rallado", "Yogures"
         ],
         .mascotas: [
-            "Comida seca Gatos", "Arena gatos", "Comida seca Frijol",
-            "Comida húmeda Gatos", "Saborizante comida gatos", "Latas comida gatos",
-            "Snacks gatos", "Desodorante mascotas"
+            "Arena gatos", "Comida húmeda Gatos", "Comida seca Frijol", "Comida seca Gatos", 
+            "Desodorante mascotas", "Latas comida gatos", "Saborizante comida gatos", "Snacks gatos"
         ],
         .panaderiaDulces: [
-            "Pan ciabata", "Pan marraqueta", "Pan baguete", "Pan de cebolla",
-            "Pan Perfecto", "Pan Bimbo", "Pan molde Integral", "Pan tostado grande",
-            "Pan tostado pequeño", "Tortillas mexicanas", "Pan de ajo",
-            "Colaciones", "Chocolate", "Chocolate Pascal", "Chocolate menta",
-            "Ferrero Rocher", "Galletas mantequilla", "Galletas café",
-            "Patatas fritas", "Pistachos", "Doritos", "Caramelos Sunny"
+            "Caramelos Sunny", "Cereales Zucaritas", "Chocolate", "Chocolate menta", "Chocolate Pascal", 
+            "Colaciones", "Ferrero Rocher", "Galletas café", "Galletas mantequilla", "Palillos", 
+            "Pan baguete", "Pan Bimbo", "Pan ciabatta", "Pan de ajo", "Pan de cebolla", "Pan marraqueta", 
+            "Pan molde Integral", "Pan Perfecto", "Pan rallado", "Pan tostado grande", "Pan tostado pequeño", 
+            "Postre", "Tortillas mexicanas"
         ],
         .pescados: [
-            "Pescado", "Merluza", "Salmón", "Congrio",
-            "Camarones grandes crudos enteros", "Camarones normales crudos enteros",
-            "Camarones crudos sin cabez", "Ostiones", "Pulpo",
-            "Palitos de mar (cangrejo)", "Calamares", "Atún rojo", "Rabas",
-            "Jibia", "Mejillones"
+            "Atún rojo", "Calamares", "Camarones apanados", "Camarones crudos sin cabeza", 
+            "Camarones grandes crudos enteros", "Camarones normales crudos enteros", "Congrio", 
+            "Jibia", "Mejillones", "Merluza", "Ostiones", "Pescado", "Pulpo", "Rabas", "Salmón"
         ],
         .varios: [
-            "Bombillas", "Pilas AAA", "Pilas AA", "Taper vidrio", "Pinzas tendal",
-            "Tiras adhesivas", "Pegamento cerámica", "Pegamento Ecole (zapatos)",
-            "Colgadores adhesivos", "Scotch", "Tijera", "Papel de regalo",
-            "Cerillas", "Encendedor cocina", "LO DE PATRICIA", "La Gotita",
-            "LO DE GABRIEL"
+            "Jarras para desayuno", "Lo de Gabriel", "Titicosas"
         ]
     ]
 
@@ -135,11 +124,11 @@ struct SuggestedProducts {
     }
 
     /// Devuelve la categoría más probable para un nombre de producto.
-    static func suggestedCategory(for productName: String) -> Category? {
+    static func suggestedCategory(for productName: String, in categories: [Category]) -> Category? {
         let lowered = productName.lowercased()
-        for (category, products) in byCategory {
+        for (defaultCat, products) in byCategory {
             if products.contains(where: { $0.lowercased() == lowered }) {
-                return category
+                return categories.first { $0.name == defaultCat.rawValue }
             }
         }
         return nil
@@ -154,15 +143,19 @@ struct SuggestedProducts {
     /// Siembra los productos sugeridos por defecto en la base de datos de SwiftData.
     @MainActor
     static func seedDefaultItems(in context: ModelContext, listID: UUID? = nil) {
+        let catDescriptor = FetchDescriptor<Category>()
+        let categories = (try? context.fetch(catDescriptor)) ?? []
+        
         var order = 0
-        for category in Category.allCases {
-            guard let products = byCategory[category] else { continue }
+        for defaultCat in DefaultCategory.allCases {
+            guard let products = byCategory[defaultCat] else { continue }
+            let realCategory = categories.first { $0.name == defaultCat.rawValue }
             for productName in products {
                 let newItem = ShoppingItem(
                     name: productName,
                     listID: listID,
                     quantity: "",
-                    category: category,
+                    category: realCategory,
                     note: "",
                     isPurchased: false,
                     sortOrder: order
@@ -175,14 +168,20 @@ struct SuggestedProducts {
     }
 
     @MainActor
-    static func seedCatalogItems(in context: ModelContext, existingCatalog: [ProductCatalogItem]) {
+    static func seedCatalogItems(in context: ModelContext) {
+        let catalogDescriptor = FetchDescriptor<ProductCatalogItem>()
+        let existingCatalog = (try? context.fetch(catalogDescriptor)) ?? []
         let existingNames = Set(existingCatalog.map { $0.name.lowercased() })
+        
+        let catDescriptor = FetchDescriptor<Category>()
+        let categories = (try? context.fetch(catDescriptor)) ?? []
 
-        for (category, products) in byCategory {
+        for (defaultCat, products) in byCategory {
+            let realCategory = categories.first { $0.name == defaultCat.rawValue }
             for productName in products where !existingNames.contains(productName.lowercased()) {
                 let catalogItem = ProductCatalogItem(
                     name: productName,
-                    category: category,
+                    category: realCategory,
                     store: suggestedStore(for: productName)
                 )
                 context.insert(catalogItem)

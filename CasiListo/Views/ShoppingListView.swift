@@ -5,6 +5,7 @@ import SwiftData
 struct ShoppingListView: View {
     let activeList: ShoppingList?
     let allItems: [ShoppingItem]
+    let categories: [Category]
     @Bindable var viewModel: ShoppingListViewModel
     let onEdit: (ShoppingItem) -> Void
     let onAddTapped: () -> Void
@@ -17,7 +18,7 @@ struct ShoppingListView: View {
     @ScaledMetric(relativeTo: .body) private var noResultsVerticalPadding: CGFloat = 60
 
     private var groups: [(category: Category, items: [ShoppingItem])] {
-        viewModel.groupedItems(from: allItems)
+        viewModel.groupedItems(from: allItems, categories: categories)
     }
 
     private var summary: ShoppingListViewModel.ListSummary {
@@ -108,7 +109,7 @@ struct ShoppingListView: View {
         let draft = viewModel.quickAddDraft(from: viewModel.quickAddText)
         guard !draft.name.isEmpty else { return }
 
-        let category = SuggestedProducts.suggestedCategory(for: draft.name) ?? .varios
+        let category = SuggestedProducts.suggestedCategory(for: draft.name, in: categories) ?? categories.first { $0.name == "Varios" } ?? Category.fallback
         let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: draft.name)
         let newItem = ShoppingItem(
             name: draft.name,

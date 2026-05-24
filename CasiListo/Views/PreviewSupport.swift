@@ -9,20 +9,17 @@ enum PreviewFixtures {
             ShoppingItem(
                 name: "Tomates",
                 quantity: "1 kg",
-                category: .frutasVerduras,
                 note: "Maduros pero firmes",
                 sortOrder: 0
             ),
             ShoppingItem(
                 name: "Leche",
                 quantity: "2",
-                category: .lacteosHuevos,
                 sortOrder: 0
             ),
             ShoppingItem(
                 name: "Pasta",
                 quantity: "500 g",
-                category: .despensa,
                 isPurchased: true,
                 sortOrder: 0
             )
@@ -35,11 +32,15 @@ enum PreviewFixtures {
             for: ShoppingItem.self,
             ShoppingList.self,
             ProductCatalogItem.self,
+            Category.self,
             configurations: configuration
         )
 
+        let context = container.mainContext
+        CategoryBootstrapService.bootstrap(context: context)
+
         for item in items {
-            container.mainContext.insert(item)
+            context.insert(item)
         }
 
         return container

@@ -7,6 +7,7 @@ struct ContentView: View {
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
+    @Query(sort: \Category.sortIndex) private var categories: [Category]
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
     @State private var showsShoppingMode = false
@@ -58,6 +59,7 @@ struct ContentView: View {
                             ShoppingListView(
                                 activeList: activeList,
                                 allItems: activeItems,
+                                categories: categories,
                                 viewModel: viewModel,
                                 onEdit: { viewModel.presentEditItem($0) },
                                 onAddTapped: { presentAddItem() }
@@ -122,15 +124,15 @@ struct ContentView: View {
             if resetStorageForUITestsIfNeeded() {
                 return
             }
+            CategoryBootstrapService.bootstrap(context: modelContext)
             GeofenceService.shared.initialize(with: modelContext.container)
-            let list = ShoppingListLifecycleService.bootstrap(
-                lists: allLists,
-                items: allItems,
-                context: modelContext
-            )
-            SuggestedProducts.seedCatalogItems(in: modelContext, existingCatalog: catalogItems)
+            let list = ShoppingListLifecycleService.bootstrap(context: modelContext)
+            SuggestedProducts.seedCatalogItems(in: modelContext)
+            
+            let itemDescriptor = FetchDescriptor<ShoppingItem>()
+            let itemCount = (try? modelContext.fetchCount(itemDescriptor)) ?? 0
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
-            if !hasSeeded {
+            if itemCount == 0 || !hasSeeded {
                 SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
                 UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
             }
@@ -174,7 +176,7 @@ struct ContentView: View {
     }
 
     private var formattedShareText: String {
-        let groups = viewModel.groupedItems(from: activeItems)
+        let groups = viewModel.groupedItems(from: activeItems, categories: categories)
         let storeTitle = viewModel.selectedStore?.displayName ?? "Todos"
         guard !groups.isEmpty else { return "Mi lista de compras en CasiListo (\(storeTitle)) está vacía." }
         
@@ -288,11 +290,19 @@ struct ContentView: View {
         for catalogItem in catalogItems {
             modelContext.delete(catalogItem)
         }
+        
+        let catDescriptor = FetchDescriptor<Category>()
+        if let allCats = try? modelContext.fetch(catDescriptor) {
+            for cat in allCats {
+                modelContext.delete(cat)
+            }
+        }
 
         UserDefaults.standard.set(false, forKey: "hasSeededDefaultProducts")
+        CategoryBootstrapService.bootstrap(context: modelContext)
         let list = ShoppingListLifecycleService.createActiveList(in: modelContext)
         SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
-        SuggestedProducts.seedCatalogItems(in: modelContext, existingCatalog: [])
+        SuggestedProducts.seedCatalogItems(in: modelContext)
         UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
         try? modelContext.save()
         return true

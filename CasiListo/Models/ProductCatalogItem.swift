@@ -13,9 +13,16 @@ final class ProductCatalogItem {
     var lastAddedAt: Date?
     var createdAt: Date
 
+    /// Relación de categoría persistida.
+    @Relationship(deleteRule: .nullify) var categoryRelation: Category?
+
+    /// Categoría tipada, derivada de la relación o fallback.
     var category: Category {
-        get { Category(rawValue: categoryRawValue) ?? .varios }
-        set { categoryRawValue = newValue.rawValue }
+        get { categoryRelation ?? Category.fallback }
+        set {
+            categoryRelation = newValue
+            categoryRawValue = newValue.name
+        }
     }
 
     var store: Store {
@@ -25,7 +32,7 @@ final class ProductCatalogItem {
 
     init(
         name: String,
-        category: Category,
+        category: Category? = nil,
         store: Store = .jumbo,
         timesAdded: Int = 0,
         lastAddedAt: Date? = nil,
@@ -33,7 +40,8 @@ final class ProductCatalogItem {
     ) {
         self.id = UUID()
         self.name = name
-        self.categoryRawValue = category.rawValue
+        self.categoryRelation = category
+        self.categoryRawValue = category?.name ?? "Varios"
         self.storeRawValue = store.rawValue
         self.timesAdded = timesAdded
         self.lastAddedAt = lastAddedAt

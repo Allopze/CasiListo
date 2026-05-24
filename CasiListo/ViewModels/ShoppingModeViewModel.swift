@@ -13,22 +13,23 @@ final class ShoppingModeViewModel {
     var activeCategoryIndex: Int = 0
     var isCompleted: Bool = false
     @ObservationIgnored private var autoAdvanceTask: Task<Void, Never>? = nil
-    
+    @ObservationIgnored private let allCategories: [Category]
+
     var categories: [Category] {
         // Solo categorías que tengan al menos un ítem pendiente
-        let categoriesWithPending = Set(items.filter { $0.status == .pending }.map { $0.category })
-        // Ordenar categorías por su orden natural de enum
-        return Category.allCases.filter { categoriesWithPending.contains($0) }
+        let categoriesWithPending = Set(items.filter { $0.status == .pending }.map { $0.category.name })
+        // Ordenar categorías según su sortIndex dinámico
+        return allCategories.filter { categoriesWithPending.contains($0.name) }
     }
-    
+
     var activeCategory: Category? {
         guard activeCategoryIndex >= 0 && activeCategoryIndex < categories.count else { return nil }
         return categories[activeCategoryIndex]
     }
-    
+
     var activeItems: [ShoppingItem] {
         guard let category = activeCategory else { return [] }
-        return items.filter { $0.category == category && $0.status != .purchased }
+        return items.filter { $0.category.name == category.name && $0.status != .purchased }
             .sorted { a, b in
                 if a.status != b.status {
                     return a.status.isActionableInShoppingMode && !b.status.isActionableInShoppingMode
@@ -36,20 +37,20 @@ final class ShoppingModeViewModel {
                 return a.sortOrder < b.sortOrder
             }
     }
-    
+
     // Progreso de la tienda activa
     var totalCount: Int {
         items.count
     }
-    
+
     var purchasedCount: Int {
         items.filter { $0.status == .purchased }.count
     }
-    
+
     var pendingCount: Int {
         items.filter { $0.status == .pending }.count
     }
-    
+
     var progress: Double {
         guard totalCount > 0 else { return 1.0 }
         return Double(purchasedCount) / Double(totalCount)
@@ -59,11 +60,12 @@ final class ShoppingModeViewModel {
         let purchased: Int
         let total: Int
     }
-    
-    init(store: Store, allItems: [ShoppingItem]) {
+
+    init(store: Store, allItems: [ShoppingItem], allCategories: [Category]) {
         self.store = store
         self.items = allItems.filter { $0.store == store }
-        
+        self.allCategories = allCategories
+
         // Inicializar el índice de categoría activa
         if !categories.isEmpty {
             self.activeCategoryIndex = 0
@@ -116,7 +118,7 @@ final class ShoppingModeViewModel {
     
     private func checkAutoAdvance() {
         guard let currentCat = activeCategory else { return }
-        let currentCatPending = items.filter { $0.category == currentCat && $0.status == .pending }.count
+        let currentCatPending = items.filter { $0.category.name == currentCat.name && $0.status == .pending }.count
         
         if currentCatPending == 0 {
             autoAdvanceTask?.cancel()
@@ -138,7 +140,7 @@ final class ShoppingModeViewModel {
         var purchased = 0
         var total = 0
 
-        for item in items where item.category == category {
+        for item in items where item.category.name == category.name {
             total += 1
             if item.status == .purchased {
                 purchased += 1

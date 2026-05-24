@@ -9,6 +9,7 @@ struct ShoppingModeView: View {
     let onCancel: () -> Void
     
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \Category.sortIndex) private var categories: [Category]
     
     @State private var sessionViewModel: ShoppingModeViewModel? = nil
     @State private var preselectedStore: Store = .jumbo
@@ -51,7 +52,7 @@ struct ShoppingModeView: View {
                     onDismiss: { onCancel() },
                     onStart: {
                         withAnimation(.spring()) {
-                            let vm = ShoppingModeViewModel(store: preselectedStore, allItems: allItems)
+                            let vm = ShoppingModeViewModel(store: preselectedStore, allItems: allItems, allCategories: categories)
                             vm.startSession()
                             self.sessionViewModel = vm
                         }

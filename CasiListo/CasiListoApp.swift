@@ -9,7 +9,7 @@ struct CasiListoApp: App {
             ContentView()
         }
         .modelContainer(
-            for: [ShoppingItem.self, ShoppingList.self, ProductCatalogItem.self],
+            for: [ShoppingItem.self, ShoppingList.self, ProductCatalogItem.self, Category.self],
             isUndoEnabled: true
         )
     }

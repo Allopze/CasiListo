@@ -23,10 +23,12 @@ struct AddEditItemSheet: View {
     let allItems: [ShoppingItem]
     let viewModel: ShoppingListViewModel
 
+    @Query(sort: \Category.sortIndex) private var categories: [Category]
+
     @State private var name: String = ""
     @State private var quantity: String = ""
     @State private var priceString: String = ""
-    @State private var selectedCategory: Category = .varios
+    @State private var selectedCategory: Category = Category.fallback
     @State private var selectedStore: Store = .jumbo
     @State private var note: String = ""
     @State private var showSuggestions: Bool = false
@@ -89,7 +91,7 @@ struct AddEditItemSheet: View {
                         name = draft.name
                         quantity = draft.quantity
                         viewModel.quickAddText = ""
-                        if let suggested = SuggestedProducts.suggestedCategory(for: name) {
+                        if let suggested = SuggestedProducts.suggestedCategory(for: name, in: categories) {
                             selectedCategory = suggested
                         }
                     }
@@ -130,7 +132,7 @@ struct AddEditItemSheet: View {
                     let nextSuggestions = SuggestedProducts.suggestions(for: newValue)
                     showSuggestions = !newValue.isEmpty && !nextSuggestions.isEmpty
 
-                    if let suggested = SuggestedProducts.suggestedCategory(for: newValue) {
+                    if let suggested = SuggestedProducts.suggestedCategory(for: newValue, in: categories) {
                         selectedCategory = suggested
                     }
                 }
@@ -139,7 +141,7 @@ struct AddEditItemSheet: View {
                 SuggestionsListView(suggestions: suggestions) { suggestion in
                     name = suggestion
                     showSuggestions = false
-                    if let category = SuggestedProducts.suggestedCategory(for: suggestion) {
+                    if let category = SuggestedProducts.suggestedCategory(for: suggestion, in: categories) {
                         selectedCategory = category
                     }
                 }

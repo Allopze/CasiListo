@@ -3,11 +3,13 @@ import SwiftData
 
 @MainActor
 enum ShoppingListLifecycleService {
-    static func bootstrap(
-        lists: [ShoppingList],
-        items: [ShoppingItem],
-        context: ModelContext
-    ) -> ShoppingList {
+    static func bootstrap(context: ModelContext) -> ShoppingList {
+        let listDescriptor = FetchDescriptor<ShoppingList>()
+        let lists = (try? context.fetch(listDescriptor)) ?? []
+        
+        let itemDescriptor = FetchDescriptor<ShoppingItem>()
+        let items = (try? context.fetch(itemDescriptor)) ?? []
+
         let activeList = lists.first { $0.status == .active } ?? createActiveList(in: context)
         assignOrphanItems(items, to: activeList, context: context)
         return activeList
@@ -39,8 +41,8 @@ enum ShoppingListLifecycleService {
             storeScope: store,
             purchasedCount: purchasedItems.count,
             pendingCount: items.filter { $0.status == .pending }.count,
-            skippedCount: purchasedItems.filter { $0.status == .skipped }.count,
-            unavailableCount: purchasedItems.filter { $0.status == .unavailable }.count,
+            skippedCount: items.filter { $0.status == .skipped }.count,
+            unavailableCount: items.filter { $0.status == .unavailable }.count,
             totalSpent: purchasedItems.compactMap(\.price).reduce(0, +)
         )
         context.insert(completedList)
