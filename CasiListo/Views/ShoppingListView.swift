@@ -8,16 +8,26 @@ struct ShoppingListView: View {
     @Bindable var viewModel: ShoppingListViewModel
     let onEdit: (ShoppingItem) -> Void
     let onAddTapped: () -> Void
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     @Environment(\.modelContext) private var modelContext
 
-    var body: some View {
-        let groups = viewModel.groupedItems(from: allItems)
-        let summary = viewModel.summary(from: allItems)
+    @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
+    @ScaledMetric(relativeTo: .body) private var filterSpacing: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var listRowInsetBottom: CGFloat = 4
+    @ScaledMetric(relativeTo: .body) private var noResultsVerticalPadding: CGFloat = 60
 
+    private var groups: [(category: Category, items: [ShoppingItem])] {
+        viewModel.groupedItems(from: allItems)
+    }
+
+    private var summary: ShoppingListViewModel.ListSummary {
+        viewModel.summary(from: allItems)
+    }
+
+    var body: some View {
         List {
             Section {
-                VStack(alignment: .leading, spacing: 12 * CGFloat(accessibilityTextSizeScale)) {
+                VStack(alignment: .leading, spacing: filterSpacing) {
                     StoreFilterBar(selectedStore: $viewModel.selectedStore)
                     
                     SummaryBarView(
@@ -29,10 +39,10 @@ struct ShoppingListView: View {
                     )
                 }
                 .listRowInsets(.init(
-                    top: 10 * CGFloat(accessibilityTextSizeScale),
-                    leading: Theme.cardPadding(scale: accessibilityTextSizeScale),
-                    bottom: 4 * CGFloat(accessibilityTextSizeScale),
-                    trailing: Theme.cardPadding(scale: accessibilityTextSizeScale)
+                    top: listRowInsetTop,
+                    leading: cardPadding,
+                    bottom: listRowInsetBottom,
+                    trailing: cardPadding
                 ))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -46,16 +56,36 @@ struct ShoppingListView: View {
                         onAddTapped()
                     }
                 )
-                    .listRowInsets(.init(top: 60, leading: Theme.cardPadding(scale: accessibilityTextSizeScale), bottom: 60, trailing: Theme.cardPadding(scale: accessibilityTextSizeScale)))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
+                .listRowInsets(.init(
+                    top: noResultsVerticalPadding,
+                    leading: cardPadding,
+                    bottom: noResultsVerticalPadding,
+                    trailing: cardPadding
+                ))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
             } else {
                 ForEach(groups, id: \.category) { group in
                     CategorySectionView(
                         category: group.category,
                         items: group.items,
-                        viewModel: viewModel,
-                        onEdit: onEdit
+                        isCollapsed: viewModel.isCategoryCollapsed(group.category),
+                        onToggleCollapse: {
+                            viewModel.toggleCategoryCollapse(group.category)
+                        },
+                        onTogglePurchased: { item in
+                            viewModel.togglePurchased(item)
+                        },
+                        onEdit: onEdit,
+                        onDelete: { item in
+                            viewModel.deleteItem(item, context: modelContext)
+                        },
+                        onMarkStatus: { item, status in
+                            viewModel.markItem(item, as: status)
+                        },
+                        onMove: { source, destination in
+                            viewModel.moveItem(from: source, to: destination, within: group.items, context: modelContext)
+                        }
                     )
                 }
             }

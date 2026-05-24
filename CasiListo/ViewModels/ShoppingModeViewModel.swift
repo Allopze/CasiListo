@@ -83,7 +83,7 @@ final class ShoppingModeViewModel {
         withAnimation(.easeInOut) {
             item.status = item.status == .purchased ? .pending : .purchased
         }
-        try? context.save()
+        context.safeSave()
         
         // Verificar si se completó la compra completa
         checkCompletion()
@@ -98,7 +98,7 @@ final class ShoppingModeViewModel {
         withAnimation(.easeInOut) {
             item.status = status
         }
-        try? context.save()
+        context.safeSave()
         checkCompletion()
         if !isCompleted {
             checkAutoAdvance()

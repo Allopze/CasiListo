@@ -9,21 +9,27 @@ struct ItemRowView: View {
     let onDelete: () -> Void
     let onMarkStatus: (ShoppingItemStatus) -> Void
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
-    @ScaledMetric(relativeTo: .body) private var scaledCheckboxSize = 28
-    @ScaledMetric(relativeTo: .body) private var scaledEditButtonSize = 44
-
-    private var checkboxSize: CGFloat {
-        max(28 * CGFloat(accessibilityTextSizeScale), scaledCheckboxSize)
-    }
+    @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 28
+    @ScaledMetric(relativeTo: .body) private var scaledEditButtonSize: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var scaledPaddingVertical: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var scaledSpacing: CGFloat = 14
+    @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 9
+    @ScaledMetric(relativeTo: .caption) private var storePaddingHorizontal: CGFloat = 6
+    @ScaledMetric(relativeTo: .caption) private var storePaddingVertical: CGFloat = 2
+    @ScaledMetric(relativeTo: .caption) private var storeCornerRadius: CGFloat = 4
+    @ScaledMetric(relativeTo: .caption) private var pillPaddingHorizontal: CGFloat = 8
+    @ScaledMetric(relativeTo: .caption) private var pillPaddingVertical: CGFloat = 3
+    @ScaledMetric(relativeTo: .caption) private var pillCornerRadius: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var editButtonSymbolSize: CGFloat = 13
 
     var body: some View {
-        HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {
+        HStack(spacing: scaledSpacing) {
             // Toda la tarjeta (excepto el botón de edición) al tocarla completa o descompleta el ítem.
             Button {
                 toggleItem()
             } label: {
-                HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {
+                HStack(spacing: scaledSpacing) {
                     checkboxView
                     rowContent
                     Spacer()
@@ -43,7 +49,7 @@ struct ItemRowView: View {
             // Lado derecho independiente que al tocar permite editar el producto.
             editButton
         }
-        .padding(.vertical, 10 * CGFloat(accessibilityTextSizeScale))
+        .padding(.vertical, scaledPaddingVertical)
         .contextMenu {
             Button {
                 HapticFeedback.selection()
@@ -101,57 +107,57 @@ struct ItemRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(item.name)
-                    .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.bodyDynamic)
                     .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
                     .strikethrough(item.isPurchased, color: Color.appTextPurchased)
                     .lineLimit(2)
 
                 Text(item.store.displayName)
-                    .font(.system(size: 9 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: storeTextSize, weight: .bold))
                     .foregroundStyle(.white)
-                    .padding(.horizontal, 6 * CGFloat(accessibilityTextSizeScale))
-                    .padding(.vertical, 2 * CGFloat(accessibilityTextSizeScale))
+                    .padding(.horizontal, storePaddingHorizontal)
+                    .padding(.vertical, storePaddingVertical)
                     .background(item.store.color.opacity(item.isPurchased ? 0.4 : 0.85))
-                    .clipShape(RoundedRectangle(cornerRadius: 4 * CGFloat(accessibilityTextSizeScale)))
+                    .clipShape(RoundedRectangle(cornerRadius: storeCornerRadius))
                     .accessibilityLabel("Tienda: \(item.store.displayName)")
 
                 if !item.quantity.isEmpty {
                     Text(item.quantity)
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Theme.accentYellow)
-                        .padding(.horizontal, 8 * CGFloat(accessibilityTextSizeScale))
-                        .padding(.vertical, 3 * CGFloat(accessibilityTextSizeScale))
+                        .padding(.horizontal, pillPaddingHorizontal)
+                        .padding(.vertical, pillPaddingVertical)
                         .background(quantityBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 6 * CGFloat(accessibilityTextSizeScale)))
+                        .clipShape(RoundedRectangle(cornerRadius: pillCornerRadius))
                         .accessibilityLabel("Cantidad \(item.quantity)")
                 }
 
                 if let price = item.price {
                     Text(price.formattedPriceWithSymbol)
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(item.isPurchased ? Color.appTextPurchased : .green)
-                        .padding(.horizontal, 8 * CGFloat(accessibilityTextSizeScale))
-                        .padding(.vertical, 3 * CGFloat(accessibilityTextSizeScale))
+                        .padding(.horizontal, pillPaddingHorizontal)
+                        .padding(.vertical, pillPaddingVertical)
                         .background(item.isPurchased ? Color.appTextPurchased.opacity(0.1) : Color.green.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 6 * CGFloat(accessibilityTextSizeScale)))
+                        .clipShape(RoundedRectangle(cornerRadius: pillCornerRadius))
                         .accessibilityLabel("Precio \(price.formattedPrice)")
                 }
 
                 if item.status == .skipped || item.status == .unavailable {
                     Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(item.status == .skipped ? Color.orange : Color.red)
                         .labelStyle(.titleAndIcon)
-                        .padding(.horizontal, 8 * CGFloat(accessibilityTextSizeScale))
-                        .padding(.vertical, 3 * CGFloat(accessibilityTextSizeScale))
+                        .padding(.horizontal, pillPaddingHorizontal)
+                        .padding(.vertical, pillPaddingVertical)
                         .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: 6 * CGFloat(accessibilityTextSizeScale)))
+                        .clipShape(RoundedRectangle(cornerRadius: pillCornerRadius))
                 }
             }
 
             if !item.note.isEmpty {
                 Text(item.note)
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
                     .lineLimit(2)
             }
@@ -172,7 +178,7 @@ struct ItemRowView: View {
                     .transition(.scale.combined(with: .opacity))
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 12 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: checkmarkSize, weight: .bold))
                     .foregroundStyle(.white)
                     .transition(.scale.combined(with: .opacity))
             }
@@ -185,13 +191,10 @@ struct ItemRowView: View {
             HapticFeedback.selection()
             onEdit()
         } label: {
-                Image(systemName: "pencil")
-                    .font(.system(size: 13 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
-                    .foregroundStyle(Theme.accentYellow)
-                    .frame(
-                    width: max(Theme.minimumTouchTarget, scaledEditButtonSize, 32 * CGFloat(accessibilityTextSizeScale)),
-                    height: max(Theme.minimumTouchTarget, scaledEditButtonSize, 32 * CGFloat(accessibilityTextSizeScale))
-                )
+            Image(systemName: "pencil")
+                .font(.system(size: editButtonSymbolSize, weight: .semibold))
+                .foregroundStyle(Theme.accentYellow)
+                .frame(width: scaledEditButtonSize, height: scaledEditButtonSize)
                 .background(Theme.accentYellow.opacity(0.12))
                 .clipShape(Circle())
         }

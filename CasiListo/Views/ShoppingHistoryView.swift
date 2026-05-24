@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ShoppingHistoryView: View {
     let completedLists: [ShoppingList]
+    let allItems: [ShoppingItem]
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -16,7 +17,11 @@ struct ShoppingHistoryView: View {
                     .listRowBackground(Color.clear)
                 } else {
                     ForEach(completedLists) { list in
-                        historyRow(for: list)
+                        NavigationLink {
+                            ShoppingHistoryDetailView(list: list, allItems: allItems)
+                        } label: {
+                            historyRow(for: list)
+                        }
                     }
                 }
             }

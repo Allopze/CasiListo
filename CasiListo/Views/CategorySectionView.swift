@@ -6,38 +6,56 @@ import SwiftData
 struct CategorySectionView: View {
     let category: Category
     let items: [ShoppingItem]
-    let viewModel: ShoppingListViewModel
+    let isCollapsed: Bool
+    let onToggleCollapse: () -> Void
+    let onTogglePurchased: (ShoppingItem) -> Void
     let onEdit: (ShoppingItem) -> Void
+    let onDelete: (ShoppingItem) -> Void
+    let onMarkStatus: (ShoppingItem, ShoppingItemStatus) -> Void
+    let onMove: (IndexSet, Int) -> Void
 
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    
+    @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 4
+    @ScaledMetric(relativeTo: .body) private var listRowInsetSide: CGFloat = 30 // Theme.cardPadding + 14
+    @ScaledMetric(relativeTo: .body) private var hStackSpacing: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var sfSymbolSize: CGFloat = 18
+    @ScaledMetric(relativeTo: .body) private var imageWidth: CGFloat = 24
+    @ScaledMetric(relativeTo: .caption) private var countPaddingHorizontal: CGFloat = 10
+    @ScaledMetric(relativeTo: .caption) private var countPaddingVertical: CGFloat = 4
+    @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.cornerRadius
+    @ScaledMetric(relativeTo: .body) private var smallCornerRadius: CGFloat = Theme.smallCornerRadius
+    @ScaledMetric(relativeTo: .body) private var rowBackgroundPaddingVertical: CGFloat = 3
+    @ScaledMetric(relativeTo: .body) private var topPadding: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 4
 
     var body: some View {
-        let isCollapsed = viewModel.isCategoryCollapsed(category)
-        
         Section {
             if !isCollapsed {
                 ForEach(items, id: \.id) { item in
                     ItemRowView(
                         item: item,
                         onToggle: {
-                            viewModel.togglePurchased(item)
+                            onTogglePurchased(item)
                         },
                         onEdit: {
                             onEdit(item)
                         },
                         onDelete: {
-                            viewModel.deleteItem(item, context: modelContext)
+                            onDelete(item)
                         },
                         onMarkStatus: { status in
-                            viewModel.markItem(item, as: status)
+                            onMarkStatus(item, status)
                         }
                     )
                     .listRowInsets(.init(
-                        top: 4 * CGFloat(accessibilityTextSizeScale),
-                        leading: Theme.cardPadding(scale: accessibilityTextSizeScale) + 14 * CGFloat(accessibilityTextSizeScale),
-                        bottom: 4 * CGFloat(accessibilityTextSizeScale),
-                        trailing: Theme.cardPadding(scale: accessibilityTextSizeScale) + 14 * CGFloat(accessibilityTextSizeScale)
+                        top: listRowInsetTop,
+                        leading: listRowInsetSide,
+                        bottom: listRowInsetTop,
+                        trailing: listRowInsetSide
                     ))
                     .listRowSeparator(.hidden)
                     .listRowBackground(rowBackground)
@@ -45,7 +63,7 @@ struct CategorySectionView: View {
                         Button(role: .destructive) {
                             HapticFeedback.impact()
                             withAnimation(Theme.defaultAnimation) {
-                                viewModel.deleteItem(item, context: modelContext)
+                                onDelete(item)
                             }
                         } label: {
                             Label("Eliminar", systemImage: "trash")
@@ -63,7 +81,7 @@ struct CategorySectionView: View {
                         Button {
                             HapticFeedback.selection()
                             withAnimation(Theme.defaultAnimation) {
-                                viewModel.togglePurchased(item)
+                                onTogglePurchased(item)
                             }
                         } label: {
                             Label(
@@ -79,7 +97,7 @@ struct CategorySectionView: View {
                     ))
                 }
                 .onMove { source, destination in
-                    viewModel.moveItem(from: source, to: destination, within: items, context: modelContext)
+                    onMove(source, destination)
                 }
             }
         } header: {
@@ -88,52 +106,50 @@ struct CategorySectionView: View {
     }
 
     private var sectionHeader: some View {
-        let isCollapsed = viewModel.isCategoryCollapsed(category)
-        
-        return Button {
+        Button {
             HapticFeedback.selection()
             withAnimation(Theme.defaultAnimation) {
-                viewModel.toggleCategoryCollapse(category)
+                onToggleCollapse()
             }
         } label: {
-            HStack(spacing: 10 * CGFloat(accessibilityTextSizeScale)) {
+            HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: 18 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: sfSymbolSize, weight: .bold))
                     .foregroundStyle(Theme.accentYellow)
-                    .frame(width: 24 * CGFloat(accessibilityTextSizeScale), alignment: .center)
+                    .frame(width: imageWidth, alignment: .center)
 
                 Text(category.displayName)
-                    .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.sectionHeaderDynamic)
                     .foregroundStyle(Color.appTextPrimary)
                     .bold()
 
                 Spacer()
 
                 Text("\(items.count)")
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.captionDynamic)
                     .foregroundStyle(Color.black)
                     .bold()
                     .monospacedDigit()
-                    .padding(.horizontal, 10 * CGFloat(accessibilityTextSizeScale))
-                    .padding(.vertical, 4 * CGFloat(accessibilityTextSizeScale))
+                    .padding(.horizontal, countPaddingHorizontal)
+                    .padding(.vertical, countPaddingVertical)
                     .background(Theme.accentYellow)
                     .clipShape(Capsule())
                 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 12 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: chevronSize, weight: .bold))
                     .foregroundStyle(Color.appTextSecondary)
                     .rotationEffect(.degrees(isCollapsed ? -90 : 0))
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
             }
             .textCase(nil)
-            .padding(.vertical, 14 * CGFloat(accessibilityTextSizeScale))
-            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+            .padding(.vertical, paddingVertical)
+            .padding(.horizontal, cardPadding)
             .background(Color.appCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius(scale: accessibilityTextSizeScale), style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
-            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
-            .padding(.top, 8 * CGFloat(accessibilityTextSizeScale))
-            .padding(.bottom, 4 * CGFloat(accessibilityTextSizeScale))
+            .padding(.horizontal, cardPadding)
+            .padding(.top, topPadding)
+            .padding(.bottom, bottomPadding)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -144,10 +160,10 @@ struct CategorySectionView: View {
     }
 
     private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: Theme.smallCornerRadius(scale: accessibilityTextSizeScale), style: .continuous)
+        RoundedRectangle(cornerRadius: smallCornerRadius, style: .continuous)
             .fill(Color.appCardBackground)
-            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
-            .padding(.vertical, 3 * CGFloat(accessibilityTextSizeScale))
+            .padding(.horizontal, cardPadding)
+            .padding(.vertical, rowBackgroundPaddingVertical)
             .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 2)
     }
 }

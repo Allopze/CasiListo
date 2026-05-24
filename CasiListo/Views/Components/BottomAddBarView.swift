@@ -5,8 +5,19 @@ struct BottomAddBarView: View {
     @Binding var text: String
     let onAddQuick: () -> Void
     let onAddTapped: () -> Void
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     @State private var suggestions: [String] = []
+
+    @ScaledMetric(relativeTo: .body) private var chipPaddingHorizontal: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var chipPaddingVertical: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
+    @ScaledMetric(relativeTo: .body) private var hStackSpacing: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var cartIconSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var cartIconLeadingPadding: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var textFieldHeight: CGFloat = 40
+    @ScaledMetric(relativeTo: .body) private var controlCornerRadius: CGFloat = Theme.controlCornerRadius
+    @ScaledMetric(relativeTo: .body) private var actionButtonSymbolSize: CGFloat = 28
+    @ScaledMetric(relativeTo: .body) private var actionButtonSize: CGFloat = Theme.minimumTouchTarget
+    @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 8
 
     var body: some View {
         AdaptiveGlassEffectContainer(spacing: 8) {
@@ -21,30 +32,30 @@ struct BottomAddBarView: View {
                                     onAddQuick()
                                 } label: {
                                     Text(suggestion)
-                                        .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                                        .font(Theme.chipDynamic)
                                         .foregroundStyle(Color.appTextPrimary)
-                                        .padding(.horizontal, 12 * CGFloat(accessibilityTextSizeScale))
-                                        .padding(.vertical, 6 * CGFloat(accessibilityTextSizeScale))
+                                        .padding(.horizontal, chipPaddingHorizontal)
+                                        .padding(.vertical, chipPaddingVertical)
                                         .glassFilterSurface(cornerRadius: Theme.chipCornerRadius, interactive: true)
                                 }
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+                        .padding(.horizontal, cardPadding)
                     }
                     .transition(.move(edge: .bottom).combined(with: .opacity))
                     .padding(.top, 4)
                 }
 
-                HStack(spacing: 10 * CGFloat(accessibilityTextSizeScale)) {
+                HStack(spacing: hStackSpacing) {
                     HStack {
                         Image(systemName: "cart.badge.plus")
-                            .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale)))
+                            .font(.system(size: cartIconSize))
                             .foregroundStyle(Color.appTextSecondary)
-                            .padding(.leading, 12 * CGFloat(accessibilityTextSizeScale))
+                            .padding(.leading, cartIconLeadingPadding)
 
                         TextField("Añadir rápido...", text: $text)
-                            .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyDynamic)
                             .textFieldStyle(.plain)
                             .autocorrectionDisabled()
                             .submitLabel(.done)
@@ -54,41 +65,41 @@ struct BottomAddBarView: View {
                                 }
                             }
                     }
-                    .frame(height: 40 * CGFloat(accessibilityTextSizeScale))
-                    .glassFilterSurface(cornerRadius: Theme.controlCornerRadius(scale: accessibilityTextSizeScale), interactive: true)
+                    .frame(height: textFieldHeight)
+                    .glassFilterSurface(cornerRadius: controlCornerRadius, interactive: true)
 
                     if !text.trimmingCharacters(in: .whitespaces).isEmpty {
                         Button { onAddQuick() } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
+                                .font(.system(size: actionButtonSymbolSize))
                                 .foregroundStyle(Theme.accentYellow)
-                                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                                .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir instantáneamente")
 
                         Button { onAddTapped() } label: {
                             Image(systemName: "ellipsis.circle.fill")
-                                .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
+                                .font(.system(size: actionButtonSymbolSize))
                                 .foregroundStyle(Color.appTextSecondary)
-                                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                                .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir con detalles")
                     } else {
                         Button { onAddTapped() } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: 28 * CGFloat(accessibilityTextSizeScale)))
+                                .font(.system(size: actionButtonSymbolSize))
                                 .foregroundStyle(Theme.accentYellow)
-                                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                                .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir producto")
                     }
                 }
-                .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+                .padding(.horizontal, cardPadding)
                 .padding(.top, 4)
-                .padding(.bottom, 8 * CGFloat(accessibilityTextSizeScale))
+                .padding(.bottom, bottomPadding)
             }
             .background(Color.appBackground.opacity(0.85))
         }

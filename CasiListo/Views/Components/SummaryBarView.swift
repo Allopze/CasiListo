@@ -7,21 +7,29 @@ struct SummaryBarView: View {
     let pendingTotal: Double
     let purchasedTotal: Double
     @Binding var showPurchased: Bool
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
+    @ScaledMetric(relativeTo: .caption) private var scaledSpacing: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var eyeIconSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .body) private var eyeButtonSize: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var eyeCornerRadius: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var leadingPadding: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var trailingPadding: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.cornerRadius
 
     var body: some View {
         let pendingLabel = pendingTotal > 0 ? "\(pendingCount) pendientes (\(pendingTotal.formattedPriceWithSymbol))" : "\(pendingCount) pendientes"
         let purchasedLabel = purchasedTotal > 0 ? "\(purchasedCount) comprados (\(purchasedTotal.formattedPriceWithSymbol))" : "\(purchasedCount) comprados"
 
         return AdaptiveGlassEffectContainer(spacing: 12) {
-            HStack(spacing: 14 * CGFloat(accessibilityTextSizeScale)) {
+            HStack(spacing: scaledSpacing) {
                 Label(pendingLabel, systemImage: "circle")
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
 
                 if purchasedCount > 0 {
                     Label(purchasedLabel, systemImage: "checkmark.circle.fill")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(Theme.accentYellow)
                 }
 
@@ -38,20 +46,17 @@ struct SummaryBarView: View {
                         systemImage: showPurchased ? "eye.slash" : "eye"
                     )
                     .labelStyle(.iconOnly)
-                    .font(.system(size: 15 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
-                    .frame(
-                        width: max(Theme.minimumTouchTarget, 36 * CGFloat(accessibilityTextSizeScale)),
-                        height: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale))
-                    )
+                    .font(.system(size: eyeIconSize, weight: .semibold))
+                    .frame(width: eyeButtonSize, height: eyeButtonSize)
                 }
                 .buttonStyle(.plain)
-                .glassFilterSurface(cornerRadius: 16 * CGFloat(accessibilityTextSizeScale), interactive: true)
+                .glassFilterSurface(cornerRadius: eyeCornerRadius, interactive: true)
                 .accessibilityLabel(showPurchased ? "Ocultar comprados" : "Mostrar comprados")
             }
-            .padding(.leading, 16 * CGFloat(accessibilityTextSizeScale))
-            .padding(.trailing, 8 * CGFloat(accessibilityTextSizeScale))
-            .padding(.vertical, 8 * CGFloat(accessibilityTextSizeScale))
-            .glassFilterSurface(cornerRadius: Theme.cornerRadius(scale: accessibilityTextSizeScale))
+            .padding(.leading, leadingPadding)
+            .padding(.trailing, trailingPadding)
+            .padding(.vertical, verticalPadding)
+            .glassFilterSurface(cornerRadius: cornerRadius)
         }
         .accessibilityElement(children: .contain)
     }

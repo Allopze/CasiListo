@@ -5,10 +5,24 @@ struct ShoppingModeHeaderView: View {
     @Bindable var viewModel: ShoppingModeViewModel
     let onBack: () -> Void
     let onExit: () -> Void
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
+    @ScaledMetric(relativeTo: .body) private var scaledVStackSpacing: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var backPaddingHorizontal: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var backPaddingVertical: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var backMinHeight: CGFloat = Theme.minimumTouchTarget
+    @ScaledMetric(relativeTo: .body) private var storeIconSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var storePaddingHorizontal: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var storePaddingVertical: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var xmarkSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var xmarkButtonSize: CGFloat = Theme.minimumTouchTarget
+    @ScaledMetric(relativeTo: .body) private var textSpacing: CGFloat = 6
+    @ScaledMetric(relativeTo: .body) private var progressBarHeight: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var containerPaddingHorizontal: CGFloat = 20
+    @ScaledMetric(relativeTo: .body) private var containerPaddingVertical: CGFloat = 16
 
     var body: some View {
-        VStack(spacing: 12 * CGFloat(accessibilityTextSizeScale)) {
+        VStack(spacing: scaledVStackSpacing) {
             HStack {
                 Button {
                     HapticFeedback.selection()
@@ -17,15 +31,15 @@ struct ShoppingModeHeaderView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: 14, weight: .bold))
+                            .font(.system(size: chevronSize, weight: .bold))
                         Text("Atrás")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.captionDynamic)
                             .bold()
                     }
                     .foregroundStyle(Color.shoppingModeText)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .frame(minHeight: Theme.minimumTouchTarget)
+                    .padding(.horizontal, backPaddingHorizontal)
+                    .padding(.vertical, backPaddingVertical)
+                    .frame(minHeight: backMinHeight)
                     .background(Color.shoppingModeControlBackground)
                     .clipShape(Capsule())
                 }
@@ -36,12 +50,12 @@ struct ShoppingModeHeaderView: View {
                 
                 HStack(spacing: 6) {
                     Image(systemName: viewModel.store.sfSymbol)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: storeIconSize, weight: .bold))
                     Text(viewModel.store.displayName)
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: storeIconSize, weight: .bold))
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 6)
+                .padding(.horizontal, storePaddingHorizontal)
+                .padding(.vertical, storePaddingVertical)
                 .foregroundStyle(.white)
                 .background(viewModel.store.color)
                 .clipShape(Capsule())
@@ -54,9 +68,9 @@ struct ShoppingModeHeaderView: View {
                     onExit()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: 14, weight: .bold))
+                        .font(.system(size: xmarkSize, weight: .bold))
                         .foregroundStyle(Color.shoppingModeText)
-                        .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                        .frame(width: xmarkButtonSize, height: xmarkButtonSize)
                         .background(Color.shoppingModeControlBackground)
                         .clipShape(Circle())
                 }
@@ -64,14 +78,14 @@ struct ShoppingModeHeaderView: View {
                 .accessibilityLabel("Salir del modo compra")
             }
             
-            VStack(spacing: 6) {
+            VStack(spacing: textSpacing) {
                 HStack {
                     Text("\(viewModel.purchasedCount) de \(viewModel.totalCount) comprados")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(Color.shoppingModeSecondaryText)
                     Spacer()
                     Text("\(Int(viewModel.progress * 100))%")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .bold()
                         .foregroundStyle(Theme.accentYellow)
                 }
@@ -86,12 +100,12 @@ struct ShoppingModeHeaderView: View {
                             .frame(width: max(0, geo.size.width * viewModel.progress))
                     }
                 }
-                .frame(height: 8)
+                .frame(height: progressBarHeight)
             }
         }
-        .padding(.horizontal, 20)
-        .padding(.top, 16)
-        .padding(.bottom, 16)
+        .padding(.horizontal, containerPaddingHorizontal)
+        .padding(.top, containerPaddingVertical)
+        .padding(.bottom, containerPaddingVertical)
         .background(Color.shoppingModeSurface)
     }
 }

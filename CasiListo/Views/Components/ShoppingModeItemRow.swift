@@ -6,15 +6,24 @@ struct ShoppingModeItemRow: View {
     let onToggle: () -> Void
     let onMarkSkipped: () -> Void
     let onMarkUnavailable: () -> Void
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
-    @ScaledMetric(relativeTo: .body) private var scaledCheckboxSize = 42
+    
+    @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 42
+    @ScaledMetric(relativeTo: .body) private var scaledSpacing: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var paddingHorizontal: CGFloat = 18
+    @ScaledMetric(relativeTo: .body) private var minHeight: CGFloat = 64
+    @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 18
+    @ScaledMetric(relativeTo: .body) private var ellipsisSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .caption) private var quantityPaddingHorizontal: CGFloat = 8
+    @ScaledMetric(relativeTo: .caption) private var quantityPaddingVertical: CGFloat = 3
+    @ScaledMetric(relativeTo: .caption) private var quantityCornerRadius: CGFloat = 6
 
     var body: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: scaledSpacing) {
             Button {
                 onToggle()
             } label: {
-                HStack(spacing: 16) {
+                HStack(spacing: scaledSpacing) {
                     checkboxView
                     itemText
                     Spacer(minLength: 12)
@@ -46,7 +55,7 @@ struct ShoppingModeItemRow: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: 15, weight: .bold))
+                    .font(.system(size: ellipsisSize, weight: .bold))
                     .foregroundStyle(Color.shoppingModeText)
                     .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                     .background(Color.shoppingModeControlBackground)
@@ -54,9 +63,9 @@ struct ShoppingModeItemRow: View {
             }
             .accessibilityLabel("Mas acciones para \(item.name)")
         }
-        .padding(.vertical, 14 * CGFloat(accessibilityTextSizeScale))
-        .padding(.horizontal, 18 * CGFloat(accessibilityTextSizeScale))
-        .frame(minHeight: 64 * CGFloat(accessibilityTextSizeScale))
+        .padding(.vertical, paddingVertical)
+        .padding(.horizontal, paddingHorizontal)
+        .frame(minHeight: minHeight)
         .background(Color.shoppingModeSurface)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .shadow(color: .black.opacity(0.14), radius: 4, y: 2)
@@ -77,39 +86,36 @@ struct ShoppingModeItemRow: View {
                     .transition(.scale.combined(with: .opacity))
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: checkmarkSize, weight: .bold))
                     .foregroundStyle(.black)
             }
         }
-        .frame(
-            width: max(Theme.minimumTouchTarget, 42 * CGFloat(accessibilityTextSizeScale)),
-            height: max(Theme.minimumTouchTarget, scaledCheckboxSize, 42 * CGFloat(accessibilityTextSizeScale))
-        )
+        .frame(width: max(Theme.minimumTouchTarget, checkboxSize), height: max(Theme.minimumTouchTarget, checkboxSize))
     }
 
     private var itemText: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(item.name)
-                    .font(.system(size: 18 * CGFloat(accessibilityTextSizeScale), weight: .medium))
+                    .font(Theme.bodyDynamic.weight(.medium))
                     .foregroundStyle(item.isPurchased ? Color.shoppingModeSecondaryText : Color.shoppingModeText)
                     .strikethrough(item.isPurchased, color: Color.shoppingModeSecondaryText)
                     .lineLimit(2)
 
                 if !item.quantity.isEmpty {
                     Text(item.quantity)
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(item.isPurchased ? Color.shoppingModeSecondaryText : Theme.accentYellow)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
+                        .padding(.horizontal, quantityPaddingHorizontal)
+                        .padding(.vertical, quantityPaddingVertical)
                         .background(Color.shoppingModeControlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 6))
+                        .clipShape(RoundedRectangle(cornerRadius: quantityCornerRadius))
                 }
             }
 
             if !item.note.isEmpty {
                 Text(item.note)
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.captionDynamic)
                     .foregroundStyle(Color.shoppingModeSecondaryText)
                     .lineLimit(2)
             }

@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreLocation
 
 /// Hoja de Ajustes de la aplicación.
 /// Permite configurar opciones de accesibilidad visual y personalización de la lista.
@@ -6,8 +7,7 @@ struct SettingsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     @State private var mockItemPurchased = false
-
-
+    @State private var showsLocationDeniedAlert = false
 
     // Localización
     @AppStorage("geofencing_enabled") private var isGeofencingEnabled = false
@@ -113,8 +113,8 @@ struct SettingsSheet: View {
                                     .font(.system(size: 13 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
                                     .foregroundStyle(Theme.accentYellow)
                                     .frame(
-                                        width: 32 * CGFloat(accessibilityTextSizeScale),
-                                        height: 32 * CGFloat(accessibilityTextSizeScale)
+                                        width: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale)),
+                                        height: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale))
                                     )
                                     .background(Theme.accentYellow.opacity(0.12))
                                     .clipShape(Circle())
@@ -237,6 +237,41 @@ struct SettingsSheet: View {
                             .bold()
 
                         VStack(alignment: .leading, spacing: 16) {
+                            let status = GeofenceService.shared.authorizationStatus
+                            if status == .denied || status == .restricted {
+                                HStack(spacing: 12) {
+                                    Image(systemName: "exclamationmark.triangle.fill")
+                                        .font(.title2)
+                                        .foregroundStyle(.red)
+                                    
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Ubicación Desactivada")
+                                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                                            .foregroundStyle(Color.appTextPrimary)
+                                        Text("Has denegado el acceso a la ubicación. Ve a Ajustes para activarlo.")
+                                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                                            .foregroundStyle(Color.appTextSecondary)
+                                    }
+                                    
+                                    Spacer()
+                                    
+                                    Button("Ajustes") {
+                                        if let url = URL(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) {
+                                            UIApplication.shared.open(url)
+                                        }
+                                    }
+                                    .font(Theme.captionFont(scale: accessibilityTextSizeScale).bold())
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 6)
+                                    .background(Color.red.opacity(0.15))
+                                    .foregroundStyle(.red)
+                                    .clipShape(Capsule())
+                                }
+                                .padding(.bottom, 8)
+                                
+                                Divider()
+                            }
+
                             Toggle(isOn: $isGeofencingEnabled) {
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text("Alertas al pasar cerca")
@@ -251,7 +286,13 @@ struct SettingsSheet: View {
                             .onChange(of: isGeofencingEnabled) { _, newValue in
                                 HapticFeedback.selection()
                                 if newValue {
-                                    showsLocationOnboarding = true
+                                    let currentStatus = GeofenceService.shared.authorizationStatus
+                                    if currentStatus == .denied || currentStatus == .restricted {
+                                        showsLocationDeniedAlert = true
+                                        isGeofencingEnabled = false
+                                    } else {
+                                        showsLocationOnboarding = true
+                                    }
                                 } else {
                                     GeofenceService.shared.stopMonitoringAll()
                                 }
@@ -334,6 +375,16 @@ struct SettingsSheet: View {
                 isGeofencingEnabled = true
                 GeofenceService.shared.startMonitoringAll()
             }
+        }
+        .alert("Permiso de Ubicación Necesario", isPresented: $showsLocationDeniedAlert) {
+            Button("Cancelar", role: .cancel) {}
+            Button("Ir a Ajustes") {
+                if let url = URL(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) {
+                    UIApplication.shared.open(url)
+                }
+            }
+        } message: {
+            Text("Para recibir recordatorios cuando pases cerca de un supermercado, debes activar el acceso a la ubicación en los ajustes del dispositivo.")
         }
     }
 

@@ -16,7 +16,7 @@ enum ShoppingListLifecycleService {
     static func createActiveList(in context: ModelContext, title: String = "Compra actual") -> ShoppingList {
         let list = ShoppingList(title: title)
         context.insert(list)
-        try? context.save()
+        context.safeSave()
         return list
     }
 
@@ -53,7 +53,7 @@ enum ShoppingListLifecycleService {
             updateActiveListCounters(activeList, items: items)
         }
 
-        try? context.save()
+        context.safeSave()
     }
 
     static func updateActiveListCounters(_ list: ShoppingList, items: [ShoppingItem]) {
@@ -83,7 +83,7 @@ enum ShoppingListLifecycleService {
         updateActiveListCounters(activeList, items: items)
 
         if changed {
-            try? context.save()
+            context.safeSave()
         }
     }
 

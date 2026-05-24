@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import os.log
 
 /// Sistema de diseño centralizado para CasiListo.
 /// Minimalista cálido con acento amarillo. Sigue la apariencia del sistema (claro/oscuro).
@@ -30,28 +31,45 @@ enum Theme {
     static let captionFont = Font.system(size: 13, weight: .regular, design: .rounded)
     static let chipFont = Font.system(size: 13, weight: .medium, design: .rounded)
 
+    // MARK: - Dynamic Type (Nativo)
+    // Respetan automáticamente la configuración de accesibilidad del sistema.
+
+    static let titleDynamic: Font = .largeTitle.weight(.bold).width(.standard)
+    static let headlineDynamic: Font = .headline.weight(.bold)
+    static let bodyDynamic: Font = .body
+    static let bodyBoldDynamic: Font = .body.weight(.semibold)
+    static let captionDynamic: Font = .caption
+    static let chipDynamic: Font = .caption.weight(.medium)
+    static let sectionHeaderDynamic: Font = .title3.weight(.bold)
+
     // MARK: - Accesibilidad Dinámica
 
+    @available(*, deprecated, message: "Usa Theme.titleDynamic o @ScaledMetric en su lugar")
     static func titleFont(scale: Double) -> Font {
         Font.system(size: 34 * CGFloat(scale), weight: .bold, design: .rounded)
     }
 
+    @available(*, deprecated, message: "Usa Theme.sectionHeaderDynamic en su lugar")
     static func sectionHeaderFont(scale: Double) -> Font {
         Font.system(size: 20 * CGFloat(scale), weight: .bold, design: .rounded)
     }
 
+    @available(*, deprecated, message: "Usa Theme.bodyDynamic en su lugar")
     static func bodyFont(scale: Double) -> Font {
         Font.system(size: 17 * CGFloat(scale), weight: .regular, design: .rounded)
     }
 
+    @available(*, deprecated, message: "Usa Theme.bodyBoldDynamic en su lugar")
     static func bodyBoldFont(scale: Double) -> Font {
         Font.system(size: 17 * CGFloat(scale), weight: .bold, design: .rounded)
     }
 
+    @available(*, deprecated, message: "Usa Theme.captionDynamic en su lugar")
     static func captionFont(scale: Double) -> Font {
         Font.system(size: 13 * CGFloat(scale), weight: .regular, design: .rounded)
     }
 
+    @available(*, deprecated, message: "Usa Theme.chipDynamic en su lugar")
     static func chipFont(scale: Double) -> Font {
         Font.system(size: 13 * CGFloat(scale), weight: .medium, design: .rounded)
     }
@@ -79,6 +97,10 @@ enum Theme {
     static func sectionSpacing(scale: Double) -> CGFloat {
         24 * CGFloat(scale)
     }
+
+    // MARK: - Logger
+
+    private static let logger = Logger(subsystem: "com.casilisto.app", category: "Theme")
 
     // MARK: - Animaciones
 
@@ -251,6 +273,23 @@ enum HapticFeedback {
 
     static func impact() {
         impactGenerator.impactOccurred()
+    }
+}
+
+// MARK: - ModelContext Save with Logging
+
+import SwiftData
+
+extension ModelContext {
+    private static let logger = Logger(subsystem: "com.casilisto.app", category: "SwiftData")
+
+    /// Intenta guardar el contexto. Registra errores en vez de silenciarlos con `try?`.
+    func safeSave(caller: String = #function) {
+        do {
+            try save()
+        } catch {
+            Self.logger.error("Error guardando contexto desde \(caller, privacy: .public): \(error.localizedDescription, privacy: .public)")
+        }
     }
 }
 

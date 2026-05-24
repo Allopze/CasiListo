@@ -11,9 +11,17 @@ struct CompletionCelebrationView: View {
     @State private var confettiOffset: CGFloat = -100
     @State private var animateStats: Bool = false
     @State private var confettiParticles: [ConfettiParticle] = []
-    
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    @ScaledMetric(relativeTo: .body) private var scaledVStackSpacing: CGFloat = 24
+    @ScaledMetric(relativeTo: .body) private var circleSizeSmall: CGFloat = 130
+    @ScaledMetric(relativeTo: .body) private var circleSizeLarge: CGFloat = 150
+    @ScaledMetric(relativeTo: .largeTitle) private var emojiSize: CGFloat = 70
+    @ScaledMetric(relativeTo: .body) private var cardSpacing: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = 24
+    @ScaledMetric(relativeTo: .body) private var buttonsSpacing: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var buttonPaddingVertical: CGFloat = 16
+    @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 20
     
     var body: some View {
         ZStack {
@@ -31,34 +39,34 @@ struct CompletionCelebrationView: View {
                 }
             }
             
-            VStack(spacing: 24 * CGFloat(accessibilityTextSizeScale)) {
+            VStack(spacing: scaledVStackSpacing) {
                 Spacer()
                 
                 // Emoji / Ícono animado
                 ZStack {
                     Circle()
                         .fill(Color.green.opacity(0.15))
-                        .frame(width: 130 * CGFloat(accessibilityTextSizeScale), height: 130 * CGFloat(accessibilityTextSizeScale))
+                        .frame(width: circleSizeSmall, height: circleSizeSmall)
                         .scaleEffect(animateStats ? 1.0 : 0.8)
                     
                     Circle()
                         .strokeBorder(Color.green.opacity(0.3), lineWidth: 2)
-                        .frame(width: 150 * CGFloat(accessibilityTextSizeScale), height: 150 * CGFloat(accessibilityTextSizeScale))
+                        .frame(width: circleSizeLarge, height: circleSizeLarge)
                         .scaleEffect(animateStats ? 1.0 : 0.7)
                     
                     Text("🎉")
-                        .font(.system(size: 70 * CGFloat(accessibilityTextSizeScale)))
+                        .font(.system(size: emojiSize))
                         .rotationEffect(.degrees(animateStats ? 0 : -35))
                 }
                 .animation(motionAnimation(.spring(response: 0.6, dampingFraction: 0.6).delay(0.2)), value: animateStats)
                 
                 VStack(spacing: 8) {
                     Text("¡Compra Completada!")
-                        .font(.system(size: 32 * CGFloat(accessibilityTextSizeScale), weight: .black))
+                        .font(.largeTitle.weight(.black))
                         .foregroundStyle(.white)
                     
                     Text("Todo listo en \(storeName)")
-                        .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.bodyBoldDynamic)
                         .foregroundStyle(Color.green)
                 }
                 .opacity(animateStats ? 1.0 : 0.0)
@@ -66,7 +74,7 @@ struct CompletionCelebrationView: View {
                 .animation(motionAnimation(.easeOut(duration: 0.5).delay(0.4)), value: animateStats)
                 
                 // Tarjeta de estadísticas con Glassmorphic style
-                VStack(spacing: 16 * CGFloat(accessibilityTextSizeScale)) {
+                VStack(spacing: cardSpacing) {
                     statRow(title: "Productos Comprados", value: "\(productsCount)", icon: "cart.fill", color: .green)
                     
                     if totalSpent > 0 {
@@ -74,7 +82,7 @@ struct CompletionCelebrationView: View {
                         statRow(title: "Gasto Estimado", value: totalSpent.formattedPriceWithSymbol, icon: "dollarsign.circle.fill", color: .yellow)
                     }
                 }
-                .padding(24 * CGFloat(accessibilityTextSizeScale))
+                .padding(cardPadding)
                 .background {
                     RoundedRectangle(cornerRadius: 24, style: .continuous)
                         .fill(Color.white.opacity(0.06))
@@ -92,17 +100,17 @@ struct CompletionCelebrationView: View {
                 Spacer()
                 
                 // Botones
-                VStack(spacing: 12 * CGFloat(accessibilityTextSizeScale)) {
+                VStack(spacing: buttonsSpacing) {
                     // Botón Compartir Resumen
                     ShareLink(item: shareSummaryText) {
                         HStack {
                             Image(systemName: "square.and.arrow.up")
                                 .fontWeight(.semibold)
                             Text("Compartir Resumen")
-                                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                                .font(Theme.bodyBoldDynamic)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16 * CGFloat(accessibilityTextSizeScale))
+                        .padding(.vertical, buttonPaddingVertical)
                         .background(Color.green)
                         .foregroundStyle(.white)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -117,10 +125,10 @@ struct CompletionCelebrationView: View {
                             Image(systemName: "checkmark.bin.fill")
                                 .fontWeight(.semibold)
                             Text("Limpiar Comprados")
-                                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                                .font(Theme.bodyBoldDynamic)
                         }
                         .frame(maxWidth: .infinity)
-                        .padding(.vertical, 16 * CGFloat(accessibilityTextSizeScale))
+                        .padding(.vertical, buttonPaddingVertical)
                         .background(Theme.accentYellow)
                         .foregroundStyle(.black)
                         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -134,10 +142,10 @@ struct CompletionCelebrationView: View {
                         onDismiss()
                     } label: {
                         Text("Volver a la Lista")
-                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyBoldDynamic)
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 16 * CGFloat(accessibilityTextSizeScale))
+                            .padding(.vertical, buttonPaddingVertical)
                             .background(Color.white.opacity(0.12))
                             .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
                             .overlay {
@@ -169,20 +177,20 @@ struct CompletionCelebrationView: View {
     private func statRow(title: String, value: String, icon: String, color: Color) -> some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: 20 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                .font(.system(size: iconSize, weight: .bold))
                 .foregroundStyle(color)
                 .frame(width: 32, height: 32)
                 .background(color.opacity(0.15))
                 .clipShape(Circle())
             
             Text(title)
-                .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyDynamic)
                 .foregroundStyle(.white.opacity(0.8))
             
             Spacer()
             
             Text(value)
-                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyBoldDynamic)
                 .foregroundStyle(.white)
         }
     }

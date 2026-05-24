@@ -7,7 +7,15 @@ struct ShoppingModeActiveView: View {
     let onBack: () -> Void
     let onExit: () -> Void
     @Environment(\.modelContext) private var modelContext
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
+    @ScaledMetric(relativeTo: .body) private var emptyImageSize: CGFloat = 60
+    @ScaledMetric(relativeTo: .body) private var headerIconSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .body) private var categoryProgressPaddingHorizontal: CGFloat = 8
+    @ScaledMetric(relativeTo: .body) private var categoryProgressPaddingVertical: CGFloat = 4
+    @ScaledMetric(relativeTo: .body) private var categoryRowSpacing: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var categoryPadding: CGFloat = 20
+    @ScaledMetric(relativeTo: .body) private var arrowIconSize: CGFloat = 18
+    @ScaledMetric(relativeTo: .body) private var arrowButtonSize: CGFloat = 48
 
     var body: some View {
         VStack(spacing: 0) {
@@ -33,13 +41,13 @@ struct ShoppingModeActiveView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "cart.badge.questionmark")
-                .font(.system(size: 60))
+                .font(.system(size: emptyImageSize))
                 .foregroundStyle(Color.shoppingModeSecondaryText)
             Text("No hay productos asignados a \(viewModel.store.displayName)")
-                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyBoldDynamic)
                 .foregroundStyle(Color.shoppingModeText)
             Text("Asigna productos a esta tienda en la lista principal para verlos aquí.")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.shoppingModeSecondaryText)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
@@ -51,13 +59,13 @@ struct ShoppingModeActiveView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: 60))
+                .font(.system(size: emptyImageSize))
                 .foregroundStyle(Color.green)
             Text("¡No hay productos pendientes!")
-                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyBoldDynamic)
                 .foregroundStyle(Color.shoppingModeText)
             Text("Todos tus artículos para \(viewModel.store.displayName) ya fueron comprados.")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.shoppingModeSecondaryText)
                 .padding(.horizontal, 40)
                 .multilineTextAlignment(.center)
@@ -71,30 +79,30 @@ struct ShoppingModeActiveView: View {
             VStack(spacing: 0) {
                 HStack {
                     Image(systemName: activeCategory.sfSymbol)
-                        .font(.system(size: 20, weight: .bold))
+                        .font(.system(size: headerIconSize, weight: .bold))
                         .foregroundStyle(Theme.accentYellow)
                     
                     Text(activeCategory.displayName.uppercased())
-                        .font(.system(size: 16, weight: .black))
+                        .font(Theme.bodyBoldDynamic.weight(.black))
                         .foregroundStyle(Color.shoppingModeText)
                     
                     Spacer()
                     
                     let categoryProgress = viewModel.categoryProgress(for: activeCategory)
                     Text("\(categoryProgress.purchased)/\(categoryProgress.total)")
-                        .font(.system(size: 13, weight: .semibold).monospacedDigit())
+                        .font(Theme.captionDynamic.weight(.semibold).monospacedDigit())
                         .foregroundStyle(Color.shoppingModeText)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
+                        .padding(.horizontal, categoryProgressPaddingHorizontal)
+                        .padding(.vertical, categoryProgressPaddingVertical)
                         .background(Color.shoppingModeControlBackground)
                         .clipShape(Capsule())
                 }
-                .padding(.horizontal, 20)
+                .padding(.horizontal, categoryPadding)
                 .padding(.vertical, 14)
                 .background(Color.shoppingModeSurface)
                 
                 ScrollView {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(spacing: categoryRowSpacing) {
                         ForEach(viewModel.activeItems) { item in
                             ShoppingModeItemRow(item: item) {
                                 viewModel.toggleItem(item, context: modelContext)
@@ -105,7 +113,7 @@ struct ShoppingModeActiveView: View {
                             }
                         }
                     }
-                    .padding(20)
+                    .padding(categoryPadding)
                 }
             }
         }
@@ -118,9 +126,9 @@ struct ShoppingModeActiveView: View {
                 viewModel.previousCategory()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: arrowIconSize, weight: .bold))
                     .foregroundStyle(Color.shoppingModeText)
-                    .frame(width: 48, height: 48)
+                    .frame(width: arrowButtonSize, height: arrowButtonSize)
                     .background(Color.shoppingModeControlBackground)
                     .clipShape(Circle())
             }
@@ -134,7 +142,7 @@ struct ShoppingModeActiveView: View {
             if viewModel.categories.count > 0 {
                 VStack(spacing: 4) {
                     Text("Categoría \(viewModel.activeCategoryIndex + 1) de \(viewModel.categories.count)")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(Theme.captionDynamic.weight(.bold))
                         .foregroundStyle(Color.shoppingModeSecondaryText)
                     
                     Button {
@@ -142,7 +150,7 @@ struct ShoppingModeActiveView: View {
                         viewModel.nextCategory()
                     } label: {
                         Text("Saltar Categoría")
-                            .font(.system(size: 13, weight: .bold))
+                            .font(Theme.captionDynamic.weight(.bold))
                             .foregroundStyle(Theme.accentYellow)
                             .frame(minHeight: Theme.minimumTouchTarget)
                     }
@@ -160,9 +168,9 @@ struct ShoppingModeActiveView: View {
                 viewModel.nextCategory()
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 18, weight: .bold))
+                    .font(.system(size: arrowIconSize, weight: .bold))
                     .foregroundStyle(Color.shoppingModeText)
-                    .frame(width: 48, height: 48)
+                    .frame(width: arrowButtonSize, height: arrowButtonSize)
                     .background(Color.shoppingModeControlBackground)
                     .clipShape(Circle())
             }

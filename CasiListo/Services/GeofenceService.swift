@@ -2,12 +2,16 @@ import Foundation
 import CoreLocation
 import UserNotifications
 import SwiftData
+import Observation
 
 /// Servicio encargado de registrar y gestionar alertas geolocalizadas cuando el usuario
 /// pasa cerca de un supermercado con artículos pendientes.
+@Observable
 @MainActor
 final class GeofenceService: NSObject, CLLocationManagerDelegate {
     static let shared = GeofenceService()
+    
+    private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
     
     private let locationManager = CLLocationManager()
     private var modelContainer: ModelContainer?
@@ -16,6 +20,7 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyHundredMeters
+        authorizationStatus = locationManager.authorizationStatus
     }
     
     func initialize(with container: ModelContainer) {
@@ -132,7 +137,9 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         }
     }
     
-    func locationManager(_ manager: CLLocationManager, didChangeAuthorization status: CLAuthorizationStatus) {
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        let status = manager.authorizationStatus
+        self.authorizationStatus = status
         if status == .authorizedAlways || status == .authorizedWhenInUse {
             if UserDefaults.standard.bool(forKey: "geofencing_enabled") {
                 startMonitoringAll()

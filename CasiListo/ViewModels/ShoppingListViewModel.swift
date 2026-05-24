@@ -248,7 +248,7 @@ final class ShoppingListViewModel {
         for (index, item) in mutableItems.enumerated() {
             item.sortOrder = index
         }
-        try? context.save()
+        context.safeSave()
     }
 
     /// Calcula la suma de precios de todos los artículos pendientes.

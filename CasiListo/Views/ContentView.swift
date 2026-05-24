@@ -257,7 +257,7 @@ struct ContentView: View {
         case .settings:
             SettingsSheet()
         case .history:
-            ShoppingHistoryView(completedLists: completedLists)
+            ShoppingHistoryView(completedLists: completedLists, allItems: allItems)
         }
     }
 
