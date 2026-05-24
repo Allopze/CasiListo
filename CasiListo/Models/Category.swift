@@ -44,7 +44,7 @@ enum DefaultCategory: String, CaseIterable, Codable, Identifiable {
         }
     }
 
-    @MainActor var color: Color {
+    nonisolated var color: Color {
         switch self {
         case .vinos: return Color(hue: 0.75, saturation: 0.65, brightness: 0.70)
         case .aseoPersonal: return Color(hue: 0.58, saturation: 0.60, brightness: 0.80)
@@ -95,12 +95,11 @@ extension Category {
     var displayName: String { name }
     var id: String { name }
     var rawValue: String { name }
-    static var fallback: Category {
-        Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
-    }
+    nonisolated(unsafe) static let fallback = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
 
-    @MainActor var accentColor: Color {
-        DefaultCategory.allCases.first { $0.rawValue == name }?.color ?? Color(hue: 0.13, saturation: 0.80, brightness: 0.95)
+    nonisolated static func accentColor(forName name: String) -> Color {
+        DefaultCategory.allCases.first { $0.rawValue == name }?.color
+            ?? Color(hue: 0.13, saturation: 0.80, brightness: 0.95)
     }
 }
 

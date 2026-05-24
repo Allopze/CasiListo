@@ -317,27 +317,49 @@ extension ModelContext {
     }
 }
 
+extension UIColor {
+    /// Crea un UIColor desde un string hexadecimal (RGB de 6 dígitos).
+    nonisolated convenience init(hex: String) {
+        let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+        var int: UInt64 = 0
+        Scanner(string: hex).scanHexInt64(&int)
+        let r, g, b: UInt64
+        switch hex.count {
+        case 6:
+            (r, g, b) = ((int >> 16) & 0xFF, (int >> 8) & 0xFF, int & 0xFF)
+        default:
+            (r, g, b) = (0, 0, 0)
+        }
+        self.init(
+            red: CGFloat(Double(r) / 255.0),
+            green: CGFloat(Double(g) / 255.0),
+            blue: CGFloat(Double(b) / 255.0),
+            alpha: 1.0
+        )
+    }
+}
+
 // MARK: - Colores programáticos (fallback sin Asset Catalog)
 
 extension Color {
 
     /// Fondo principal adaptativo.
-    static let appBackground = Color(light: Color(hex: "FAF8F5"), dark: Color(hex: "1C1B1A"))
+    static let appBackground = Color(light: UIColor(hex: "FAF8F5"), dark: UIColor(hex: "1C1B1A"))
 
     /// Fondo de tarjeta adaptativo.
-    static let appCardBackground = Color(light: Color.white, dark: Color(hex: "2A2928"))
+    static let appCardBackground = Color(light: UIColor.white, dark: UIColor(hex: "2A2928"))
 
     /// Texto primario adaptativo.
-    static let appTextPrimary = Color(light: Color(hex: "1A1A1A"), dark: Color(hex: "F5F5F5"))
+    static let appTextPrimary = Color(light: UIColor(hex: "1A1A1A"), dark: UIColor(hex: "F5F5F5"))
 
     /// Texto secundario adaptativo.
-    static let appTextSecondary = Color(light: Color(hex: "8A8A8A"), dark: Color(hex: "A0A0A0"))
+    static let appTextSecondary = Color(light: UIColor(hex: "8A8A8A"), dark: UIColor(hex: "A0A0A0"))
 
     /// Texto para ítems comprados.
-    static let appTextPurchased = Color(light: Color(hex: "6F6F6F"), dark: Color(hex: "A8A8A8"))
+    static let appTextPurchased = Color(light: UIColor(hex: "6F6F6F"), dark: UIColor(hex: "A8A8A8"))
 
     /// Separador sutil.
-    static let appSeparator = Color(light: Color(hex: "ECECEC"), dark: Color(hex: "3A3938"))
+    static let appSeparator = Color(light: UIColor(hex: "ECECEC"), dark: UIColor(hex: "3A3938"))
 
     /// Fondo inmersivo para el modo compra. Se mantiene oscuro en claro y oscuro para asegurar contraste.
     static let shoppingModeBackground = Color(hex: "101412")
@@ -357,18 +379,17 @@ extension Color {
     // MARK: - Helpers
 
     /// Crea un color adaptativo para claro y oscuro.
-    init(light: Color, dark: Color) {
-        let lightUIColor = UIColor(light)
-        let darkUIColor = UIColor(dark)
-        self.init(uiColor: UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? darkUIColor
-                : lightUIColor
+    /// `nonisolated` para que el provider de UIKit lo pueda resolver en el hilo
+    /// del renderer sin que Swift 6 dispare la aserción de aislamiento @MainActor
+    /// (recordar que el proyecto usa SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor).
+    nonisolated init(light: UIColor, dark: UIColor) {
+        self = Color(UIColor { traits in
+            traits.userInterfaceStyle == .dark ? dark : light
         })
     }
 
     /// Crea un color desde un string hexadecimal.
-    init(hex: String) {
+    nonisolated init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
         var int: UInt64 = 0
         Scanner(string: hex).scanHexInt64(&int)

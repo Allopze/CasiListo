@@ -121,18 +121,23 @@ struct ContentView: View {
             if resetStorageForUITestsIfNeeded() {
                 return
             }
+            
+            // Inicializar servicios
             CategoryBootstrapService.bootstrap(context: modelContext)
             GeofenceService.shared.initialize(with: modelContext.container)
+            
             let list = ShoppingListLifecycleService.bootstrap(context: modelContext)
             SuggestedProducts.seedCatalogItems(in: modelContext)
 
             let itemDescriptor = FetchDescriptor<ShoppingItem>()
             let itemCount = (try? modelContext.fetchCount(itemDescriptor)) ?? 0
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
+            
             if itemCount == 0 || !hasSeeded {
                 SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
                 UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
             }
+            
             WidgetDataBridge.write(items: activeItems)
         }
         .onChange(of: activeItems) { _, newItems in

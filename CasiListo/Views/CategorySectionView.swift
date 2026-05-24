@@ -115,9 +115,9 @@ struct CategorySectionView: View {
             HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: sfSymbolSize, weight: .bold))
-                    .foregroundStyle(category.accentColor)
+                    .foregroundStyle(Category.accentColor(forName: category.name))
                     .frame(width: imageWidth, height: imageWidth)
-                    .background(category.accentColor.opacity(0.12))
+                    .background(Category.accentColor(forName: category.name).opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                 Text(category.displayName)

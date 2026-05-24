@@ -16,8 +16,8 @@ enum WidgetDataBridge {
     }
 
     static func write(items: [ShoppingItem]) {
-        let pending = items.filter { $0.status == .pending }
-        let purchased = items.filter { $0.status == .purchased }
+        let pending = items.filter { !$0.isPurchased }
+        let purchased = items.filter { $0.isPurchased }
         let snapshot = Snapshot(
             pendingCount: pending.count,
             purchasedCount: purchased.count,
@@ -29,6 +29,10 @@ enum WidgetDataBridge {
             let defaults = UserDefaults(suiteName: groupID)
         else { return }
         defaults.set(data, forKey: key)
-        WidgetCenter.shared.reloadAllTimelines()
+        
+        // Recargar widgets en el main actor
+        Task { @MainActor in
+            WidgetCenter.shared.reloadAllTimelines()
+        }
     }
 }
