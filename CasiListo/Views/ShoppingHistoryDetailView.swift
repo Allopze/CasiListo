@@ -119,7 +119,7 @@ struct ShoppingHistoryDetailView: View {
         }
         .padding(16)
         .background(Color.appCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
     
@@ -158,7 +158,7 @@ struct ShoppingHistoryDetailView: View {
                 }
             }
             .background(Color.appCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
             .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
         }
     }
@@ -182,7 +182,7 @@ struct ShoppingHistoryDetailView: View {
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
                             .background(Color.appSeparator)
-                            .clipShape(RoundedRectangle(cornerRadius: 4))
+                            .clipShape(Capsule())
                     }
                     
                     if let price = item.price {
@@ -210,7 +210,7 @@ struct ShoppingHistoryDetailView: View {
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
                     .background(item.store.color.opacity(0.8))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .clipShape(Capsule())
             }
         }
         .padding(.vertical, 10)

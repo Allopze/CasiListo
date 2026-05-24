@@ -51,6 +51,10 @@ final class ShoppingModeViewModel {
         items.filter { $0.status == .pending }.count
     }
 
+    var actionableCount: Int {
+        items.filter(\.status.isActionableInShoppingMode).count
+    }
+
     var progress: Double {
         guard totalCount > 0 else { return 1.0 }
         return Double(purchasedCount) / Double(totalCount)
@@ -108,8 +112,9 @@ final class ShoppingModeViewModel {
     }
     
     private func checkCompletion() {
-        // Se considera completado cuando todos los ítems de esta tienda están comprados
-        if pendingCount == 0 && totalCount > 0 {
+        // La sesión termina cuando no quedan productos accionables, aunque algunos
+        // hayan quedado pospuestos o no encontrados.
+        if actionableCount == 0 && totalCount > 0 {
             withAnimation(.spring()) {
                 isCompleted = true
             }

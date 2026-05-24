@@ -92,6 +92,7 @@ struct ShoppingListView: View {
             }
         }
         .listStyle(.plain)
+        .listSectionSpacing(.compact)
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 1)
         .background(Color.appBackground)

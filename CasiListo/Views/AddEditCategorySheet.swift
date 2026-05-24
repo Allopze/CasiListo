@@ -129,9 +129,9 @@ struct AddEditCategorySheet: View {
                                     .foregroundStyle(selectedSymbol == symbol ? .white : Color.appTextPrimary)
                                     .frame(width: iconSelectorSize, height: iconSelectorSize)
                                     .background(selectedSymbol == symbol ? Theme.accentYellow : Color.appCardBackground.opacity(0.6))
-                                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                                    .clipShape(Circle())
                                     .overlay(
-                                        RoundedRectangle(cornerRadius: 8, style: .continuous)
+                                        Circle()
                                             .stroke(selectedSymbol == symbol ? Theme.accentYellow : Color.appSeparator, lineWidth: 1)
                                     )
                             }

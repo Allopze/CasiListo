@@ -95,7 +95,7 @@ struct AchievementsView: View {
         }
         .padding(24 * CGFloat(accessibilityTextSizeScale))
         .background(Color.appCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 8, y: 4)
         .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
     }
@@ -142,9 +142,9 @@ struct AchievementsView: View {
         }
         .padding(16)
         .background(Color.appCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .overlay {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
+            RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                 .strokeBorder(isUnlocked ? Theme.accentYellow.opacity(0.2) : Color.white.opacity(0.05), lineWidth: 1.5)
         }
         .shadow(color: isUnlocked ? Theme.accentYellow.opacity(0.04) : .clear, radius: 6, y: 3)

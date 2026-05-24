@@ -31,6 +31,8 @@ struct CategorySectionView: View {
     @ScaledMetric(relativeTo: .body) private var rowBackgroundPaddingVertical: CGFloat = 3
     @ScaledMetric(relativeTo: .body) private var topPadding: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 4
+    @ScaledMetric(relativeTo: .body) private var collapsedPaddingVertical: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var collapsedOuterPadding: CGFloat = 2
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
@@ -144,14 +146,14 @@ struct CategorySectionView: View {
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
             }
             .textCase(nil)
-            .padding(.vertical, paddingVertical)
+            .padding(.vertical, isCollapsed ? collapsedPaddingVertical : paddingVertical)
             .padding(.horizontal, cardPadding)
             .background(Color.appCardBackground)
             .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
             .shadow(color: .black.opacity(0.06), radius: 6, x: 0, y: 3)
             .padding(.horizontal, cardPadding)
-            .padding(.top, topPadding)
-            .padding(.bottom, bottomPadding)
+            .padding(.top, isCollapsed ? collapsedOuterPadding : topPadding)
+            .padding(.bottom, isCollapsed ? collapsedOuterPadding : bottomPadding)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

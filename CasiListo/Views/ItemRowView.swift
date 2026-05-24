@@ -16,10 +16,8 @@ struct ItemRowView: View {
     @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 9
     @ScaledMetric(relativeTo: .caption) private var storePaddingHorizontal: CGFloat = 6
     @ScaledMetric(relativeTo: .caption) private var storePaddingVertical: CGFloat = 2
-    @ScaledMetric(relativeTo: .caption) private var storeCornerRadius: CGFloat = 4
     @ScaledMetric(relativeTo: .caption) private var pillPaddingHorizontal: CGFloat = 8
     @ScaledMetric(relativeTo: .caption) private var pillPaddingVertical: CGFloat = 3
-    @ScaledMetric(relativeTo: .caption) private var pillCornerRadius: CGFloat = 6
     @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var editButtonSymbolSize: CGFloat = 13
 
@@ -120,7 +118,7 @@ struct ItemRowView: View {
                     .padding(.horizontal, storePaddingHorizontal)
                     .padding(.vertical, storePaddingVertical)
                     .background(item.store.color.opacity(item.isPurchased ? 0.4 : 0.85))
-                    .clipShape(RoundedRectangle(cornerRadius: storeCornerRadius))
+                    .clipShape(Capsule())
                     .accessibilityLabel("Tienda: \(item.store.displayName)")
 
                 if !item.quantity.isEmpty {
@@ -130,7 +128,7 @@ struct ItemRowView: View {
                         .padding(.horizontal, pillPaddingHorizontal)
                         .padding(.vertical, pillPaddingVertical)
                         .background(quantityBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: pillCornerRadius))
+                        .clipShape(Capsule())
                         .accessibilityLabel("Cantidad \(item.quantity)")
                 }
 
@@ -141,7 +139,7 @@ struct ItemRowView: View {
                         .padding(.horizontal, pillPaddingHorizontal)
                         .padding(.vertical, pillPaddingVertical)
                         .background(item.isPurchased ? Color.appTextPurchased.opacity(0.1) : Color.green.opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: pillCornerRadius))
+                        .clipShape(Capsule())
                         .accessibilityLabel("Precio \(price.formattedPrice)")
                 }
 
@@ -153,7 +151,7 @@ struct ItemRowView: View {
                         .padding(.horizontal, pillPaddingHorizontal)
                         .padding(.vertical, pillPaddingVertical)
                         .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.12))
-                        .clipShape(RoundedRectangle(cornerRadius: pillCornerRadius))
+                        .clipShape(Capsule())
                 }
             }
 

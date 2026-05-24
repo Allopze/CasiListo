@@ -13,10 +13,10 @@ enum Theme {
 
     // MARK: - Medidas Estáticas (Compatibilidad)
 
-    static let cornerRadius: CGFloat = 20
-    static let smallCornerRadius: CGFloat = 14
-    static let controlCornerRadius: CGFloat = 24
-    static let chipCornerRadius: CGFloat = 24
+    static let cornerRadius: CGFloat = 34
+    static let smallCornerRadius: CGFloat = 26
+    static let controlCornerRadius: CGFloat = 999
+    static let chipCornerRadius: CGFloat = 999
     static let cardPadding: CGFloat = 16
     static let itemSpacing: CGFloat = 12
     static let sectionSpacing: CGFloat = 24
@@ -99,15 +99,15 @@ enum Theme {
     }
 
     static func cornerRadius(scale: Double) -> CGFloat {
-        20 * CGFloat(scale)
+        34 * CGFloat(scale)
     }
 
     static func smallCornerRadius(scale: Double) -> CGFloat {
-        14 * CGFloat(scale)
+        26 * CGFloat(scale)
     }
 
     static func controlCornerRadius(scale: Double) -> CGFloat {
-        24 * CGFloat(scale)
+        999
     }
 
     static func cardPadding(scale: Double) -> CGFloat {
@@ -233,7 +233,7 @@ struct AdaptiveGlassProminentButtonStyle: ButtonStyle {
             .foregroundStyle(Color.appTextPrimary)
             .background(Theme.accentYellow.opacity(0.85))
             .background(.ultraThinMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            .clipShape(Capsule())
             .shadow(color: Theme.accentYellow.opacity(0.2), radius: 6, x: 0, y: 3)
             .opacity(configuration.isPressed ? 0.8 : 1.0)
             .scaleEffect(configuration.isPressed ? 0.98 : 1.0)

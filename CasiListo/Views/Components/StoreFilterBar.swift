@@ -41,13 +41,13 @@ struct StoreFilterBar: View {
             .foregroundStyle(isSelected ? selectedForeground(for: store) : Color.appTextPrimary)
             .background {
                 if isSelected {
-                    RoundedRectangle(cornerRadius: 12 * CGFloat(accessibilityTextSizeScale), style: .continuous)
+                    Capsule()
                         .fill(activeColor)
                 } else {
-                    RoundedRectangle(cornerRadius: 12 * CGFloat(accessibilityTextSizeScale), style: .continuous)
+                    Capsule()
                         .fill(Color.appCardBackground.opacity(0.4))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 12 * CGFloat(accessibilityTextSizeScale), style: .continuous)
+                            Capsule()
                                 .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
                         }
                 }

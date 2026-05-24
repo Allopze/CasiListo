@@ -86,10 +86,10 @@ struct CompletionCelebrationView: View {
                 }
                 .padding(cardPadding)
                 .background {
-                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                    RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                         .fill(Color.white.opacity(0.06))
                         .overlay {
-                            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                                 .strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
                         }
                 }
@@ -115,7 +115,7 @@ struct CompletionCelebrationView: View {
                         .padding(.vertical, buttonPaddingVertical)
                         .background(Color.green)
                         .foregroundStyle(.white)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
 
@@ -133,7 +133,7 @@ struct CompletionCelebrationView: View {
                         .padding(.vertical, buttonPaddingVertical)
                         .background(Theme.accentYellow)
                         .foregroundStyle(.black)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                        .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .accessibilityHint("Elimina los productos comprados de esta compra y vuelve a la lista")
@@ -149,9 +149,9 @@ struct CompletionCelebrationView: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, buttonPaddingVertical)
                             .background(Color.white.opacity(0.12))
-                            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                            .clipShape(Capsule())
                             .overlay {
-                                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                                Capsule()
                                     .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
                             }
                     }

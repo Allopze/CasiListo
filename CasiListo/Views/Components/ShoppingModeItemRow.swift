@@ -16,7 +16,6 @@ struct ShoppingModeItemRow: View {
     @ScaledMetric(relativeTo: .body) private var ellipsisSize: CGFloat = 15
     @ScaledMetric(relativeTo: .caption) private var quantityPaddingHorizontal: CGFloat = 8
     @ScaledMetric(relativeTo: .caption) private var quantityPaddingVertical: CGFloat = 3
-    @ScaledMetric(relativeTo: .caption) private var quantityCornerRadius: CGFloat = 6
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
@@ -69,11 +68,17 @@ struct ShoppingModeItemRow: View {
         .padding(.horizontal, paddingHorizontal)
         .frame(minHeight: minHeight)
         .background(Color.shoppingModeSurface)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.14), radius: 4, y: 2)
         .opacity(item.isPurchased ? 0.68 : 1.0)
         .accessibilityAction(named: item.isPurchased ? "Marcar pendiente" : "Marcar comprado") {
             onToggle()
+        }
+        .accessibilityAction(named: "Posponer") {
+            onMarkSkipped()
+        }
+        .accessibilityAction(named: "No encontrado") {
+            onMarkUnavailable()
         }
     }
 
@@ -111,7 +116,7 @@ struct ShoppingModeItemRow: View {
                         .padding(.horizontal, quantityPaddingHorizontal)
                         .padding(.vertical, quantityPaddingVertical)
                         .background(Color.shoppingModeControlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: quantityCornerRadius))
+                        .clipShape(Capsule())
                 }
             }
 

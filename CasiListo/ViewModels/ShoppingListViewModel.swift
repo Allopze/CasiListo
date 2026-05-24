@@ -72,9 +72,6 @@ final class ShoppingListViewModel {
             .compactMap { category in
                 guard let items = grouped[category.name], !items.isEmpty else { return nil }
                 let sorted = items.sorted { a, b in
-                    if a.status != b.status {
-                        return a.status.sortPriority < b.status.sortPriority
-                    }
                     if a.sortOrder != b.sortOrder {
                         return a.sortOrder < b.sortOrder
                     }
@@ -335,17 +332,6 @@ final class ShoppingListViewModel {
 
     private func isUnit(_ value: String) -> Bool {
         ["kg", "g", "l", "lt", "ml", "u", "un", "uds", "unidad", "unidades"].contains(value.lowercased())
-    }
-}
-
-private extension ShoppingItemStatus {
-    var sortPriority: Int {
-        switch self {
-        case .pending: return 0
-        case .skipped: return 1
-        case .unavailable: return 2
-        case .purchased: return 3
-        }
     }
 }
 

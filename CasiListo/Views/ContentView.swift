@@ -160,7 +160,7 @@ struct ContentView: View {
                 Text("Comprar").font(.system(size: 13, weight: .bold))
             }
         }
-        .adaptiveGlassButtonStyle()
+        .adaptiveGlassProminentButtonStyle()
         .accessibilityLabel("Entrar a Modo Compra")
     }
 

@@ -94,10 +94,10 @@ struct ShoppingModeHeaderView: View {
                 
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 6)
+                        Capsule()
                             .fill(Color.shoppingModeControlBackground)
                         
-                        RoundedRectangle(cornerRadius: 6)
+                        Capsule()
                             .fill(viewModel.store.color)
                             .frame(width: max(0, geo.size.width * viewModel.progress))
                     }

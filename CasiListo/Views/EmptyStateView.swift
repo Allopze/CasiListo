@@ -50,7 +50,7 @@ struct LogoView: View {
                 .resizable()
                 .scaledToFit()
                 .frame(width: size, height: size)
-                .clipShape(RoundedRectangle(cornerRadius: size * 0.22, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: size * 0.36, style: .continuous))
                 .shadow(color: .black.opacity(0.08), radius: 8, x: 0, y: 4)
         } else {
             Image(systemName: "cart")

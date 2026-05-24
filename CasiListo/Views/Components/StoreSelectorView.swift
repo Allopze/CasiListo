@@ -60,7 +60,7 @@ struct StoreSelectorView: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16 * CGFloat(accessibilityTextSizeScale))
                     .background(Theme.accentYellow)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(Capsule())
                     .shadow(color: Theme.accentYellow.opacity(0.3), radius: 10, y: 5)
             }
             .buttonStyle(.plain)
@@ -90,11 +90,11 @@ struct StoreSelectorView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 32 * CGFloat(accessibilityTextSizeScale))
             .background {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                     .fill(isSelected ? activeColor : Color.appCardBackground)
             }
             .overlay {
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
                     .strokeBorder(isSelected ? Color.white.opacity(0.2) : Color.white.opacity(0.05), lineWidth: 2)
             }
             .shadow(color: isSelected ? activeColor.opacity(0.25) : .black.opacity(0.05), radius: 8, y: 4)

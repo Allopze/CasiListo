@@ -94,7 +94,7 @@ struct SettingsSheet: View {
                                                 ? Color.appTextPurchased.opacity(0.1)
                                                 : Theme.accentYellow.opacity(0.15)
                                         )
-                                        .clipShape(RoundedRectangle(cornerRadius: 10 * CGFloat(accessibilityTextSizeScale)))
+                                        .clipShape(Capsule())
                                 }
 
                                 Text("Maduros pero firmes")
@@ -390,6 +390,8 @@ struct SettingsSheet: View {
                         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
                     }
                     .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+
+                    dedicationFooter
                 }
                 .padding(.vertical, 16)
             }
@@ -429,6 +431,18 @@ struct SettingsSheet: View {
         } message: {
             Text("Para recibir recordatorios cuando pases cerca de un supermercado, debes activar el acceso a la ubicación en los ajustes del dispositivo.")
         }
+    }
+
+    private var dedicationFooter: some View {
+        Text("Desarrollado por Alejandro López Zelaya para su querido padre, Casimiro López Díaz. Ojalá esta lista te acompañe por siempre.")
+            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+            .foregroundStyle(Color.appTextSecondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale) * 2)
+            .padding(.top, 4)
+            .padding(.bottom, 8)
+            .accessibilityLabel("Desarrollado por Alejandro López Zelaya para su querido padre, Casimiro López Díaz. Ojalá esta lista te acompañe por siempre.")
     }
 
     private func gestoInfoRow(icon: String, title: String, description: String) -> some View {
