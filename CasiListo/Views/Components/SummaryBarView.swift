@@ -17,6 +17,8 @@ struct SummaryBarView: View {
     @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.cornerRadius
 
+    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
     var body: some View {
         let pendingLabel = pendingTotal > 0 ? "\(pendingCount) pendientes (\(pendingTotal.formattedPriceWithSymbol))" : "\(pendingCount) pendientes"
         let purchasedLabel = purchasedTotal > 0 ? "\(purchasedCount) comprados (\(purchasedTotal.formattedPriceWithSymbol))" : "\(purchasedCount) comprados"
@@ -24,12 +26,12 @@ struct SummaryBarView: View {
         return AdaptiveGlassEffectContainer(spacing: 12) {
             HStack(spacing: scaledSpacing) {
                 Label(pendingLabel, systemImage: "circle")
-                    .font(Theme.captionDynamic)
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.appTextSecondary)
 
                 if purchasedCount > 0 {
                     Label(purchasedLabel, systemImage: "checkmark.circle.fill")
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Theme.accentYellow)
                 }
 
@@ -46,8 +48,8 @@ struct SummaryBarView: View {
                         systemImage: showPurchased ? "eye.slash" : "eye"
                     )
                     .labelStyle(.iconOnly)
-                    .font(.system(size: eyeIconSize, weight: .semibold))
-                    .frame(width: eyeButtonSize, height: eyeButtonSize)
+                    .font(.system(size: eyeIconSize * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                    .frame(width: eyeButtonSize * CGFloat(accessibilityTextSizeScale), height: eyeButtonSize * CGFloat(accessibilityTextSizeScale))
                 }
                 .buttonStyle(.plain)
                 .glassFilterSurface(cornerRadius: eyeCornerRadius, interactive: true)

@@ -18,6 +18,8 @@ struct ShoppingModeItemRow: View {
     @ScaledMetric(relativeTo: .caption) private var quantityPaddingVertical: CGFloat = 3
     @ScaledMetric(relativeTo: .caption) private var quantityCornerRadius: CGFloat = 6
 
+    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
     var body: some View {
         HStack(spacing: scaledSpacing) {
             Button {
@@ -55,7 +57,7 @@ struct ShoppingModeItemRow: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: ellipsisSize, weight: .bold))
+                    .font(.system(size: ellipsisSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(Color.shoppingModeText)
                     .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                     .background(Color.shoppingModeControlBackground)
@@ -86,25 +88,25 @@ struct ShoppingModeItemRow: View {
                     .transition(.scale.combined(with: .opacity))
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: checkmarkSize, weight: .bold))
+                    .font(.system(size: checkmarkSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(.black)
             }
         }
-        .frame(width: max(Theme.minimumTouchTarget, checkboxSize), height: max(Theme.minimumTouchTarget, checkboxSize))
+        .frame(width: max(Theme.minimumTouchTarget, checkboxSize * CGFloat(accessibilityTextSizeScale)), height: max(Theme.minimumTouchTarget, checkboxSize * CGFloat(accessibilityTextSizeScale)))
     }
 
     private var itemText: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(item.name)
-                    .font(Theme.bodyDynamic.weight(.medium))
+                    .font(Theme.bodyFont(scale: accessibilityTextSizeScale).weight(.medium))
                     .foregroundStyle(item.isPurchased ? Color.shoppingModeSecondaryText : Color.shoppingModeText)
                     .strikethrough(item.isPurchased, color: Color.shoppingModeSecondaryText)
                     .lineLimit(2)
 
                 if !item.quantity.isEmpty {
                     Text(item.quantity)
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(item.isPurchased ? Color.shoppingModeSecondaryText : Theme.accentYellow)
                         .padding(.horizontal, quantityPaddingHorizontal)
                         .padding(.vertical, quantityPaddingVertical)
@@ -115,7 +117,7 @@ struct ShoppingModeItemRow: View {
 
             if !item.note.isEmpty {
                 Text(item.note)
-                    .font(Theme.captionDynamic)
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.shoppingModeSecondaryText)
                     .lineLimit(2)
             }

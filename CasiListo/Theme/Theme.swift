@@ -42,36 +42,60 @@ enum Theme {
     static let chipDynamic: Font = .caption.weight(.medium)
     static let sectionHeaderDynamic: Font = .title3.weight(.bold)
 
-    // MARK: - Accesibilidad Dinámica
+    // MARK: - Accesibilidad Dinámica (Combina Dynamic Type y Slider Manual)
 
-    @available(*, deprecated, message: "Usa Theme.titleDynamic o @ScaledMetric en su lugar")
     static func titleFont(scale: Double) -> Font {
-        Font.system(size: 34 * CGFloat(scale), weight: .bold, design: .rounded)
+        let systemSize = UIFont.preferredFont(forTextStyle: .largeTitle).pointSize
+        let size = systemSize * CGFloat(scale)
+        if let descriptor = UIFont.systemFont(ofSize: size, weight: .bold).fontDescriptor.withDesign(.rounded) {
+            return Font(UIFont(descriptor: descriptor, size: size))
+        }
+        return Font.system(size: 34 * CGFloat(scale), weight: .bold, design: .rounded)
     }
 
-    @available(*, deprecated, message: "Usa Theme.sectionHeaderDynamic en su lugar")
     static func sectionHeaderFont(scale: Double) -> Font {
-        Font.system(size: 20 * CGFloat(scale), weight: .bold, design: .rounded)
+        let systemSize = UIFont.preferredFont(forTextStyle: .title3).pointSize
+        let size = systemSize * CGFloat(scale)
+        if let descriptor = UIFont.systemFont(ofSize: size, weight: .bold).fontDescriptor.withDesign(.rounded) {
+            return Font(UIFont(descriptor: descriptor, size: size))
+        }
+        return Font.system(size: 20 * CGFloat(scale), weight: .bold, design: .rounded)
     }
 
-    @available(*, deprecated, message: "Usa Theme.bodyDynamic en su lugar")
     static func bodyFont(scale: Double) -> Font {
-        Font.system(size: 17 * CGFloat(scale), weight: .regular, design: .rounded)
+        let systemSize = UIFont.preferredFont(forTextStyle: .body).pointSize
+        let size = systemSize * CGFloat(scale)
+        if let descriptor = UIFont.systemFont(ofSize: size, weight: .regular).fontDescriptor.withDesign(.rounded) {
+            return Font(UIFont(descriptor: descriptor, size: size))
+        }
+        return Font.system(size: 17 * CGFloat(scale), weight: .regular, design: .rounded)
     }
 
-    @available(*, deprecated, message: "Usa Theme.bodyBoldDynamic en su lugar")
     static func bodyBoldFont(scale: Double) -> Font {
-        Font.system(size: 17 * CGFloat(scale), weight: .bold, design: .rounded)
+        let systemSize = UIFont.preferredFont(forTextStyle: .body).pointSize
+        let size = systemSize * CGFloat(scale)
+        if let descriptor = UIFont.systemFont(ofSize: size, weight: .semibold).fontDescriptor.withDesign(.rounded) {
+            return Font(UIFont(descriptor: descriptor, size: size))
+        }
+        return Font.system(size: 17 * CGFloat(scale), weight: .bold, design: .rounded)
     }
 
-    @available(*, deprecated, message: "Usa Theme.captionDynamic en su lugar")
     static func captionFont(scale: Double) -> Font {
-        Font.system(size: 13 * CGFloat(scale), weight: .regular, design: .rounded)
+        let systemSize = UIFont.preferredFont(forTextStyle: .caption1).pointSize
+        let size = systemSize * CGFloat(scale)
+        if let descriptor = UIFont.systemFont(ofSize: size, weight: .regular).fontDescriptor.withDesign(.rounded) {
+            return Font(UIFont(descriptor: descriptor, size: size))
+        }
+        return Font.system(size: 13 * CGFloat(scale), weight: .regular, design: .rounded)
     }
 
-    @available(*, deprecated, message: "Usa Theme.chipDynamic en su lugar")
     static func chipFont(scale: Double) -> Font {
-        Font.system(size: 13 * CGFloat(scale), weight: .medium, design: .rounded)
+        let systemSize = UIFont.preferredFont(forTextStyle: .caption1).pointSize
+        let size = systemSize * CGFloat(scale)
+        if let descriptor = UIFont.systemFont(ofSize: size, weight: .medium).fontDescriptor.withDesign(.rounded) {
+            return Font(UIFont(descriptor: descriptor, size: size))
+        }
+        return Font.system(size: 13 * CGFloat(scale), weight: .medium, design: .rounded)
     }
 
     static func cornerRadius(scale: Double) -> CGFloat {

@@ -21,6 +21,8 @@ struct ShoppingModeHeaderView: View {
     @ScaledMetric(relativeTo: .body) private var containerPaddingHorizontal: CGFloat = 20
     @ScaledMetric(relativeTo: .body) private var containerPaddingVertical: CGFloat = 16
 
+    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
     var body: some View {
         VStack(spacing: scaledVStackSpacing) {
             HStack {
@@ -31,9 +33,9 @@ struct ShoppingModeHeaderView: View {
                 } label: {
                     HStack(spacing: 4) {
                         Image(systemName: "chevron.left")
-                            .font(.system(size: chevronSize, weight: .bold))
+                            .font(.system(size: chevronSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                         Text("Atrás")
-                            .font(Theme.captionDynamic)
+                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                             .bold()
                     }
                     .foregroundStyle(Color.shoppingModeText)
@@ -50,9 +52,9 @@ struct ShoppingModeHeaderView: View {
                 
                 HStack(spacing: 6) {
                     Image(systemName: viewModel.store.sfSymbol)
-                        .font(.system(size: storeIconSize, weight: .bold))
+                        .font(.system(size: storeIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     Text(viewModel.store.displayName)
-                        .font(.system(size: storeIconSize, weight: .bold))
+                        .font(.system(size: storeIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                 }
                 .padding(.horizontal, storePaddingHorizontal)
                 .padding(.vertical, storePaddingVertical)
@@ -68,9 +70,9 @@ struct ShoppingModeHeaderView: View {
                     onExit()
                 } label: {
                     Image(systemName: "xmark")
-                        .font(.system(size: xmarkSize, weight: .bold))
+                        .font(.system(size: xmarkSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                         .foregroundStyle(Color.shoppingModeText)
-                        .frame(width: xmarkButtonSize, height: xmarkButtonSize)
+                        .frame(width: xmarkButtonSize * CGFloat(accessibilityTextSizeScale), height: xmarkButtonSize * CGFloat(accessibilityTextSizeScale))
                         .background(Color.shoppingModeControlBackground)
                         .clipShape(Circle())
                 }
@@ -81,11 +83,11 @@ struct ShoppingModeHeaderView: View {
             VStack(spacing: textSpacing) {
                 HStack {
                     Text("\(viewModel.purchasedCount) de \(viewModel.totalCount) comprados")
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Color.shoppingModeSecondaryText)
                     Spacer()
                     Text("\(Int(viewModel.progress * 100))%")
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .bold()
                         .foregroundStyle(Theme.accentYellow)
                 }

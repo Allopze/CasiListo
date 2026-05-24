@@ -22,6 +22,8 @@ struct CompletionCelebrationView: View {
     @ScaledMetric(relativeTo: .body) private var buttonsSpacing: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var buttonPaddingVertical: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 20
+
+    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     
     var body: some View {
         ZStack {
@@ -62,11 +64,11 @@ struct CompletionCelebrationView: View {
                 
                 VStack(spacing: 8) {
                     Text("¡Compra Completada!")
-                        .font(.largeTitle.weight(.black))
+                        .font(Theme.titleFont(scale: accessibilityTextSizeScale).weight(.black))
                         .foregroundStyle(.white)
                     
                     Text("Todo listo en \(storeName)")
-                        .font(Theme.bodyBoldDynamic)
+                        .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Color.green)
                 }
                 .opacity(animateStats ? 1.0 : 0.0)
@@ -107,7 +109,7 @@ struct CompletionCelebrationView: View {
                             Image(systemName: "square.and.arrow.up")
                                 .fontWeight(.semibold)
                             Text("Compartir Resumen")
-                                .font(Theme.bodyBoldDynamic)
+                                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, buttonPaddingVertical)
@@ -125,7 +127,7 @@ struct CompletionCelebrationView: View {
                             Image(systemName: "checkmark.bin.fill")
                                 .fontWeight(.semibold)
                             Text("Limpiar Comprados")
-                                .font(Theme.bodyBoldDynamic)
+                                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                         }
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, buttonPaddingVertical)
@@ -142,7 +144,7 @@ struct CompletionCelebrationView: View {
                         onDismiss()
                     } label: {
                         Text("Volver a la Lista")
-                            .font(Theme.bodyBoldDynamic)
+                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                             .foregroundStyle(.white)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, buttonPaddingVertical)
@@ -177,20 +179,20 @@ struct CompletionCelebrationView: View {
     private func statRow(title: String, value: String, icon: String, color: Color) -> some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: iconSize, weight: .bold))
+                .font(.system(size: iconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                 .foregroundStyle(color)
-                .frame(width: 32, height: 32)
+                .frame(width: 32 * CGFloat(accessibilityTextSizeScale), height: 32 * CGFloat(accessibilityTextSizeScale))
                 .background(color.opacity(0.15))
                 .clipShape(Circle())
             
             Text(title)
-                .font(Theme.bodyDynamic)
+                .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(.white.opacity(0.8))
             
             Spacer()
             
             Text(value)
-                .font(Theme.bodyBoldDynamic)
+                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(.white)
         }
     }

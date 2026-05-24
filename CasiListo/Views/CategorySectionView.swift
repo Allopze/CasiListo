@@ -32,6 +32,8 @@ struct CategorySectionView: View {
     @ScaledMetric(relativeTo: .body) private var topPadding: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 4
 
+    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
     var body: some View {
         Section {
             if !isCollapsed {
@@ -114,19 +116,19 @@ struct CategorySectionView: View {
         } label: {
             HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: sfSymbolSize, weight: .bold))
+                    .font(.system(size: sfSymbolSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(Theme.accentYellow)
-                    .frame(width: imageWidth, alignment: .center)
+                    .frame(width: imageWidth * CGFloat(accessibilityTextSizeScale), alignment: .center)
 
                 Text(category.displayName)
-                    .font(Theme.sectionHeaderDynamic)
+                    .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.appTextPrimary)
                     .bold()
 
                 Spacer()
 
                 Text("\(items.count)")
-                    .font(Theme.captionDynamic)
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.black)
                     .bold()
                     .monospacedDigit()
@@ -136,7 +138,7 @@ struct CategorySectionView: View {
                     .clipShape(Capsule())
                 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: chevronSize, weight: .bold))
+                    .font(.system(size: chevronSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(Color.appTextSecondary)
                     .rotationEffect(.degrees(isCollapsed ? -90 : 0))
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)

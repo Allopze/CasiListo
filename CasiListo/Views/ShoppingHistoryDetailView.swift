@@ -12,6 +12,8 @@ struct ShoppingHistoryDetailView: View {
     @ScaledMetric(relativeTo: .body) private var itemSpacing: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var statusIconSize: CGFloat = 18
     @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 9
+
+    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     
     private var listItems: [ShoppingItem] {
         allItems.filter { $0.listID == list.id }
@@ -61,11 +63,11 @@ struct ShoppingHistoryDetailView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Resumen de Gasto")
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Color.appTextSecondary)
                     
                     Text(list.totalSpent > 0 ? list.totalSpent.formattedPriceWithSymbol : "$0")
-                        .font(Theme.titleDynamic)
+                        .font(Theme.titleFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Theme.accentYellow)
                 }
                 
@@ -76,7 +78,7 @@ struct ShoppingHistoryDetailView: View {
                         Image(systemName: store.sfSymbol)
                         Text(store.displayName)
                     }
-                    .font(Theme.chipDynamic)
+                    .font(Theme.chipFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -105,11 +107,11 @@ struct ShoppingHistoryDetailView: View {
                 
                 HStack {
                     Image(systemName: "calendar")
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Color.appTextSecondary)
                     
                     Text("Finalizada el \(completedAt.formatted(date: .long, time: .shortened))")
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Color.appTextSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -130,7 +132,7 @@ struct ShoppingHistoryDetailView: View {
             Text(title)
                 .foregroundStyle(Color.appTextSecondary)
         }
-        .font(Theme.captionDynamic)
+        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
     }
     
     private func categorySection(_ category: Category, items: [ShoppingItem]) -> some View {
@@ -146,7 +148,7 @@ struct ShoppingHistoryDetailView: View {
                     .font(.caption)
                     .foregroundStyle(Color.appTextSecondary)
             }
-            .font(Theme.bodyBoldDynamic)
+            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
             .padding(.horizontal, 4)
             
             // Fila de Productos
@@ -168,14 +170,14 @@ struct ShoppingHistoryDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(item.name)
-                        .font(Theme.bodyDynamic)
+                        .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : Color.appTextPrimary)
                         .strikethrough(item.status == .purchased, color: Color.appTextPurchased)
                         .lineLimit(1)
                     
                     if !item.quantity.isEmpty {
                         Text(item.quantity)
-                            .font(Theme.captionDynamic)
+                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                             .foregroundStyle(Color.appTextSecondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -185,14 +187,14 @@ struct ShoppingHistoryDetailView: View {
                     
                     if let price = item.price {
                         Text(price.formattedPriceWithSymbol)
-                            .font(Theme.captionDynamic)
+                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                             .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : .green)
                     }
                 }
                 
                 if !item.note.isEmpty {
                     Text(item.note)
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(Color.appTextSecondary)
                         .lineLimit(1)
                 }
@@ -203,7 +205,7 @@ struct ShoppingHistoryDetailView: View {
             // Tag del supermercado si difiere de la lista
             if item.store != list.storeScope {
                 Text(item.store.displayName)
-                    .font(.system(size: storeTextSize, weight: .bold))
+                    .font(.system(size: storeTextSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -220,19 +222,19 @@ struct ShoppingHistoryDetailView: View {
         switch status {
         case .purchased:
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: statusIconSize, weight: .bold))
+                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                 .foregroundStyle(.green)
         case .skipped:
             Image(systemName: "clock.fill")
-                .font(.system(size: statusIconSize, weight: .bold))
+                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                 .foregroundStyle(.orange)
         case .unavailable:
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: statusIconSize, weight: .bold))
+                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                 .foregroundStyle(.red)
         case .pending:
             Image(systemName: "circle")
-                .font(.system(size: statusIconSize, weight: .bold))
+                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                 .foregroundStyle(Color.appTextSecondary)
         }
     }

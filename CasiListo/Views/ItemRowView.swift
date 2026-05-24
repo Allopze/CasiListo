@@ -23,6 +23,8 @@ struct ItemRowView: View {
     @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var editButtonSymbolSize: CGFloat = 13
 
+    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
     var body: some View {
         HStack(spacing: scaledSpacing) {
             // Toda la tarjeta (excepto el botón de edición) al tocarla completa o descompleta el ítem.
@@ -107,13 +109,13 @@ struct ItemRowView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 Text(item.name)
-                    .font(Theme.bodyDynamic)
+                    .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
                     .strikethrough(item.isPurchased, color: Color.appTextPurchased)
                     .lineLimit(2)
 
                 Text(item.store.displayName)
-                    .font(.system(size: storeTextSize, weight: .bold))
+                    .font(.system(size: storeTextSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, storePaddingHorizontal)
                     .padding(.vertical, storePaddingVertical)
@@ -123,7 +125,7 @@ struct ItemRowView: View {
 
                 if !item.quantity.isEmpty {
                     Text(item.quantity)
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Theme.accentYellow)
                         .padding(.horizontal, pillPaddingHorizontal)
                         .padding(.vertical, pillPaddingVertical)
@@ -134,7 +136,7 @@ struct ItemRowView: View {
 
                 if let price = item.price {
                     Text(price.formattedPriceWithSymbol)
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(item.isPurchased ? Color.appTextPurchased : .green)
                         .padding(.horizontal, pillPaddingHorizontal)
                         .padding(.vertical, pillPaddingVertical)
@@ -145,7 +147,7 @@ struct ItemRowView: View {
 
                 if item.status == .skipped || item.status == .unavailable {
                     Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
-                        .font(Theme.captionDynamic)
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                         .foregroundStyle(item.status == .skipped ? Color.orange : Color.red)
                         .labelStyle(.titleAndIcon)
                         .padding(.horizontal, pillPaddingHorizontal)
@@ -157,7 +159,7 @@ struct ItemRowView: View {
 
             if !item.note.isEmpty {
                 Text(item.note)
-                    .font(Theme.captionDynamic)
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.appTextSecondary)
                     .lineLimit(2)
             }
@@ -178,12 +180,12 @@ struct ItemRowView: View {
                     .transition(.scale.combined(with: .opacity))
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: checkmarkSize, weight: .bold))
+                    .font(.system(size: checkmarkSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
                     .foregroundStyle(.white)
                     .transition(.scale.combined(with: .opacity))
             }
         }
-        .frame(width: checkboxSize, height: checkboxSize)
+        .frame(width: checkboxSize * CGFloat(accessibilityTextSizeScale), height: checkboxSize * CGFloat(accessibilityTextSizeScale))
     }
 
     private var editButton: some View {
@@ -192,9 +194,9 @@ struct ItemRowView: View {
             onEdit()
         } label: {
             Image(systemName: "pencil")
-                .font(.system(size: editButtonSymbolSize, weight: .semibold))
+                .font(.system(size: editButtonSymbolSize * CGFloat(accessibilityTextSizeScale), weight: .semibold))
                 .foregroundStyle(Theme.accentYellow)
-                .frame(width: scaledEditButtonSize, height: scaledEditButtonSize)
+                .frame(width: scaledEditButtonSize * CGFloat(accessibilityTextSizeScale), height: scaledEditButtonSize * CGFloat(accessibilityTextSizeScale))
                 .background(Theme.accentYellow.opacity(0.12))
                 .clipShape(Circle())
         }
