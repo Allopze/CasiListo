@@ -174,12 +174,14 @@ final class ShoppingListViewModel {
     // MARK: - Acciones
 
     /// Alterna el estado de comprado de un ítem.
-    func togglePurchased(_ item: ShoppingItem) {
+    func togglePurchased(_ item: ShoppingItem, context: ModelContext? = nil) {
         item.status = item.status == .purchased ? .pending : .purchased
+        context?.safeSave()
     }
 
-    func markItem(_ item: ShoppingItem, as status: ShoppingItemStatus) {
+    func markItem(_ item: ShoppingItem, as status: ShoppingItemStatus, context: ModelContext? = nil) {
         item.status = status
+        context?.safeSave()
     }
 
     func presentAddItem() {
@@ -213,22 +215,76 @@ final class ShoppingListViewModel {
     /// Elimina un ítem del contexto.
     func deleteItem(_ item: ShoppingItem, context: ModelContext) {
         context.delete(item)
+        context.safeSave()
     }
 
-    /// Elimina todos los ítems marcados como comprados.
-    func clearPurchased(items: [ShoppingItem], context: ModelContext) {
-        for item in items where item.isPurchased {
-            if let selectedStore = selectedStore, item.store != selectedStore {
-                continue
+    func addQuickItem(
+        to activeList: ShoppingList?,
+        from allItems: [ShoppingItem],
+        categories: [Category],
+        context: ModelContext
+    ) {
+        let draft = quickAddDraft(from: quickAddText)
+        guard !draft.name.isEmpty else { return }
+
+        let category = SuggestedProducts.suggestedCategory(for: draft.name, in: categories)
+            ?? categories.first { $0.name == "Varios" }
+            ?? Category.fallback
+        let store = selectedStore ?? SuggestedProducts.suggestedStore(for: draft.name)
+
+        if let duplicate = duplicateItem(named: draft.name, store: store, in: allItems) {
+            if duplicate.quantity.isEmpty && !draft.quantity.isEmpty {
+                duplicate.quantity = draft.quantity
             }
-            context.delete(item)
+            quickAddText = ""
+            context.safeSave()
+            HapticFeedback.selection()
+            return
+        }
+
+        let newItem = ShoppingItem(
+            name: draft.name,
+            listID: activeList?.id,
+            quantity: draft.quantity,
+            category: category,
+            note: "",
+            isPurchased: false,
+            sortOrder: nextSortOrder(for: category, in: allItems),
+            store: store
+        )
+        withAnimation(Theme.defaultAnimation) {
+            context.insert(newItem)
+            if let activeList {
+                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
+            }
+            quickAddText = ""
+            context.safeSave()
+        }
+        HapticFeedback.success()
+    }
+
+    /// Busca un producto equivalente dentro de la lista activa para evitar duplicados accidentales.
+    func duplicateItem(
+        named name: String,
+        store: Store,
+        in items: [ShoppingItem],
+        excluding excludedID: UUID? = nil
+    ) -> ShoppingItem? {
+        let normalizedName = normalizedProductName(name)
+        guard !normalizedName.isEmpty else { return nil }
+
+        return items.first { item in
+            item.id != excludedID
+                && item.store == store
+                && normalizedProductName(item.name) == normalizedName
         }
     }
 
-    func clearPurchased(in items: [ShoppingItem], context: ModelContext) {
-        for item in items where item.isPurchased {
-            context.delete(item)
-        }
+    func normalizedProductName(_ value: String) -> String {
+        value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
+            .lowercased()
     }
 
     /// Calcula el siguiente sortOrder disponible para una categoría.

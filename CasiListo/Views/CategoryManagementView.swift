@@ -80,7 +80,7 @@ struct CategoryManagementView: View {
         } label: {
             HStack(spacing: rowSpacing) {
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: iconSize * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                    .font(.system(size: iconSize, weight: .semibold))
                     .foregroundStyle(Theme.accentYellow)
                     .frame(width: 32, height: 32)
                     .background(Theme.accentYellow.opacity(0.12))

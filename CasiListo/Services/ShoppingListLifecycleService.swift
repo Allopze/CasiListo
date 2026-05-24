@@ -40,9 +40,9 @@ enum ShoppingListLifecycleService {
             status: .completed,
             storeScope: store,
             purchasedCount: purchasedItems.count,
-            pendingCount: items.filter { $0.status == .pending }.count,
-            skippedCount: items.filter { $0.status == .skipped }.count,
-            unavailableCount: items.filter { $0.status == .unavailable }.count,
+            pendingCount: 0,
+            skippedCount: 0,
+            unavailableCount: 0,
             totalSpent: purchasedItems.compactMap(\.price).reduce(0, +)
         )
         context.insert(completedList)
@@ -52,7 +52,7 @@ enum ShoppingListLifecycleService {
         }
 
         if let activeList {
-            updateActiveListCounters(activeList, items: items)
+            updateActiveListCounters(activeList, items: fetchItems(in: context, fallback: items))
         }
 
         context.safeSave()
@@ -89,6 +89,11 @@ enum ShoppingListLifecycleService {
         }
     }
 
+    private static func fetchItems(in context: ModelContext, fallback: [ShoppingItem]) -> [ShoppingItem] {
+        let descriptor = FetchDescriptor<ShoppingItem>()
+        return (try? context.fetch(descriptor)) ?? fallback
+    }
+
     private static func defaultHistoryTitle(store: Store?) -> String {
         let date = Date().formatted(date: .abbreviated, time: .omitted)
         if let store {
@@ -97,4 +102,3 @@ enum ShoppingListLifecycleService {
         return "Compra completada - \(date)"
     }
 }
-

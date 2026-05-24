@@ -56,13 +56,13 @@ struct ShoppingModeItemRow: View {
                 }
             } label: {
                 Image(systemName: "ellipsis")
-                    .font(.system(size: ellipsisSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: ellipsisSize, weight: .bold))
                     .foregroundStyle(Color.shoppingModeText)
                     .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                     .background(Color.shoppingModeControlBackground)
                     .clipShape(Circle())
             }
-            .accessibilityLabel("Mas acciones para \(item.name)")
+            .accessibilityLabel("Más acciones para \(item.name)")
         }
         .padding(.vertical, paddingVertical)
         .padding(.horizontal, paddingHorizontal)
@@ -93,11 +93,11 @@ struct ShoppingModeItemRow: View {
                     .transition(.scale.combined(with: .opacity))
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: checkmarkSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: checkmarkSize, weight: .bold))
                     .foregroundStyle(.black)
             }
         }
-        .frame(width: max(Theme.minimumTouchTarget, checkboxSize * CGFloat(accessibilityTextSizeScale)), height: max(Theme.minimumTouchTarget, checkboxSize * CGFloat(accessibilityTextSizeScale)))
+        .frame(width: max(Theme.minimumTouchTarget, checkboxSize), height: max(Theme.minimumTouchTarget, checkboxSize))
     }
 
     private var itemText: some View {

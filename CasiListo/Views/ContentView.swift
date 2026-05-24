@@ -62,7 +62,8 @@ struct ContentView: View {
                                 categories: categories,
                                 viewModel: viewModel,
                                 onEdit: { viewModel.presentEditItem($0) },
-                                onAddTapped: { presentAddItem() }
+                                onAddTapped: { presentAddItem() },
+                                onArchivePurchased: { showsClearPurchasedDialog = true }
                             )
                         }
                     }
@@ -94,7 +95,7 @@ struct ContentView: View {
                     }
                     .sheet(item: $viewModel.presentedSheet) { sheetContent(for: $0) }
                     .confirmationDialog(
-                        "Borrar productos comprados",
+                        "Archivar productos comprados",
                         isPresented: $showsClearPurchasedDialog,
                         titleVisibility: .visible
                     ) {
@@ -113,7 +114,7 @@ struct ContentView: View {
                         }
                         Button("Cancelar", role: .cancel) {}
                     } message: {
-                        Text("Esta acción elimina todos los productos marcados como comprados.")
+                        Text("Esta acción mueve los productos comprados al historial y los quita de la lista actual.")
                     }
                     .environment(\.editMode, $editMode)
                 }
@@ -253,9 +254,30 @@ struct ContentView: View {
     private func sheetContent(for destination: ShoppingListSheetDestination) -> some View {
         switch destination {
         case .addItem:
-            AddEditItemSheet(mode: .add, activeList: activeList, allItems: activeItems, viewModel: viewModel)
+            let draft = viewModel.quickAddText.isEmpty ? nil : viewModel.quickAddDraft(from: viewModel.quickAddText)
+            AddEditItemSheet(
+                mode: .add,
+                activeList: activeList,
+                allItems: activeItems,
+                preselectedStore: viewModel.selectedStore,
+                initialName: draft?.name ?? "",
+                initialQuantity: draft?.quantity ?? "",
+                onQuickAddConsumed: { viewModel.quickAddText = "" },
+                nextSortOrder: { viewModel.nextSortOrder(for: $0, in: activeItems) },
+                checkDuplicate: { viewModel.duplicateItem(named: $0, store: $1, in: activeItems, excluding: $2) }
+            )
         case .editItem(let item):
-            AddEditItemSheet(mode: .edit(item), activeList: activeList, allItems: activeItems, viewModel: viewModel)
+            AddEditItemSheet(
+                mode: .edit(item),
+                activeList: activeList,
+                allItems: activeItems,
+                preselectedStore: nil,
+                initialName: "",
+                initialQuantity: "",
+                onQuickAddConsumed: {},
+                nextSortOrder: { viewModel.nextSortOrder(for: $0, in: activeItems) },
+                checkDuplicate: { viewModel.duplicateItem(named: $0, store: $1, in: activeItems, excluding: $2) }
+            )
         case .settings:
             SettingsSheet()
         case .history:

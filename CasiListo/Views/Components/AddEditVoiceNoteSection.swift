@@ -4,6 +4,8 @@ import AVFoundation
 /// Sección para grabar y reproducir notas de voz dentro del formulario de edición.
 struct AddEditVoiceNoteSection: View {
     @Binding var voiceNoteFilename: String?
+    var onRecorded: (String) -> Void = { _ in }
+    var onRemoved: (String) -> Void = { _ in }
     
     @State private var isRecording = false
     @State private var recordingPulse = false
@@ -101,6 +103,7 @@ struct AddEditVoiceNoteSection: View {
                     let success = VoiceNoteService.shared.startRecording(filename: filename)
                     if success {
                         self.voiceNoteFilename = filename
+                        self.onRecorded(filename)
                         self.isRecording = true
                         self.recordingDuration = 0
                         self.startRecordingDurationTask()
@@ -148,7 +151,7 @@ struct AddEditVoiceNoteSection: View {
     
     private func deleteVoiceNote() {
         if let filename = voiceNoteFilename {
-            VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+            onRemoved(filename)
             voiceNoteFilename = nil
         }
     }

@@ -22,8 +22,8 @@ struct ShoppingModeView: View {
                 if viewModel.isCompleted {
                     CompletionCelebrationView(
                         storeName: viewModel.store.displayName,
-                        productsCount: viewModel.totalCount,
-                        totalSpent: viewModel.items.compactMap(\.price).reduce(0, +),
+                        productsCount: viewModel.purchasedCount,
+                        totalSpent: viewModel.purchasedTotal,
                         onDismiss: {
                             finishSession(viewModel: viewModel, clearPurchased: false)
                         },
@@ -36,11 +36,13 @@ struct ShoppingModeView: View {
                     ShoppingModeActiveView(
                         viewModel: viewModel,
                         onBack: {
+                            viewModel.stopSession()
                             withAnimation(.spring()) {
                                 self.sessionViewModel = nil
                             }
                         },
                         onExit: {
+                            viewModel.stopSession()
                             onCancel()
                         }
                     )
@@ -66,7 +68,7 @@ struct ShoppingModeView: View {
     
     private func finishSession(viewModel: ShoppingModeViewModel, clearPurchased: Bool) {
         var stats = UserStats.load()
-        stats.recordPurchase(productsCount: viewModel.totalCount)
+        stats.recordPurchase(productsCount: viewModel.purchasedCount)
 
         if clearPurchased {
             ShoppingListLifecycleService.archivePurchasedItems(

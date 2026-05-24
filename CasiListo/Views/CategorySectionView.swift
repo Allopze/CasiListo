@@ -118,9 +118,9 @@ struct CategorySectionView: View {
         } label: {
             HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: sfSymbolSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: sfSymbolSize, weight: .bold))
                     .foregroundStyle(Theme.accentYellow)
-                    .frame(width: imageWidth * CGFloat(accessibilityTextSizeScale), alignment: .center)
+                    .frame(width: imageWidth, alignment: .center)
 
                 Text(category.displayName)
                     .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
@@ -140,7 +140,7 @@ struct CategorySectionView: View {
                     .clipShape(Capsule())
                 
                 Image(systemName: "chevron.down")
-                    .font(.system(size: chevronSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: chevronSize, weight: .bold))
                     .foregroundStyle(Color.appTextSecondary)
                     .rotationEffect(.degrees(isCollapsed ? -90 : 0))
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)

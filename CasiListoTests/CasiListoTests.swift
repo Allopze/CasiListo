@@ -188,9 +188,40 @@ final class CasiListoTests: XCTestCase {
         XCTAssertNotNil(completed)
         XCTAssertEqual(completed?.purchasedCount, 2)
         XCTAssertEqual(completed?.totalSpent ?? 0.0, 4.0, accuracy: 0.001)
-        XCTAssertEqual(completed?.pendingCount, 1)
-        XCTAssertEqual(completed?.skippedCount, 1)
-        XCTAssertEqual(completed?.unavailableCount, 1)
+        XCTAssertEqual(completed?.pendingCount, 0)
+        XCTAssertEqual(completed?.skippedCount, 0)
+        XCTAssertEqual(completed?.unavailableCount, 0)
+    }
+
+    func testDuplicateItemNormalizesNameAndRespectsStore() {
+        let viewModel = ShoppingListViewModel()
+        let items = [
+            ShoppingItem(name: "Leche sin lactosa", store: .jumbo),
+            ShoppingItem(name: "Leche sin lactosa", store: .lider)
+        ]
+
+        let jumboDuplicate = viewModel.duplicateItem(named: " leche SIN lactosa ", store: .jumbo, in: items)
+        XCTAssertEqual(jumboDuplicate?.store, .jumbo)
+
+        let liderDuplicate = viewModel.duplicateItem(named: "Leche sin lactosa", store: .lider, in: items)
+        XCTAssertEqual(liderDuplicate?.store, .lider)
+
+        let missing = viewModel.duplicateItem(named: "Pan", store: .jumbo, in: items)
+        XCTAssertNil(missing)
+    }
+
+    func testShoppingModePurchasedStatsIgnoreSkippedAndUnavailableItems() {
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let items = [
+            ShoppingItem(name: "Pan", category: category, status: .purchased, price: 2, store: .jumbo),
+            ShoppingItem(name: "Leche", category: category, status: .skipped, price: 5, store: .jumbo),
+            ShoppingItem(name: "Cafe", category: category, status: .unavailable, price: 7, store: .jumbo)
+        ]
+        let viewModel = ShoppingModeViewModel(store: .jumbo, allItems: items, allCategories: [category])
+
+        XCTAssertEqual(viewModel.purchasedCount, 1)
+        XCTAssertEqual(viewModel.purchasedTotal, 2, accuracy: 0.001)
+        XCTAssertEqual(viewModel.actionableCount, 0)
     }
 
     func testGroupedItemsStoreFilters() {

@@ -9,6 +9,7 @@ struct ShoppingListView: View {
     @Bindable var viewModel: ShoppingListViewModel
     let onEdit: (ShoppingItem) -> Void
     let onAddTapped: () -> Void
+    var onArchivePurchased: (() -> Void)? = nil
     @Environment(\.modelContext) private var modelContext
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
@@ -36,7 +37,8 @@ struct ShoppingListView: View {
                         purchasedCount: summary.purchasedCount,
                         pendingTotal: summary.pendingTotal,
                         purchasedTotal: summary.purchasedTotal,
-                        showPurchased: $viewModel.showPurchased
+                        showPurchased: $viewModel.showPurchased,
+                        onArchivePurchased: onArchivePurchased
                     )
                 }
                 .listRowInsets(.init(
@@ -75,14 +77,14 @@ struct ShoppingListView: View {
                             viewModel.toggleCategoryCollapse(group.category)
                         },
                         onTogglePurchased: { item in
-                            viewModel.togglePurchased(item)
+                            viewModel.togglePurchased(item, context: modelContext)
                         },
                         onEdit: onEdit,
                         onDelete: { item in
                             viewModel.deleteItem(item, context: modelContext)
                         },
                         onMarkStatus: { item, status in
-                            viewModel.markItem(item, as: status)
+                            viewModel.markItem(item, as: status, context: modelContext)
                         },
                         onMove: { source, destination in
                             viewModel.moveItem(from: source, to: destination, within: group.items, context: modelContext)
@@ -99,36 +101,17 @@ struct ShoppingListView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) {
             BottomAddBarView(
                 text: $viewModel.quickAddText,
-                onAddQuick: addQuickItem,
+                onAddQuick: {
+                    viewModel.addQuickItem(
+                        to: activeList,
+                        from: allItems,
+                        categories: categories,
+                        context: modelContext
+                    )
+                },
                 onAddTapped: onAddTapped
             )
         }
         .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
-    }
-
-    private func addQuickItem() {
-        let draft = viewModel.quickAddDraft(from: viewModel.quickAddText)
-        guard !draft.name.isEmpty else { return }
-
-        let category = SuggestedProducts.suggestedCategory(for: draft.name, in: categories) ?? categories.first { $0.name == "Varios" } ?? Category.fallback
-        let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: draft.name)
-        let newItem = ShoppingItem(
-            name: draft.name,
-            listID: activeList?.id,
-            quantity: draft.quantity,
-            category: category,
-            note: "",
-            isPurchased: false,
-            sortOrder: viewModel.nextSortOrder(for: category, in: allItems),
-            store: store
-        )
-        withAnimation(Theme.defaultAnimation) {
-            modelContext.insert(newItem)
-            if let activeList {
-                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
-            }
-            viewModel.quickAddText = ""
-        }
-        HapticFeedback.success()
     }
 }

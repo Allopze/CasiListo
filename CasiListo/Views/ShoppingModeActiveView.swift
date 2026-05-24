@@ -43,7 +43,7 @@ struct ShoppingModeActiveView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "cart.badge.questionmark")
-                .font(.system(size: emptyImageSize * CGFloat(accessibilityTextSizeScale)))
+                .font(.system(size: emptyImageSize))
                 .foregroundStyle(Color.shoppingModeSecondaryText)
             Text("No hay productos asignados a \(viewModel.store.displayName)")
                 .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
@@ -61,7 +61,7 @@ struct ShoppingModeActiveView: View {
         VStack(spacing: 16) {
             Spacer()
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: emptyImageSize * CGFloat(accessibilityTextSizeScale)))
+                .font(.system(size: emptyImageSize))
                 .foregroundStyle(Color.green)
             Text("¡No hay productos pendientes!")
                 .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
@@ -81,7 +81,7 @@ struct ShoppingModeActiveView: View {
             VStack(spacing: 0) {
                 HStack {
                     Image(systemName: activeCategory.sfSymbol)
-                        .font(.system(size: headerIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                        .font(.system(size: headerIconSize, weight: .bold))
                         .foregroundStyle(Theme.accentYellow)
                     
                     Text(activeCategory.displayName.uppercased())
@@ -128,9 +128,9 @@ struct ShoppingModeActiveView: View {
                 viewModel.previousCategory()
             } label: {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: arrowIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: arrowIconSize, weight: .bold))
                     .foregroundStyle(Color.shoppingModeText)
-                    .frame(width: arrowButtonSize * CGFloat(accessibilityTextSizeScale), height: arrowButtonSize * CGFloat(accessibilityTextSizeScale))
+                    .frame(width: arrowButtonSize, height: arrowButtonSize)
                     .background(Color.shoppingModeControlBackground)
                     .clipShape(Circle())
             }
@@ -170,9 +170,9 @@ struct ShoppingModeActiveView: View {
                 viewModel.nextCategory()
             } label: {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: arrowIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: arrowIconSize, weight: .bold))
                     .foregroundStyle(Color.shoppingModeText)
-                    .frame(width: arrowButtonSize * CGFloat(accessibilityTextSizeScale), height: arrowButtonSize * CGFloat(accessibilityTextSizeScale))
+                    .frame(width: arrowButtonSize, height: arrowButtonSize)
                     .background(Color.shoppingModeControlBackground)
                     .clipShape(Circle())
             }

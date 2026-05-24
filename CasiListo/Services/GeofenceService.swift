@@ -97,14 +97,25 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
     private func fetchPendingCount(for store: Store) -> Int {
         guard let container = modelContainer else { return 0 }
         let context = ModelContext(container)
+
+        let activeStatusRawValue = ShoppingListStatus.active.rawValue
+        var listDescriptor = FetchDescriptor<ShoppingList>()
+        listDescriptor.predicate = #Predicate<ShoppingList> { list in
+            list.statusRawValue == activeStatusRawValue
+        }
+
+        guard let activeList = try? context.fetch(listDescriptor).first else {
+            return 0
+        }
         
         let storeRawValue = store.rawValue
         let pendingStatusRawValue = ShoppingItemStatus.pending.rawValue
+        let activeListID = activeList.id
         
-        // Usar FetchDescriptor simple
         var descriptor = FetchDescriptor<ShoppingItem>()
         descriptor.predicate = #Predicate<ShoppingItem> { item in
-            item.storeRawValue == storeRawValue
+            item.listID == activeListID
+                && item.storeRawValue == storeRawValue
                 && !item.isPurchased
                 && (item.statusRawValue == nil || item.statusRawValue == pendingStatusRawValue)
         }

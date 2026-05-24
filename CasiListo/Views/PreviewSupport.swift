@@ -58,22 +58,36 @@ enum PreviewFixtures {
 }
 
 #Preview("Nuevo producto") {
+    let vm = ShoppingListViewModel()
+    let items = PreviewFixtures.shoppingItems
     AddEditItemSheet(
         mode: .add,
         activeList: nil,
-        allItems: PreviewFixtures.shoppingItems,
-        viewModel: ShoppingListViewModel()
+        allItems: items,
+        preselectedStore: nil,
+        initialName: "",
+        initialQuantity: "",
+        onQuickAddConsumed: {},
+        nextSortOrder: { vm.nextSortOrder(for: $0, in: items) },
+        checkDuplicate: { vm.duplicateItem(named: $0, store: $1, in: items, excluding: $2) }
     )
     .modelContainer(PreviewFixtures.modelContainer())
 }
 
 #Preview("Editar producto") {
+    let vm = ShoppingListViewModel()
+    let items = PreviewFixtures.shoppingItems
     AddEditItemSheet(
-        mode: .edit(PreviewFixtures.shoppingItems[0]),
+        mode: .edit(items[0]),
         activeList: nil,
-        allItems: PreviewFixtures.shoppingItems,
-        viewModel: ShoppingListViewModel()
+        allItems: items,
+        preselectedStore: nil,
+        initialName: "",
+        initialQuantity: "",
+        onQuickAddConsumed: {},
+        nextSortOrder: { vm.nextSortOrder(for: $0, in: items) },
+        checkDuplicate: { vm.duplicateItem(named: $0, store: $1, in: items, excluding: $2) }
     )
-    .modelContainer(PreviewFixtures.modelContainer(seed: PreviewFixtures.shoppingItems))
+    .modelContainer(PreviewFixtures.modelContainer(seed: items))
 }
 #endif

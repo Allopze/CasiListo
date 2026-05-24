@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 
-/// Producto frecuente separado de la lista activa. Sirve como catalogo de sugerencias
+/// Producto frecuente separado de la lista activa. Sirve como catálogo de sugerencias
 /// sin convertir cada sugerencia en un item pendiente.
 @Model
 final class ProductCatalogItem {

@@ -126,7 +126,7 @@ struct CompletionCelebrationView: View {
                         HStack {
                             Image(systemName: "checkmark.bin.fill")
                                 .fontWeight(.semibold)
-                            Text("Limpiar Comprados")
+                            Text("Archivar comprados")
                                 .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                         }
                         .frame(maxWidth: .infinity)
@@ -179,9 +179,9 @@ struct CompletionCelebrationView: View {
     private func statRow(title: String, value: String, icon: String, color: Color) -> some View {
         HStack(spacing: 16) {
             Image(systemName: icon)
-                .font(.system(size: iconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                .font(.system(size: iconSize, weight: .bold))
                 .foregroundStyle(color)
-                .frame(width: 32 * CGFloat(accessibilityTextSizeScale), height: 32 * CGFloat(accessibilityTextSizeScale))
+                .frame(width: iconSize + 12, height: iconSize + 12)
                 .background(color.opacity(0.15))
                 .clipShape(Circle())
             

@@ -14,7 +14,7 @@ struct LocationPermissionOnboardingView: View {
                         .font(.title2.weight(.bold))
                         .foregroundStyle(Color.appTextPrimary)
 
-                    Text("CasiListo activa los permisos por pasos: primero notificaciones, luego ubicacion en uso y solo despues ubicacion siempre para avisos en segundo plano.")
+                    Text("CasiListo activa los permisos por pasos: primero notificaciones, luego ubicación en uso y solo después ubicación siempre para avisos en segundo plano.")
                         .font(.body)
                         .foregroundStyle(Color.appTextSecondary)
                         .fixedSize(horizontal: false, vertical: true)
@@ -28,14 +28,14 @@ struct LocationPermissionOnboardingView: View {
 
                     permissionStep(
                         number: "2",
-                        title: "Ubicacion al usar",
-                        description: "Permite validar que el flujo de ubicacion tiene sentido antes de pedir permisos mas amplios.",
+                        title: "Ubicación al usar",
+                        description: "Permite validar que el flujo de ubicación tiene sentido antes de pedir permisos más amplios.",
                         isDone: false
                     )
 
                     permissionStep(
                         number: "3",
-                        title: "Ubicacion siempre",
+                        title: "Ubicación siempre",
                         description: "Solo se solicita al confirmar que quieres recordatorios en segundo plano.",
                         isDone: false
                     )

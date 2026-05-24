@@ -81,7 +81,7 @@ struct AddEditCategorySheet: View {
                                 .frame(width: 60, height: 60)
                             
                             Image(systemName: selectedSymbol)
-                                .font(.system(size: previewIconSize * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                                .font(.system(size: previewIconSize, weight: .semibold))
                                 .foregroundStyle(Theme.accentYellow)
                         }
                         

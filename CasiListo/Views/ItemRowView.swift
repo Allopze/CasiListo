@@ -93,6 +93,16 @@ struct ItemRowView: View {
         .accessibilityAction(named: item.isPurchased ? "Marcar pendiente" : "Marcar comprado") {
             toggleItem()
         }
+        .accessibilityAction(named: "Editar") {
+            HapticFeedback.selection()
+            onEdit()
+        }
+        .accessibilityAction(named: "Posponer") {
+            markStatus(.skipped)
+        }
+        .accessibilityAction(named: "Marcar no encontrado") {
+            markStatus(.unavailable)
+        }
         .accessibilityAction(named: "Eliminar") {
             HapticFeedback.impact()
             withAnimation(Theme.defaultAnimation) {
@@ -104,62 +114,66 @@ struct ItemRowView: View {
     }
 
     private var rowContent: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                Text(item.name)
-                    .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
-                    .strikethrough(item.isPurchased, color: Color.appTextPurchased)
-                    .lineLimit(2)
+        VStack(alignment: .leading, spacing: 3) {
+            Text(item.name)
+                .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
+                .strikethrough(item.isPurchased, color: Color.appTextPurchased)
+                .lineLimit(2)
 
-                Text(item.store.displayName)
-                    .font(.system(size: storeTextSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, storePaddingHorizontal)
-                    .padding(.vertical, storePaddingVertical)
-                    .background(item.store.color.opacity(item.isPurchased ? 0.4 : 0.85))
-                    .clipShape(Capsule())
-                    .accessibilityLabel("Tienda: \(item.store.displayName)")
-
-                if !item.quantity.isEmpty {
-                    Text(item.quantity)
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                        .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Theme.accentYellow)
-                        .padding(.horizontal, pillPaddingHorizontal)
-                        .padding(.vertical, pillPaddingVertical)
-                        .background(quantityBackground)
-                        .clipShape(Capsule())
-                        .accessibilityLabel("Cantidad \(item.quantity)")
-                }
-
-                if let price = item.price {
-                    Text(price.formattedPriceWithSymbol)
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                        .foregroundStyle(item.isPurchased ? Color.appTextPurchased : .green)
-                        .padding(.horizontal, pillPaddingHorizontal)
-                        .padding(.vertical, pillPaddingVertical)
-                        .background(item.isPurchased ? Color.appTextPurchased.opacity(0.1) : Color.green.opacity(0.12))
-                        .clipShape(Capsule())
-                        .accessibilityLabel("Precio \(price.formattedPrice)")
-                }
-
-                if item.status == .skipped || item.status == .unavailable {
-                    Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                        .foregroundStyle(item.status == .skipped ? Color.orange : Color.red)
-                        .labelStyle(.titleAndIcon)
-                        .padding(.horizontal, pillPaddingHorizontal)
-                        .padding(.vertical, pillPaddingVertical)
-                        .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.12))
-                        .clipShape(Capsule())
-                }
-            }
+            metaChips
 
             if !item.note.isEmpty {
                 Text(item.note)
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.appTextSecondary)
-                    .lineLimit(2)
+                    .lineLimit(1)
+            }
+        }
+    }
+
+    private var metaChips: some View {
+        HStack(spacing: 5) {
+            Text(item.store.displayName)
+                    .font(.system(size: storeTextSize, weight: .bold))
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, storePaddingHorizontal)
+                    .padding(.vertical, storePaddingVertical)
+                    .background(item.store.color.opacity(item.isPurchased ? 0.35 : 0.68))
+                    .clipShape(Capsule())
+                    .accessibilityLabel("Tienda: \(item.store.displayName)")
+
+            if !item.quantity.isEmpty {
+                Text(item.quantity)
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Theme.accentYellow)
+                    .padding(.horizontal, pillPaddingHorizontal)
+                    .padding(.vertical, pillPaddingVertical)
+                    .background(quantityBackground)
+                    .clipShape(Capsule())
+                    .accessibilityLabel("Cantidad \(item.quantity)")
+            }
+
+            if let price = item.price {
+                Text(price.formattedPriceWithSymbol)
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : .green)
+                    .padding(.horizontal, pillPaddingHorizontal)
+                    .padding(.vertical, pillPaddingVertical)
+                    .background(item.isPurchased ? Color.appTextPurchased.opacity(0.1) : Color.green.opacity(0.10))
+                    .clipShape(Capsule())
+                    .accessibilityLabel("Precio \(price.formattedPrice)")
+            }
+
+            if item.status == .skipped || item.status == .unavailable {
+                Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .foregroundStyle(item.status == .skipped ? Color.orange : Color.red)
+                    .labelStyle(.titleAndIcon)
+                    .padding(.horizontal, pillPaddingHorizontal)
+                    .padding(.vertical, pillPaddingVertical)
+                    .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.10))
+                    .clipShape(Capsule())
             }
         }
     }
@@ -178,12 +192,12 @@ struct ItemRowView: View {
                     .transition(.scale.combined(with: .opacity))
 
                 Image(systemName: "checkmark")
-                    .font(.system(size: checkmarkSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: checkmarkSize, weight: .bold))
                     .foregroundStyle(.white)
                     .transition(.scale.combined(with: .opacity))
             }
         }
-        .frame(width: checkboxSize * CGFloat(accessibilityTextSizeScale), height: checkboxSize * CGFloat(accessibilityTextSizeScale))
+        .frame(width: checkboxSize, height: checkboxSize)
     }
 
     private var editButton: some View {
@@ -192,9 +206,9 @@ struct ItemRowView: View {
             onEdit()
         } label: {
             Image(systemName: "pencil")
-                .font(.system(size: editButtonSymbolSize * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                .font(.system(size: editButtonSymbolSize, weight: .semibold))
                 .foregroundStyle(Theme.accentYellow)
-                .frame(width: scaledEditButtonSize * CGFloat(accessibilityTextSizeScale), height: scaledEditButtonSize * CGFloat(accessibilityTextSizeScale))
+                .frame(width: scaledEditButtonSize, height: scaledEditButtonSize)
                 .background(Theme.accentYellow.opacity(0.12))
                 .clipShape(Circle())
         }

@@ -7,6 +7,7 @@ struct SummaryBarView: View {
     let pendingTotal: Double
     let purchasedTotal: Double
     @Binding var showPurchased: Bool
+    var onArchivePurchased: (() -> Void)? = nil
 
     @ScaledMetric(relativeTo: .caption) private var scaledSpacing: CGFloat = 14
     @ScaledMetric(relativeTo: .body) private var eyeIconSize: CGFloat = 15
@@ -30,9 +31,26 @@ struct SummaryBarView: View {
                     .foregroundStyle(Color.appTextSecondary)
 
                 if purchasedCount > 0 {
-                    Label(purchasedLabel, systemImage: "checkmark.circle.fill")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                        .foregroundStyle(Theme.accentYellow)
+                    if let archive = onArchivePurchased {
+                        Button {
+                            HapticFeedback.selection()
+                            archive()
+                        } label: {
+                            Label("\(purchasedCount) comprados", systemImage: "archivebox")
+                                .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                                .foregroundStyle(.black)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 3)
+                                .background(Theme.accentYellow)
+                                .clipShape(Capsule())
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Archivar \(purchasedCount) productos comprados")
+                    } else {
+                        Label(purchasedLabel, systemImage: "checkmark.circle.fill")
+                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                            .foregroundStyle(Theme.accentYellow)
+                    }
                 }
 
                 Spacer(minLength: 12)
@@ -48,8 +66,8 @@ struct SummaryBarView: View {
                         systemImage: showPurchased ? "eye.slash" : "eye"
                     )
                     .labelStyle(.iconOnly)
-                    .font(.system(size: eyeIconSize * CGFloat(accessibilityTextSizeScale), weight: .semibold))
-                    .frame(width: eyeButtonSize * CGFloat(accessibilityTextSizeScale), height: eyeButtonSize * CGFloat(accessibilityTextSizeScale))
+                    .font(.system(size: eyeIconSize, weight: .semibold))
+                    .frame(width: eyeButtonSize, height: eyeButtonSize)
                 }
                 .buttonStyle(.plain)
                 .glassFilterSurface(cornerRadius: eyeCornerRadius, interactive: true)

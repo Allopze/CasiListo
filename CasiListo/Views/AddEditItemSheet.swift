@@ -21,7 +21,12 @@ struct AddEditItemSheet: View {
     let mode: Mode
     let activeList: ShoppingList?
     let allItems: [ShoppingItem]
-    let viewModel: ShoppingListViewModel
+    let preselectedStore: Store?
+    let initialName: String
+    let initialQuantity: String
+    let onQuickAddConsumed: () -> Void
+    let nextSortOrder: (Category) -> Int
+    let checkDuplicate: (String, Store, UUID?) -> ShoppingItem?
 
     @Query(sort: \Category.sortIndex) private var categories: [Category]
 
@@ -33,6 +38,9 @@ struct AddEditItemSheet: View {
     @State private var note: String = ""
     @State private var showSuggestions: Bool = false
     @State private var voiceNoteFilename: String? = nil
+    @State private var initialVoiceNoteFilename: String? = nil
+    @State private var recordedVoiceNoteFilenames: Set<String> = []
+    @State private var didSave: Bool = false
 
     @FocusState private var isNameFocused: Bool
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
@@ -43,11 +51,31 @@ struct AddEditItemSheet: View {
     }
 
     private var isValid: Bool {
-        !name.trimmingCharacters(in: .whitespaces).isEmpty
+        !trimmedName.isEmpty && duplicateItem == nil && isPriceValid
     }
 
     private var suggestions: [String] {
         SuggestedProducts.suggestions(for: name)
+    }
+
+    private var trimmedName: String {
+        name.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var excludedDuplicateID: UUID? {
+        if case .edit(let item) = mode {
+            return item.id
+        }
+        return nil
+    }
+
+    private var duplicateItem: ShoppingItem? {
+        checkDuplicate(name, selectedStore, excludedDuplicateID)
+    }
+
+    private var isPriceValid: Bool {
+        let trimmedPrice = priceString.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmedPrice.isEmpty || Double(trimmedPrice.replacingOccurrences(of: ",", with: ".")) != nil
     }
 
     var body: some View {
@@ -56,7 +84,11 @@ struct AddEditItemSheet: View {
                 productSection
                 detailsSection
                 storeSection
-                AddEditVoiceNoteSection(voiceNoteFilename: $voiceNoteFilename)
+                AddEditVoiceNoteSection(
+                    voiceNoteFilename: $voiceNoteFilename,
+                    onRecorded: handleRecordedVoiceNote,
+                    onRemoved: handleRemovedVoiceNote
+                )
                 categorySection
             }
             .formStyle(.grouped)
@@ -73,6 +105,7 @@ struct AddEditItemSheet: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "Guardar" : "Añadir") {
                         saveItem()
+                        didSave = true
                         HapticFeedback.success()
                         dismiss()
                     }
@@ -83,14 +116,13 @@ struct AddEditItemSheet: View {
             .onAppear {
                 loadExistingData()
                 if case .add = mode {
-                    if let store = viewModel.selectedStore {
+                    if let store = preselectedStore {
                         selectedStore = store
                     }
-                    if !viewModel.quickAddText.isEmpty {
-                        let draft = viewModel.quickAddDraft(from: viewModel.quickAddText)
-                        name = draft.name
-                        quantity = draft.quantity
-                        viewModel.quickAddText = ""
+                    if !initialName.isEmpty {
+                        name = initialName
+                        quantity = initialQuantity
+                        onQuickAddConsumed()
                         if let suggested = SuggestedProducts.suggestedCategory(for: name, in: categories) {
                             selectedCategory = suggested
                         }
@@ -104,6 +136,9 @@ struct AddEditItemSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .onDisappear {
+            cleanupTemporaryVoiceNotesIfNeeded()
+        }
     }
 
     private var storeSection: some View {
@@ -152,7 +187,11 @@ struct AddEditItemSheet: View {
         } header: {
             Label("Producto", systemImage: "cart.badge.plus")
         } footer: {
-            Text("Las sugerencias ajustan la categoría automáticamente cuando hay una coincidencia exacta.")
+            if let duplicateItem {
+                Text("\"\(duplicateItem.name)\" ya existe en \(selectedStore.displayName). Edita el producto existente o cambia el nombre.")
+            } else {
+                Text("Las sugerencias ajustan la categoría automáticamente cuando hay una coincidencia exacta.")
+            }
         }
     }
 
@@ -168,6 +207,10 @@ struct AddEditItemSheet: View {
                 .lineLimit(2...4)
         } header: {
             Label("Detalles", systemImage: "text.justify.left")
+        } footer: {
+            if !isPriceValid {
+                Text("Ingresa un precio válido o deja el campo vacío.")
+            }
         }
     }
 
@@ -190,14 +233,15 @@ struct AddEditItemSheet: View {
             note = item.note
             priceString = item.price.formattedPriceOrEmpty
             voiceNoteFilename = item.voiceNoteFilename
+            initialVoiceNoteFilename = item.voiceNoteFilename
         }
     }
 
     private func saveItem() {
-        let trimmedName = name.trimmingCharacters(in: .whitespaces)
         guard !trimmedName.isEmpty else { return }
+        guard duplicateItem == nil, isPriceValid else { return }
 
-        let parsedPrice = Double(priceString.replacingOccurrences(of: ",", with: ".").trimmingCharacters(in: .whitespaces))
+        let parsedPrice = parsedPriceForSave()
 
         switch mode {
         case .add:
@@ -207,7 +251,7 @@ struct AddEditItemSheet: View {
                 quantity: quantity.trimmingCharacters(in: .whitespaces),
                 category: selectedCategory,
                 note: note.trimmingCharacters(in: .whitespaces),
-                sortOrder: viewModel.nextSortOrder(for: selectedCategory, in: allItems),
+                sortOrder: nextSortOrder(selectedCategory),
                 price: parsedPrice,
                 store: selectedStore,
                 voiceNoteFilename: voiceNoteFilename
@@ -216,6 +260,7 @@ struct AddEditItemSheet: View {
             if let activeList {
                 ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
             }
+            modelContext.safeSave()
 
         case .edit(let item):
             item.name = trimmedName
@@ -234,6 +279,39 @@ struct AddEditItemSheet: View {
             if let activeList {
                 ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems)
             }
+            modelContext.safeSave()
         }
+    }
+
+    private func parsedPriceForSave() -> Double? {
+        let trimmedPrice = priceString.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPrice.isEmpty else { return nil }
+        return Double(trimmedPrice.replacingOccurrences(of: ",", with: "."))
+    }
+
+    private func handleRecordedVoiceNote(_ filename: String) {
+        recordedVoiceNoteFilenames.insert(filename)
+    }
+
+    private func handleRemovedVoiceNote(_ filename: String) {
+        if recordedVoiceNoteFilenames.contains(filename) {
+            VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+            recordedVoiceNoteFilenames.remove(filename)
+        }
+    }
+
+    private func cleanupTemporaryVoiceNotesIfNeeded() {
+        if didSave {
+            for filename in recordedVoiceNoteFilenames where filename != voiceNoteFilename {
+                VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+            }
+        } else {
+            for filename in recordedVoiceNoteFilenames {
+                VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+            }
+            voiceNoteFilename = initialVoiceNoteFilename
+        }
+
+        recordedVoiceNoteFilenames.removeAll()
     }
 }

@@ -5,6 +5,7 @@ struct VoiceNotePlayerButton: View {
     let filename: String
     
     @State private var waveAnimation = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     private let waveBarHeights: [CGFloat] = [8, 16, 11, 18]
@@ -27,18 +28,22 @@ struct VoiceNotePlayerButton: View {
                         ForEach(waveBarHeights.indices, id: \.self) { index in
                             RoundedRectangle(cornerRadius: 1)
                                 .fill(.white)
-                                .frame(width: 2, height: waveAnimation ? waveBarHeights[index] : 10)
+                                .frame(width: 2, height: reduceMotion ? 12 : (waveAnimation ? waveBarHeights[index] : 10))
                                 .animation(
-                                    Animation.easeInOut(duration: 0.3)
-                                        .repeatForever(autoreverses: true)
-                                        .delay(Double(index) * 0.08),
+                                    reduceMotion
+                                        ? nil
+                                        : Animation.easeInOut(duration: 0.3)
+                                            .repeatForever(autoreverses: true)
+                                            .delay(Double(index) * 0.08),
                                     value: waveAnimation
                                 )
                         }
                     }
                     .frame(width: 16, height: 20)
                     .onAppear {
-                        waveAnimation = true
+                        if !reduceMotion {
+                            waveAnimation = true
+                        }
                     }
                     .onDisappear {
                         waveAnimation = false
