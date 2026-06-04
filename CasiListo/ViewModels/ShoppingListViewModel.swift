@@ -73,11 +73,8 @@ final class ShoppingListViewModel {
             if let selectedStore = selectedStore, item.store != selectedStore {
                 return false
             }
-            if item.status == .purchased && !showPurchased {
-                return false
-            }
             // Filtro de comprado
-            if !showPurchased && item.status == .purchased {
+            if item.status == .purchased && !showPurchased {
                 return false
             }
             // Filtro de búsqueda

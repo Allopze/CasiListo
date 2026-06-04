@@ -4,6 +4,7 @@ import SwiftData
 /// Vista principal de la app.
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(GeofenceService.self) private var geofenceService
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
@@ -35,6 +36,7 @@ struct ContentView: View {
                 ShoppingModeView(
                     activeList: activeList,
                     allItems: activeItems,
+                    selectedStore: viewModel.selectedStore,
                     onFinished: {
                         withAnimation(.easeInOut) {
                             showsShoppingMode = false
@@ -79,9 +81,6 @@ struct ContentView: View {
                     .adaptiveSearchToolbarBehavior()
                     .adaptiveSearchPresentationToolbarBehavior()
                     .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            shoppingModeButton
-                        }
                         ToolbarItem(placement: .topBarTrailing) { menuButton }
                         if #available(iOS 26.0, *) {
                             ToolbarSpacer(.fixed, placement: .topBarTrailing)
@@ -124,7 +123,7 @@ struct ContentView: View {
             
             // Inicializar servicios
             CategoryBootstrapService.bootstrap(context: modelContext)
-            GeofenceService.shared.initialize(with: modelContext.container)
+            geofenceService.initialize(with: modelContext.container)
             
             let list = ShoppingListLifecycleService.bootstrap(context: modelContext)
             SuggestedProducts.seedCatalogItems(in: modelContext)
@@ -152,22 +151,6 @@ struct ContentView: View {
         .adaptiveGlassButtonStyle()
         .accessibilityLabel("Añadir producto")
         .accessibilityIdentifier("toolbar-add-product")
-    }
-
-    private var shoppingModeButton: some View {
-        Button {
-            HapticFeedback.selection()
-            withAnimation(.easeInOut) {
-                showsShoppingMode = true
-            }
-        } label: {
-            HStack(spacing: 4) {
-                Image(systemName: "cart.fill").fontWeight(.semibold)
-                Text("Comprar").font(.system(size: 13, weight: .bold))
-            }
-        }
-        .adaptiveGlassProminentButtonStyle()
-        .accessibilityLabel("Entrar a Modo Compra")
     }
 
     private var formattedShareText: String {

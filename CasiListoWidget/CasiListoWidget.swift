@@ -40,112 +40,136 @@ struct PendingItemsProvider: TimelineProvider {
 
 struct SmallWidgetView: View {
     let snapshot: WidgetSnapshot
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var textColorPrimary: Color {
+        colorScheme == .dark ? .white : Color(red: 0.1, green: 0.1, blue: 0.1)
+    }
+
+    private var textColorSecondary: Color {
+        colorScheme == .dark ? Color(red: 0.6, green: 0.6, blue: 0.64) : Color(red: 0.5, green: 0.5, blue: 0.5)
+    }
 
     var body: some View {
-        ZStack {
-            Color(red: 0.98, green: 0.97, blue: 0.96)
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 6) {
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Color(red: 0.96, green: 0.77, blue: 0.09))
-                    Text("CasiListo")
-                        .font(.system(size: 13, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(red: 0.1, green: 0.1, blue: 0.1))
-                }
-
-                Spacer()
-
-                Text("\(snapshot.pendingCount)")
-                    .font(.system(size: 46, weight: .bold, design: .rounded))
-                    .foregroundStyle(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    .minimumScaleFactor(0.6)
-
-                Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color(red: 0.5, green: 0.5, blue: 0.5))
-
-                if snapshot.purchasedCount > 0 {
-                    Label("\(snapshot.purchasedCount) comprados", systemImage: "checkmark.circle.fill")
-                        .font(.system(size: 11, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color.green)
-                        .lineLimit(1)
-                }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Image(systemName: "cart.fill")
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(Color(red: 0.96, green: 0.77, blue: 0.09))
+                Text("CasiListo")
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(textColorPrimary)
             }
-            .padding(14)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+
+            Spacer()
+
+            Text("\(snapshot.pendingCount)")
+                .font(.system(size: 46, weight: .bold, design: .rounded))
+                .foregroundStyle(textColorPrimary)
+                .minimumScaleFactor(0.6)
+
+            Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
+                .font(.system(size: 13, weight: .medium, design: .rounded))
+                .foregroundStyle(textColorSecondary)
+
+            if snapshot.purchasedCount > 0 {
+                Label("\(snapshot.purchasedCount) comprados", systemImage: "checkmark.circle.fill")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .foregroundStyle(Color.green)
+                    .lineLimit(1)
+            }
         }
+        .padding(14)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
     }
 }
 
 struct MediumWidgetView: View {
     let snapshot: WidgetSnapshot
+    @Environment(\.colorScheme) private var colorScheme
+
+    private var textColorPrimary: Color {
+        colorScheme == .dark ? .white : Color(red: 0.1, green: 0.1, blue: 0.1)
+    }
+
+    private var textColorItemName: Color {
+        colorScheme == .dark ? Color(red: 0.9, green: 0.9, blue: 0.9) : Color(red: 0.15, green: 0.15, blue: 0.15)
+    }
+
+    private var textColorSecondary: Color {
+        colorScheme == .dark ? Color(red: 0.6, green: 0.6, blue: 0.64) : Color(red: 0.5, green: 0.5, blue: 0.5)
+    }
+
+    private var dividerColor: Color {
+        colorScheme == .dark ? Color(red: 0.22, green: 0.22, blue: 0.24) : Color(red: 0.9, green: 0.89, blue: 0.87)
+    }
+
+    private var checkboxBorderColor: Color {
+        colorScheme == .dark ? Color(red: 0.4, green: 0.4, blue: 0.45) : Color(red: 0.7, green: 0.7, blue: 0.7)
+    }
 
     var body: some View {
-        ZStack {
-            Color(red: 0.98, green: 0.97, blue: 0.96)
-            HStack(alignment: .top, spacing: 0) {
-                // Panel izquierdo: conteo
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack(spacing: 5) {
-                        Image(systemName: "cart.fill")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundStyle(Color(red: 0.96, green: 0.77, blue: 0.09))
-                        Text("CasiListo")
-                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                            .foregroundStyle(Color(red: 0.1, green: 0.1, blue: 0.1))
-                    }
-
-                    Spacer()
-
-                    Text("\(snapshot.pendingCount)")
-                        .font(.system(size: 42, weight: .bold, design: .rounded))
-                        .foregroundStyle(Color(red: 0.1, green: 0.1, blue: 0.1))
-
-                    Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(Color(red: 0.5, green: 0.5, blue: 0.5))
-
-                    if snapshot.purchasedCount > 0 {
-                        Label("\(snapshot.purchasedCount)", systemImage: "checkmark.circle.fill")
-                            .font(.system(size: 11, weight: .semibold, design: .rounded))
-                            .foregroundStyle(Color.green)
-                    }
+        HStack(alignment: .top, spacing: 0) {
+            // Panel izquierdo: conteo
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(Color(red: 0.96, green: 0.77, blue: 0.09))
+                    Text("CasiListo")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(textColorPrimary)
                 }
-                .padding(14)
-                .frame(maxHeight: .infinity, alignment: .leading)
 
-                // Divider
-                Rectangle()
-                    .fill(Color(red: 0.9, green: 0.89, blue: 0.87))
-                    .frame(width: 1)
-                    .padding(.vertical, 14)
+                Spacer()
 
-                // Panel derecho: lista de ítems
-                VStack(alignment: .leading, spacing: 5) {
-                    if snapshot.topItems.isEmpty {
-                        Text("Lista vacía")
-                            .font(.system(size: 13, design: .rounded))
-                            .foregroundStyle(Color(red: 0.6, green: 0.6, blue: 0.6))
-                    } else {
-                        ForEach(snapshot.topItems.prefix(5), id: \.self) { name in
-                            HStack(spacing: 6) {
-                                Circle()
-                                    .stroke(Color(red: 0.7, green: 0.7, blue: 0.7), lineWidth: 1.5)
-                                    .frame(width: 10, height: 10)
-                                Text(name)
-                                    .font(.system(size: 13, design: .rounded))
-                                    .foregroundStyle(Color(red: 0.15, green: 0.15, blue: 0.15))
-                                    .lineLimit(1)
-                            }
+                Text("\(snapshot.pendingCount)")
+                    .font(.system(size: 42, weight: .bold, design: .rounded))
+                    .foregroundStyle(textColorPrimary)
+
+                Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(textColorSecondary)
+
+                if snapshot.purchasedCount > 0 {
+                    Label("\(snapshot.purchasedCount)", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Color.green)
+                }
+            }
+            .padding(14)
+            .frame(maxHeight: .infinity, alignment: .leading)
+
+            // Divider
+            Rectangle()
+                .fill(dividerColor)
+                .frame(width: 1)
+                .padding(.vertical, 14)
+
+            // Panel derecho: lista de ítems
+            VStack(alignment: .leading, spacing: 5) {
+                if snapshot.topItems.isEmpty {
+                    Text("Lista vacía")
+                        .font(.system(size: 13, design: .rounded))
+                        .foregroundStyle(textColorSecondary)
+                } else {
+                    ForEach(snapshot.topItems.prefix(5), id: \.self) { name in
+                        HStack(spacing: 6) {
+                            Circle()
+                                .stroke(checkboxBorderColor, lineWidth: 1.5)
+                                .frame(width: 10, height: 10)
+                            Text(name)
+                                .font(.system(size: 13, design: .rounded))
+                                .foregroundStyle(textColorItemName)
+                                .lineLimit(1)
                         }
                     }
-                    Spacer()
                 }
-                .padding(.vertical, 14)
-                .padding(.horizontal, 12)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                Spacer()
             }
+            .padding(.vertical, 14)
+            .padding(.horizontal, 12)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
     }
 }
@@ -171,10 +195,18 @@ struct CasiListoWidgetEntryView: View {
 struct CasiListoWidget: Widget {
     let kind = "CasiListoWidget"
 
+    private var widgetBackground: Color {
+        Color(uiColor: UIColor { traitCollection in
+            traitCollection.userInterfaceStyle == .dark
+                ? UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1.0)
+                : UIColor(red: 0.98, green: 0.97, blue: 0.96, alpha: 1.0)
+        })
+    }
+
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PendingItemsProvider()) { entry in
             CasiListoWidgetEntryView(entry: entry)
-                .containerBackground(Color(red: 0.98, green: 0.97, blue: 0.96), for: .widget)
+                .containerBackground(widgetBackground, for: .widget)
         }
         .configurationDisplayName("CasiListo")
         .description("Productos pendientes en tu lista de compra.")

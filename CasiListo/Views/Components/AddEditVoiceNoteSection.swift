@@ -11,6 +11,7 @@ struct AddEditVoiceNoteSection: View {
     @State private var recordingPulse = false
     @State private var recordingDuration = 0
     @State private var recordingDurationTask: Task<Void, Never>? = nil
+    @Environment(VoiceNoteService.self) private var voiceNoteService
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
@@ -100,7 +101,7 @@ struct AddEditVoiceNoteSection: View {
                 let granted = await AVAudioApplication.requestRecordPermission()
                 if granted {
                     HapticFeedback.selection()
-                    let success = VoiceNoteService.shared.startRecording(filename: filename)
+                    let success = voiceNoteService.startRecording(filename: filename)
                     if success {
                         self.voiceNoteFilename = filename
                         self.onRecorded(filename)
@@ -118,7 +119,7 @@ struct AddEditVoiceNoteSection: View {
         HapticFeedback.success()
         recordingDurationTask?.cancel()
         recordingDurationTask = nil
-        VoiceNoteService.shared.stopRecording()
+        voiceNoteService.stopRecording()
         isRecording = false
     }
 

@@ -6,7 +6,10 @@ struct EmptyStateView: View {
     var hasHistory: Bool = false
     var onShowHistory: (() -> Void)? = nil
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @Environment(AppSettings.self) private var appSettings
+    private var accessibilityTextSizeScale: Double {
+        appSettings.accessibilityTextSizeScale
+    }
 
     var body: some View {
         VStack(spacing: 20 * CGFloat(accessibilityTextSizeScale)) {

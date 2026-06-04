@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(xcodebuild -scheme CasiListo -destination 'generic/platform=iOS Simulator' -configuration Debug build)",
+      "Bash(xcrun simctl *)"
+    ]
+  }
+}

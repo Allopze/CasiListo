@@ -240,3 +240,19 @@ struct ItemRowView: View {
         }
     }
 }
+
+// MARK: - Equatable Conformance for SwiftUI List Optimization
+extension ItemRowView: Equatable {
+    static func == (lhs: ItemRowView, rhs: ItemRowView) -> Bool {
+        lhs.item.id == rhs.item.id &&
+        lhs.item.name == rhs.item.name &&
+        lhs.item.quantity == rhs.item.quantity &&
+        lhs.item.isPurchased == rhs.item.isPurchased &&
+        lhs.item.status == rhs.item.status &&
+        lhs.item.note == rhs.item.note &&
+        lhs.item.store == rhs.item.store &&
+        lhs.item.voiceNoteFilename == rhs.item.voiceNoteFilename &&
+        lhs.accessibilityTextSizeScale == rhs.accessibilityTextSizeScale &&
+        lhs.reduceMotion == rhs.reduceMotion
+    }
+}

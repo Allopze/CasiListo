@@ -64,7 +64,7 @@ final class CategoryBootstrapService {
             let allItems = try context.fetch(itemDescriptor)
             var itemsCured = 0
             
-            let fallbackCat = categoryMap["Varios"] ?? Category.fallback
+            let fallbackCat = categoryMap["Varios"] ?? Category.resolvedFallback(in: context)
             
             for item in allItems {
                 if item.categoryRelation == nil {

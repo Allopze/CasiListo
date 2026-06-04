@@ -113,7 +113,9 @@ struct ShoppingModeActiveView: View {
                             } onMarkUnavailable: {
                                 viewModel.markItem(item, as: .unavailable, context: modelContext)
                             }
+                            .equatable()
                         }
+
                     }
                     .padding(categoryPadding)
                 }

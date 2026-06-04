@@ -168,6 +168,14 @@ struct CompletionCelebrationView: View {
             
             animateStats = true
         }
+        .task {
+            // Limpiar confetti después de 5 segundos para liberar CPU/batería
+            guard !reduceMotion else { return }
+            try? await Task.sleep(for: .seconds(5))
+            withAnimation(.easeOut(duration: 0.5)) {
+                confettiParticles.removeAll()
+            }
+        }
     }
     
     private func statRow(title: String, value: String, icon: String, color: Color) -> some View {

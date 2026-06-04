@@ -113,7 +113,7 @@ struct SuggestedProducts {
 
     /// Todos los nombres de productos sugeridos, sin duplicados.
     static let allProducts: [String] = {
-        Array(Set(byCategory.values.flatMap { $0 })).sorted()
+        Array(Set(byCategory.values.flatMap { $0 })).sorted { $0.localizedCaseInsensitiveCompare($1) == .orderedAscending }
     }()
 
     /// Filtra productos sugeridos cuyo nombre contiene el texto dado.
@@ -128,12 +128,13 @@ struct SuggestedProducts {
     /// para cubrir variantes como "Tomates cherry" → "Tomates" (Frutas y verduras).
     static func suggestedCategory(for productName: String, in categories: [Category]) -> Category? {
         let lowered = productName.lowercased()
-        for (defaultCat, products) in byCategory {
+        let sortedEntries = byCategory.sorted { $0.key.sortIndex < $1.key.sortIndex }
+        for (defaultCat, products) in sortedEntries {
             if products.contains(where: { $0.lowercased() == lowered }) {
                 return categories.first { $0.name == defaultCat.rawValue }
             }
         }
-        for (defaultCat, products) in byCategory {
+        for (defaultCat, products) in sortedEntries {
             if products.contains(where: {
                 let p = $0.lowercased()
                 return lowered.hasPrefix(p) || p.hasPrefix(lowered)
@@ -174,7 +175,7 @@ struct SuggestedProducts {
                 order += 1
             }
         }
-        try? context.save()
+        context.safeSave()
     }
 
     @MainActor
@@ -198,6 +199,6 @@ struct SuggestedProducts {
             }
         }
 
-        try? context.save()
+        context.safeSave()
     }
 }

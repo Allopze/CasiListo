@@ -32,29 +32,17 @@ struct UserStats: Codable {
         let now = Date()
         if let lastDate = lastPurchaseDate {
             let calendar = Calendar.current
-            let lastWeek = calendar.component(.weekOfYear, from: lastDate)
-            let currentWeek = calendar.component(.weekOfYear, from: now)
-            let lastYear = calendar.component(.yearForWeekOfYear, from: lastDate)
-            let currentYear = calendar.component(.yearForWeekOfYear, from: now)
-            
-            if currentYear == lastYear {
-                if currentWeek == lastWeek {
-                    // Ya compró esta semana, la racha se mantiene
-                } else if currentWeek == lastWeek + 1 {
-                    // Semana consecutiva, incrementar racha
-                    currentStreak += 1
-                } else {
-                    // Rompió racha, restablecer a 1
-                    currentStreak = 1
-                }
+            // Cálculo unificado que maneja correctamente el cambio de año (semana 52 → 1)
+            let weekDiff = calendar.dateComponents([.weekOfYear], from: lastDate, to: now).weekOfYear ?? 0
+
+            if weekDiff == 0 {
+                // Ya compró esta semana, la racha se mantiene
+            } else if weekDiff == 1 {
+                // Semana consecutiva, incrementar racha
+                currentStreak += 1
             } else {
-                // Cambio de año, verificar si es semana consecutiva
-                let diff = calendar.dateComponents([.weekOfYear], from: lastDate, to: now).weekOfYear ?? 0
-                if diff == 1 {
-                    currentStreak += 1
-                } else if diff > 1 {
-                    currentStreak = 1
-                }
+                // Rompió racha (más de una semana sin comprar), restablecer a 1
+                currentStreak = 1
             }
         } else {
             currentStreak = 1

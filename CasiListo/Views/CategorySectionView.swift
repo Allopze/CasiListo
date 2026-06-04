@@ -54,6 +54,7 @@ struct CategorySectionView: View {
                             onMarkStatus(item, status)
                         }
                     )
+                    .equatable()
                     .listRowInsets(.init(
                         top: listRowInsetTop,
                         leading: listRowInsetSide,

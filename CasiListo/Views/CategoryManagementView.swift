@@ -133,7 +133,7 @@ struct CategoryManagementView: View {
         guard category.name != "Varios" else { return }
 
         // Buscar fallback
-        let fallback = categories.first { $0.name == "Varios" } ?? Category.fallback
+        let fallback = Category.resolvedFallback(in: modelContext)
 
         // Reasociar ítems de compras
         if let items = category.items {

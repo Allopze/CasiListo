@@ -116,13 +116,12 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         descriptor.predicate = #Predicate<ShoppingItem> { item in
             item.listID == activeListID
                 && item.storeRawValue == storeRawValue
-                && !item.isPurchased
+                && !item.storedIsPurchased
                 && (item.statusRawValue == nil || item.statusRawValue == pendingStatusRawValue)
         }
         
         do {
-            let items = try context.fetch(descriptor)
-            return items.count
+            return try context.fetchCount(descriptor)
         } catch {
             print("Error al buscar productos para geofence: \(error)")
             return 0

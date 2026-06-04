@@ -95,7 +95,24 @@ extension Category {
     var displayName: String { name }
     var id: String { name }
     var rawValue: String { name }
+
+    /// Instancia no gestionada para uso de solo lectura (display).
+    /// ⚠️ NO asignar a relaciones de SwiftData — usar `resolvedFallback(in:)` en su lugar.
     nonisolated(unsafe) static let fallback = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+
+    /// Busca "Varios" en el contexto, o la crea si no existe.
+    /// Seguro para asignar a relaciones de SwiftData.
+    @MainActor
+    static func resolvedFallback(in context: ModelContext) -> Category {
+        var descriptor = FetchDescriptor<Category>(predicate: #Predicate { $0.name == "Varios" })
+        descriptor.fetchLimit = 1
+        if let existing = try? context.fetch(descriptor).first {
+            return existing
+        }
+        let newCat = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+        context.insert(newCat)
+        return newCat
+    }
 
     nonisolated static func accentColor(forName name: String) -> Color {
         DefaultCategory.allCases.first { $0.rawValue == name }?.color

@@ -3,6 +3,7 @@ import SwiftUI
 struct LocationPermissionOnboardingView: View {
     let onFinished: () -> Void
     @Environment(\.dismiss) private var dismiss
+    @Environment(GeofenceService.self) private var geofenceService
     @State private var notificationsGranted = false
     @State private var isRequestingNotifications = false
 
@@ -56,8 +57,8 @@ struct LocationPermissionOnboardingView: View {
                         .disabled(isRequestingNotifications || notificationsGranted)
 
                         Button {
-                            GeofenceService.shared.requestWhenInUsePermission()
-                            GeofenceService.shared.requestAlwaysPermissionForBackgroundReminders()
+                            geofenceService.requestWhenInUsePermission()
+                            geofenceService.requestAlwaysPermissionForBackgroundReminders()
                             onFinished()
                             dismiss()
                         } label: {
@@ -109,7 +110,7 @@ struct LocationPermissionOnboardingView: View {
     private func requestNotifications() {
         isRequestingNotifications = true
         Task { @MainActor in
-            notificationsGranted = await GeofenceService.shared.requestNotificationPermission()
+            notificationsGranted = await geofenceService.requestNotificationPermission()
             isRequestingNotifications = false
         }
     }

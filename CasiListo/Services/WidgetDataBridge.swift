@@ -16,8 +16,8 @@ enum WidgetDataBridge {
     }
 
     static func write(items: [ShoppingItem]) {
-        let pending = items.filter { !$0.isPurchased }
-        let purchased = items.filter { $0.isPurchased }
+        let pending = items.filter { $0.status == .pending }
+        let purchased = items.filter { $0.status == .purchased }
         let snapshot = Snapshot(
             pendingCount: pending.count,
             purchasedCount: purchased.count,

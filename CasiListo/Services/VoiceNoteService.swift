@@ -128,7 +128,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     
     nonisolated func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
-            VoiceNoteService.shared.stopPlaying()
+            self.stopPlaying()
         }
     }
 }

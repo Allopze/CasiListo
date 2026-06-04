@@ -44,8 +44,6 @@ final class CasiListoUITests: XCTestCase {
         let app = launchFreshApp()
 
         app.buttons["Entrar a Modo Compra"].tap()
-        XCTAssertTrue(app.buttons["Comenzar Compra"].waitForExistence(timeout: 5))
-        app.buttons["Comenzar Compra"].tap()
 
         let moreActions = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Mas acciones'")).firstMatch
         XCTAssertTrue(moreActions.waitForExistence(timeout: 5))

@@ -17,6 +17,7 @@ struct AddEditItemSheet: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(VoiceNoteService.self) private var voiceNoteService
 
     let mode: Mode
     let activeList: ShoppingList?
@@ -255,7 +256,7 @@ struct AddEditItemSheet: View {
             
             if item.voiceNoteFilename != voiceNoteFilename {
                 if let oldFile = item.voiceNoteFilename {
-                    VoiceNoteService.shared.deleteVoiceNote(filename: oldFile)
+                    voiceNoteService.deleteVoiceNote(filename: oldFile)
                 }
                 item.voiceNoteFilename = voiceNoteFilename
             }
@@ -272,7 +273,7 @@ struct AddEditItemSheet: View {
 
     private func handleRemovedVoiceNote(_ filename: String) {
         if recordedVoiceNoteFilenames.contains(filename) {
-            VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+            voiceNoteService.deleteVoiceNote(filename: filename)
             recordedVoiceNoteFilenames.remove(filename)
         }
     }
@@ -280,11 +281,11 @@ struct AddEditItemSheet: View {
     private func cleanupTemporaryVoiceNotesIfNeeded() {
         if didSave {
             for filename in recordedVoiceNoteFilenames where filename != voiceNoteFilename {
-                VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+                voiceNoteService.deleteVoiceNote(filename: filename)
             }
         } else {
             for filename in recordedVoiceNoteFilenames {
-                VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+                voiceNoteService.deleteVoiceNote(filename: filename)
             }
             voiceNoteFilename = initialVoiceNoteFilename
         }

@@ -8,17 +8,18 @@ struct VoiceNotePlayerButton: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
+    @Environment(VoiceNoteService.self) private var voiceNoteService
     private let waveBarHeights: [CGFloat] = [8, 16, 11, 18]
     
     var body: some View {
-        let isPlaying = VoiceNoteService.shared.currentlyPlayingFilename == filename
+        let isPlaying = voiceNoteService.currentlyPlayingFilename == filename
         
         Button {
             HapticFeedback.selection()
             if isPlaying {
-                VoiceNoteService.shared.stopPlaying()
+                voiceNoteService.stopPlaying()
             } else {
-                _ = VoiceNoteService.shared.startPlaying(filename: filename)
+                _ = voiceNoteService.startPlaying(filename: filename)
             }
         } label: {
             HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {

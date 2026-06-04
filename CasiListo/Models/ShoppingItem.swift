@@ -1,5 +1,6 @@
 import Foundation
 import SwiftData
+import os.log
 
 enum ShoppingItemStatus: String, Codable, CaseIterable, Identifiable {
     case pending = "Pendiente"
@@ -25,7 +26,7 @@ final class ShoppingItem {
     var categoryRawValue: String
     var storeRawValue: String
     var note: String
-    var isPurchased: Bool
+    @Attribute(originalName: "isPurchased") var storedIsPurchased: Bool
     var statusRawValue: String?
     var sortOrder: Int
     var price: Double?
@@ -39,27 +40,46 @@ final class ShoppingItem {
     var category: Category {
         get { categoryRelation ?? Category.fallback }
         set {
-            categoryRelation = newValue
+            if newValue === Category.fallback {
+                categoryRelation = nil
+            } else {
+                categoryRelation = newValue
+            }
             categoryRawValue = newValue.name
         }
     }
 
+    /// Computed property for backward compatibility and SwiftUI animations.
+    /// Derived from status.
+    var isPurchased: Bool {
+        get { status == .purchased }
+        set { status = newValue ? .purchased : .pending }
+    }
+
     /// Supermercado tipado, derivado de `storeRawValue`.
     var store: Store {
-        get { Store(rawValue: storeRawValue) ?? .jumbo }
+        get {
+            if let resolved = Store(rawValue: storeRawValue) {
+                return resolved
+            }
+            ShoppingItem.logger.warning("storeRawValue desconocido: '\(self.storeRawValue, privacy: .public)' — usando .jumbo")
+            return .jumbo
+        }
         set { storeRawValue = newValue.rawValue }
     }
+
+    private static let logger = Logger(subsystem: "com.casilisto.app", category: "ShoppingItem")
 
     var status: ShoppingItemStatus {
         get {
             if let statusRawValue, let status = ShoppingItemStatus(rawValue: statusRawValue) {
                 return status
             }
-            return isPurchased ? .purchased : .pending
+            return storedIsPurchased ? .purchased : .pending
         }
         set {
             statusRawValue = newValue.rawValue
-            isPurchased = newValue == .purchased
+            storedIsPurchased = newValue == .purchased
         }
     }
 
@@ -80,12 +100,12 @@ final class ShoppingItem {
         self.listID = listID
         self.name = name
         self.quantity = quantity
-        self.categoryRelation = category
+        self.categoryRelation = category === Category.fallback ? nil : category
         self.categoryRawValue = category?.name ?? "Varios"
         self.storeRawValue = store.rawValue
         self.note = note
-        self.isPurchased = isPurchased
-        self.statusRawValue = status?.rawValue
+        self.storedIsPurchased = isPurchased
+        self.statusRawValue = status?.rawValue ?? (isPurchased ? ShoppingItemStatus.purchased.rawValue : ShoppingItemStatus.pending.rawValue)
         self.sortOrder = sortOrder
         self.price = price
         self.voiceNoteFilename = voiceNoteFilename
@@ -96,23 +116,34 @@ final class ShoppingItem {
 // MARK: - Formateo de precio centralizado
 
 extension Double {
+    // Formatters cacheados — NumberFormatter es costoso de instanciar.
+    private static let decimalFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = .autoupdatingCurrent
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        return f
+    }()
+
+    private static let currencyFormatter: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = .autoupdatingCurrent
+        f.numberStyle = .currency
+        f.minimumFractionDigits = 0
+        return f
+    }()
+
     /// Formatea un precio: entero si no tiene decimales, 2 decimales si los tiene.
     /// Ejemplo en es_CL: 1500.0 -> "1.500", 3.50 -> "3,5".
     var formattedPrice: String {
-        let formatter = NumberFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
+        let formatter = Self.decimalFormatter
         formatter.maximumFractionDigits = isWholePrice ? 0 : 2
         return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
 
     /// Formatea con símbolo de moneda.
     var formattedPriceWithSymbol: String {
-        let formatter = NumberFormatter()
-        formatter.locale = .autoupdatingCurrent
-        formatter.numberStyle = .currency
-        formatter.minimumFractionDigits = 0
+        let formatter = Self.currencyFormatter
         formatter.maximumFractionDigits = isWholePrice ? 0 : 2
         return formatter.string(from: NSNumber(value: self)) ?? "$\(formattedPrice)"
     }
