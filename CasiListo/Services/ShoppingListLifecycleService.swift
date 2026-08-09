@@ -34,21 +34,28 @@ enum ShoppingListLifecycleService {
         }
         guard !purchasedItems.isEmpty else { return }
 
-        let completedList = ShoppingList(
-            title: title ?? defaultHistoryTitle(store: store),
-            completedAt: Date(),
-            status: .completed,
-            storeScope: store,
-            purchasedCount: purchasedItems.count,
-            pendingCount: 0,
-            skippedCount: 0,
-            unavailableCount: 0,
-            totalSpent: purchasedItems.compactMap(\.price).reduce(0, +)
-        )
-        context.insert(completedList)
+        // Una lista activa puede reunir productos de más de un supermercado.
+        // Al cerrarla, cada tienda se conserva como una compra independiente
+        // para que el historial y la comparación de precios mantengan contexto.
+        let purchasesByStore = Dictionary(grouping: purchasedItems) { store ?? $0.store }
 
-        for item in purchasedItems {
-            item.listID = completedList.id
+        for (purchaseStore, storeItems) in purchasesByStore {
+            let completedList = ShoppingList(
+                title: title ?? defaultHistoryTitle(store: purchaseStore),
+                completedAt: Date(),
+                status: .completed,
+                storeScope: purchaseStore,
+                purchasedCount: storeItems.count,
+                pendingCount: 0,
+                skippedCount: 0,
+                unavailableCount: 0,
+                totalSpent: storeItems.compactMap(\.price).reduce(0, +)
+            )
+            context.insert(completedList)
+
+            for item in storeItems {
+                item.listID = completedList.id
+            }
         }
 
         if let activeList {

@@ -16,6 +16,18 @@ struct RecognizedReceiptLine: Identifiable, Sendable {
     }
 }
 
+/// Resultado completo de leer una boleta: productos y la tienda reconocida
+/// desde su encabezado cuando Vision logra identificarla.
+struct ReceiptRecognitionResult: Sendable {
+    let products: [RecognizedReceiptLine]
+    let detectedStoreRawValue: String?
+
+    nonisolated init(products: [RecognizedReceiptLine], detectedStoreRawValue: String?) {
+        self.products = products
+        self.detectedStoreRawValue = detectedStoreRawValue
+    }
+}
+
 /// Entrada ya revisada por la persona. Un producto sin asociación se crea en el historial.
 struct ReceiptPurchaseEntry: Identifiable {
     let id: UUID
@@ -91,7 +103,7 @@ enum ReceiptTextRecognitionService {
         }
     }
 
-    static func recognizeProducts(in image: UIImage) async throws -> [RecognizedReceiptLine] {
+    static func recognizeReceipt(in image: UIImage) async throws -> ReceiptRecognitionResult {
         guard let imageData = image.jpegData(compressionQuality: 0.96) else {
             throw RecognitionError.unsupportedImage
         }
@@ -113,8 +125,33 @@ enum ReceiptTextRecognitionService {
                 .sorted { $0.boundingBox.midY > $1.boundingBox.midY }
                 .compactMap { $0.topCandidates(1).first?.string }
 
-            return ReceiptLineParser.parse(recognizedText)
+            return ReceiptRecognitionResult(
+                products: ReceiptLineParser.parse(recognizedText),
+                detectedStoreRawValue: ReceiptStoreDetector.detectStoreRawValue(in: recognizedText)
+            )
         }.value
+    }
+}
+
+/// Busca el supermercado solo en las primeras líneas de la boleta, donde se
+/// encuentra el encabezado. Así se evita tomar un nombre de tienda que aparezca
+/// incidentalmente entre productos o promociones.
+nonisolated enum ReceiptStoreDetector {
+    private static let headerLineLimit = 12
+
+    static func detectStoreRawValue(in recognizedLines: [String]) -> String? {
+        let header = recognizedLines
+            .prefix(headerLineLimit)
+            .map(ProductNameMatcher.normalized)
+            .joined(separator: " ")
+
+        if header.contains("jumbo") {
+            return Store.jumbo.rawValue
+        }
+        if header.contains("lider") {
+            return Store.lider.rawValue
+        }
+        return nil
     }
 }
 

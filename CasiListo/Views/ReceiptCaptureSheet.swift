@@ -15,6 +15,7 @@ struct ReceiptCaptureSheet: View {
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedStore: Store
+    @State private var detectedStore: Store?
     @State private var receiptImage: UIImage?
     @State private var entries: [ReceiptPurchaseEntry] = []
     @State private var pickerSource: ReceiptImageSource?
@@ -234,6 +235,17 @@ struct ReceiptCaptureSheet: View {
             }
             .pickerStyle(.segmented)
             .accessibilityLabel("Supermercado de esta boleta")
+
+            if let detectedStore {
+                Label(storeDetectionMessage(for: detectedStore), systemImage: "checkmark.seal.fill")
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
+                    .accessibilityElement(children: .combine)
+            } else if receiptImage != nil && !isRecognizing {
+                Text("No pudimos identificar el supermercado; puedes elegirlo aquí.")
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
+            }
         }
         .padding(16)
         .background(Color.appCardBackground, in: RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
@@ -318,12 +330,18 @@ struct ReceiptCaptureSheet: View {
     private func scanReceipt(_ image: UIImage) {
         isRecognizing = true
         entries = []
+        detectedStore = nil
 
         Task {
             do {
-                let recognizedLines = try await ReceiptTextRecognitionService.recognizeProducts(in: image)
+                let recognition = try await ReceiptTextRecognitionService.recognizeReceipt(in: image)
                 guard receiptImage === image else { return }
-                entries = recognizedLines.map { line in
+                if let rawValue = recognition.detectedStoreRawValue,
+                   let store = Store(rawValue: rawValue) {
+                    selectedStore = store
+                    detectedStore = store
+                }
+                entries = recognition.products.map { line in
                     ReceiptPurchaseEntry(
                         name: line.name,
                         price: line.price,
@@ -335,6 +353,13 @@ struct ReceiptCaptureSheet: View {
             }
             isRecognizing = false
         }
+    }
+
+    private func storeDetectionMessage(for store: Store) -> String {
+        if selectedStore == store {
+            return "Detectamos \(store.displayName) en la boleta."
+        }
+        return "Detectamos \(store.displayName); puedes mantener tu selección si necesitas corregirlo."
     }
 
     private func comparison(for entry: ReceiptPurchaseEntry) -> ReceiptPriceComparison? {
