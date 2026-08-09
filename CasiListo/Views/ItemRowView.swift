@@ -4,6 +4,7 @@ import SwiftUI
 /// Muestra estado, contenido y acciones nativas de edición.
 struct ItemRowView: View {
     let item: ShoppingItem
+    var searchText: String = ""
     let onToggle: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -115,7 +116,7 @@ struct ItemRowView: View {
 
     private var rowContent: some View {
         VStack(alignment: .leading, spacing: 3) {
-            Text(item.name)
+            Text(highlighting: item.name, query: searchText)
                 .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
                 .strikethrough(item.isPurchased, color: Color.appTextPurchased)
@@ -241,6 +242,23 @@ struct ItemRowView: View {
     }
 }
 
+// MARK: - Text Highlighting Extension
+private extension Text {
+    init(highlighting text: String, query: String) {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, let range = text.range(of: trimmed, options: [.caseInsensitive, .diacriticInsensitive]) else {
+            self.init(text)
+            return
+        }
+        var attributed = AttributedString(text)
+        if let attrRange = attributed.range(of: trimmed, options: [.caseInsensitive, .diacriticInsensitive]) {
+            attributed[attrRange].backgroundColor = Theme.accentYellow.opacity(0.35)
+            attributed[attrRange].inlinePresentationIntent = .stronglyEmphasized
+        }
+        self.init(attributed)
+    }
+}
+
 // MARK: - Equatable Conformance for SwiftUI List Optimization
 extension ItemRowView: Equatable {
     static func == (lhs: ItemRowView, rhs: ItemRowView) -> Bool {
@@ -252,6 +270,7 @@ extension ItemRowView: Equatable {
         lhs.item.note == rhs.item.note &&
         lhs.item.store == rhs.item.store &&
         lhs.item.voiceNoteFilename == rhs.item.voiceNoteFilename &&
+        lhs.searchText == rhs.searchText &&
         lhs.accessibilityTextSizeScale == rhs.accessibilityTextSizeScale &&
         lhs.reduceMotion == rhs.reduceMotion
     }

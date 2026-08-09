@@ -7,7 +7,7 @@ struct StoreFilterBar: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {
+            HStack(spacing: 8) {
                 filterChip(title: "Todos", store: nil, icon: "house.fill")
                 ForEach(Store.allCases) { store in
                     filterChip(title: store.displayName, store: store, icon: store.sfSymbol)
@@ -29,15 +29,15 @@ struct StoreFilterBar: View {
                 selectedStore = store
             }
         } label: {
-            HStack(spacing: 6 * CGFloat(accessibilityTextSizeScale)) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 13 * CGFloat(accessibilityTextSizeScale), weight: .semibold))
+                    .font(Theme.chipFont(scale: accessibilityTextSizeScale))
                 Text(title)
                     .font(Theme.chipFont(scale: accessibilityTextSizeScale))
                     .bold()
             }
-            .padding(.horizontal, 14 * CGFloat(accessibilityTextSizeScale))
-            .padding(.vertical, 8 * CGFloat(accessibilityTextSizeScale))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 8)
             .foregroundStyle(isSelected ? selectedForeground(for: store) : Color.appTextPrimary)
             .background {
                 if isSelected {
@@ -45,10 +45,10 @@ struct StoreFilterBar: View {
                         .fill(activeColor)
                 } else {
                     Capsule()
-                        .fill(Color.appCardBackground.opacity(0.4))
+                        .fill(Color.appCardBackground.opacity(0.85))
                         .overlay {
                             Capsule()
-                                .strokeBorder(Color.white.opacity(0.1), lineWidth: 1)
+                                .strokeBorder(Color.appSeparator, lineWidth: 1)
                         }
                 }
             }

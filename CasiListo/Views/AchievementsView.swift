@@ -3,7 +3,19 @@ import SwiftUI
 /// Vista que muestra los logros desbloqueados y estadísticas acumuladas del usuario.
 struct AchievementsView: View {
     @State private var stats = UserStats.load()
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @Environment(AppSettings.self) private var appSettings
+    private var accessibilityTextSizeScale: Double {
+        appSettings.accessibilityTextSizeScale
+    }
+    
+    @ScaledMetric(relativeTo: .body) private var mainSpacing: CGFloat = 24
+    @ScaledMetric(relativeTo: .body) private var statsSpacing: CGFloat = 20
+    @ScaledMetric(relativeTo: .largeTitle) private var fireSize: CGFloat = 48
+    @ScaledMetric(relativeTo: .title) private var streakSize: CGFloat = 20
+    @ScaledMetric(relativeTo: .title) private var statNumberSize: CGFloat = 24
+    @ScaledMetric(relativeTo: .body) private var cardPaddingValue: CGFloat = 24
+    @ScaledMetric(relativeTo: .caption) private var achievementTitleSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .caption2) private var achievementDescSize: CGFloat = 11
     
     // Columnas de la cuadrícula de logros
     private let columns = [
@@ -12,7 +24,7 @@ struct AchievementsView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 24 * CGFloat(accessibilityTextSizeScale)) {
+            VStack(spacing: mainSpacing) {
                 // Tarjeta de Resumen / Stats Principales
                 statsSummaryCard
                 
@@ -46,14 +58,14 @@ struct AchievementsView: View {
     
     // Tarjeta superior de estadísticas
     private var statsSummaryCard: some View {
-        VStack(spacing: 20 * CGFloat(accessibilityTextSizeScale)) {
+        VStack(spacing: statsSpacing) {
             // Racha Actual
             VStack(spacing: 6) {
                 Text("🔥")
-                    .font(.system(size: 48 * CGFloat(accessibilityTextSizeScale)))
+                    .font(.system(size: fireSize))
                 
                 Text("\(stats.currentStreak) Semanas Seguidas")
-                    .font(.system(size: 20 * CGFloat(accessibilityTextSizeScale), weight: .black))
+                    .font(.system(size: streakSize, weight: .black))
                     .foregroundStyle(Theme.accentYellow)
                 
                 Text("Racha de Compras")
@@ -68,7 +80,7 @@ struct AchievementsView: View {
             HStack(spacing: 0) {
                 VStack(spacing: 4) {
                     Text("\(stats.totalPurchases)")
-                        .font(.system(size: 24 * CGFloat(accessibilityTextSizeScale), weight: .black).monospacedDigit())
+                        .font(.system(size: statNumberSize, weight: .black).monospacedDigit())
                         .foregroundStyle(.white)
                     
                     Text("Compras Totales")
@@ -83,7 +95,7 @@ struct AchievementsView: View {
                 
                 VStack(spacing: 4) {
                     Text("\(stats.totalProductsBought)")
-                        .font(.system(size: 24 * CGFloat(accessibilityTextSizeScale), weight: .black).monospacedDigit())
+                        .font(.system(size: statNumberSize, weight: .black).monospacedDigit())
                         .foregroundStyle(.white)
                     
                     Text("Productos")
@@ -93,7 +105,7 @@ struct AchievementsView: View {
                 .frame(maxWidth: .infinity)
             }
         }
-        .padding(24 * CGFloat(accessibilityTextSizeScale))
+        .padding(cardPaddingValue)
         .background(Color.appCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 8, y: 4)
@@ -128,17 +140,16 @@ struct AchievementsView: View {
             }
             
             Text(achievement.title)
-                .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                .font(Theme.chipFont(scale: accessibilityTextSizeScale).bold())
                 .foregroundStyle(isUnlocked ? Color.appTextPrimary : Color.appTextSecondary)
                 .multilineTextAlignment(.center)
-                .lineLimit(1)
+                .lineLimit(2)
             
             Text(achievement.description)
-                .font(.system(size: 11 * CGFloat(accessibilityTextSizeScale)))
+                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(Color.appTextSecondary)
                 .multilineTextAlignment(.center)
-                .lineLimit(3)
-                .frame(height: 40, alignment: .top)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .padding(16)
         .background(Color.appCardBackground)
