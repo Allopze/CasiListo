@@ -8,6 +8,9 @@ enum ShoppingListSheetDestination: Identifiable {
     case editItem(ShoppingItem)
     case settings
     case history
+    case receipt
+    case textImporter
+    case templates
 
     var id: String {
         switch self {
@@ -19,6 +22,12 @@ enum ShoppingListSheetDestination: Identifiable {
             return "settings"
         case .history:
             return "history"
+        case .receipt:
+            return "receipt"
+        case .textImporter:
+            return "text-importer"
+        case .templates:
+            return "templates"
         }
     }
 }
@@ -34,8 +43,11 @@ final class ShoppingListViewModel {
     var showPurchased: Bool = true
     var selectedStore: Store? = nil
     var presentedSheet: ShoppingListSheetDestination?
-    var collapsedCategories: Set<String> = []
     var quickAddText: String = ""
+    var showUndoToast: Bool = false
+    @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, category: Category, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)? = nil
+    @ObservationIgnored private var undoTimerTask: Task<Void, Never>? = nil
+    @ObservationIgnored private var collapsedCategories: Set<String> = []
 
     // MARK: - Snapshot derivado
 
@@ -211,6 +223,18 @@ final class ShoppingListViewModel {
         presentedSheet = .history
     }
 
+    func presentReceipt() {
+        presentedSheet = .receipt
+    }
+
+    func presentTextImporter() {
+        presentedSheet = .textImporter
+    }
+
+    func presentTemplates() {
+        presentedSheet = .templates
+    }
+
     func isCategoryCollapsed(_ category: Category) -> Bool {
         collapsedCategories.contains(category.name)
     }
@@ -223,10 +247,66 @@ final class ShoppingListViewModel {
         }
     }
 
-    /// Elimina un ítem del contexto.
+    /// Elimina un ítem con soporte de Deshacer (Undo).
     func deleteItem(_ item: ShoppingItem, context: ModelContext) {
+        deletedItemUndoBuffer = (
+            name: item.name,
+            quantity: item.quantity,
+            category: item.category,
+            store: item.store,
+            note: item.note,
+            isPurchased: item.isPurchased,
+            status: item.status,
+            sortOrder: item.sortOrder,
+            price: item.price,
+            voiceNoteFilename: item.voiceNoteFilename,
+            listID: item.listID
+        )
         context.delete(item)
         context.safeSave()
+
+        withAnimation(Theme.defaultAnimation) {
+            showUndoToast = true
+        }
+
+        undoTimerTask?.cancel()
+        undoTimerTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(4))
+            guard !Task.isCancelled else { return }
+            if let filename = self.deletedItemUndoBuffer?.voiceNoteFilename {
+                VoiceNoteService.shared.deleteVoiceNote(filename: filename)
+            }
+            withAnimation(Theme.defaultAnimation) {
+                showUndoToast = false
+                deletedItemUndoBuffer = nil
+            }
+        }
+    }
+
+    /// Restaura el último producto eliminado.
+    func undoLastDelete(context: ModelContext) {
+        guard let buffer = deletedItemUndoBuffer else { return }
+        let restoredItem = ShoppingItem(
+            name: buffer.name,
+            listID: buffer.listID,
+            quantity: buffer.quantity,
+            category: buffer.category,
+            note: buffer.note,
+            isPurchased: buffer.isPurchased,
+            status: buffer.status,
+            sortOrder: buffer.sortOrder,
+            price: buffer.price,
+            store: buffer.store,
+            voiceNoteFilename: buffer.voiceNoteFilename
+        )
+        context.insert(restoredItem)
+        context.safeSave()
+
+        withAnimation(Theme.defaultAnimation) {
+            showUndoToast = false
+            deletedItemUndoBuffer = nil
+        }
+        HapticFeedback.success()
     }
 
     func addQuickItem(
@@ -265,11 +345,11 @@ final class ShoppingListViewModel {
         )
         withAnimation(Theme.defaultAnimation) {
             context.insert(newItem)
+            context.safeSave()
             if let activeList {
                 ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
             }
             quickAddText = ""
-            context.safeSave()
         }
         HapticFeedback.success()
     }

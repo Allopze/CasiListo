@@ -40,11 +40,7 @@ final class ShoppingItem {
     var category: Category {
         get { categoryRelation ?? Category.fallback }
         set {
-            if newValue === Category.fallback {
-                categoryRelation = nil
-            } else {
-                categoryRelation = newValue
-            }
+            categoryRelation = newValue
             categoryRawValue = newValue.name
         }
     }
@@ -100,7 +96,7 @@ final class ShoppingItem {
         self.listID = listID
         self.name = name
         self.quantity = quantity
-        self.categoryRelation = category === Category.fallback ? nil : category
+        self.categoryRelation = (category?.name == "Varios" && category?.isSystem == true) ? nil : category
         self.categoryRawValue = category?.name ?? "Varios"
         self.storeRawValue = store.rawValue
         self.note = note
@@ -116,35 +112,53 @@ final class ShoppingItem {
 // MARK: - Formateo de precio centralizado
 
 extension Double {
-    // Formatters cacheados — NumberFormatter es costoso de instanciar.
-    private static let decimalFormatter: NumberFormatter = {
+    // Formatters cacheados — cada variante inmutable para thread safety.
+    private static let decimalFormatterWhole: NumberFormatter = {
         let f = NumberFormatter()
         f.locale = .autoupdatingCurrent
         f.numberStyle = .decimal
         f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 0
         return f
     }()
 
-    private static let currencyFormatter: NumberFormatter = {
+    private static let decimalFormatterFractional: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = .autoupdatingCurrent
+        f.numberStyle = .decimal
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
+        return f
+    }()
+
+    private static let currencyFormatterWhole: NumberFormatter = {
         let f = NumberFormatter()
         f.locale = .autoupdatingCurrent
         f.numberStyle = .currency
         f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 0
+        return f
+    }()
+
+    private static let currencyFormatterFractional: NumberFormatter = {
+        let f = NumberFormatter()
+        f.locale = .autoupdatingCurrent
+        f.numberStyle = .currency
+        f.minimumFractionDigits = 0
+        f.maximumFractionDigits = 2
         return f
     }()
 
     /// Formatea un precio: entero si no tiene decimales, 2 decimales si los tiene.
     /// Ejemplo en es_CL: 1500.0 -> "1.500", 3.50 -> "3,5".
     var formattedPrice: String {
-        let formatter = Self.decimalFormatter
-        formatter.maximumFractionDigits = isWholePrice ? 0 : 2
+        let formatter = isWholePrice ? Self.decimalFormatterWhole : Self.decimalFormatterFractional
         return formatter.string(from: NSNumber(value: self)) ?? "\(self)"
     }
 
     /// Formatea con símbolo de moneda.
     var formattedPriceWithSymbol: String {
-        let formatter = Self.currencyFormatter
-        formatter.maximumFractionDigits = isWholePrice ? 0 : 2
+        let formatter = isWholePrice ? Self.currencyFormatterWhole : Self.currencyFormatterFractional
         return formatter.string(from: NSNumber(value: self)) ?? "$\(formattedPrice)"
     }
 

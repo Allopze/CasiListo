@@ -98,7 +98,10 @@ extension Category {
 
     /// Instancia no gestionada para uso de solo lectura (display).
     /// ⚠️ NO asignar a relaciones de SwiftData — usar `resolvedFallback(in:)` en su lugar.
-    nonisolated(unsafe) static let fallback = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+    /// Cada acceso crea una nueva instancia para evitar problemas con SwiftData.
+    nonisolated static var fallback: Category {
+        Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+    }
 
     /// Busca "Varios" en el contexto, o la crea si no existe.
     /// Seguro para asignar a relaciones de SwiftData.

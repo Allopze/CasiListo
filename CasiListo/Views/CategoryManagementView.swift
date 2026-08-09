@@ -125,7 +125,7 @@ struct CategoryManagementView: View {
         for (index, category) in sortedCategories.enumerated() {
             category.sortIndex = index
         }
-        try? modelContext.save()
+        modelContext.safeSave()
         HapticFeedback.selection()
     }
 
@@ -151,7 +151,10 @@ struct CategoryManagementView: View {
             }
         }
 
+        category.items = []
+        category.catalogItems = []
+
         modelContext.delete(category)
-        try? modelContext.save()
+        modelContext.safeSave()
     }
 }
