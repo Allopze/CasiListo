@@ -1,11 +1,13 @@
 import Foundation
 import AVFoundation
 import Observation
+import os.log
 
 /// Servicio encargado de la grabación y reproducción de notas de voz asociadas a los productos.
 @Observable
 @MainActor
 final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "CasiListo", category: "VoiceNoteService")
     static let shared = VoiceNoteService()
     
     @ObservationIgnored private var audioRecorder: AVAudioRecorder?
@@ -67,7 +69,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
             }
             return success
         } catch {
-            print("Error al configurar la grabación de audio: \(error)")
+            Self.logger.error("Error al configurar la grabación de audio: \(error)")
             return false
         }
     }
@@ -104,7 +106,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
             }
             return success
         } catch {
-            print("Error al reproducir audio: \(error)")
+            Self.logger.error("Error al reproducir audio: \(error)")
             return false
         }
     }

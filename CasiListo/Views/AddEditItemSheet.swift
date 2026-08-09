@@ -36,6 +36,7 @@ struct AddEditItemSheet: View {
     @State private var selectedCategory: Category = Category.fallback
     @State private var selectedStore: Store = .jumbo
     @State private var note: String = ""
+    @State private var priceText: String = ""
     @State private var showSuggestions: Bool = false
     @State private var voiceNoteFilename: String? = nil
     @State private var initialVoiceNoteFilename: String? = nil
@@ -195,6 +196,9 @@ struct AddEditItemSheet: View {
             TextField("Cantidad, ej: 2, 1 kg, 500 g", text: $quantity)
                 .textInputAutocapitalization(.never)
 
+            TextField("Precio opcional ($)", text: $priceText)
+                .keyboardType(.decimalPad)
+
             TextField("Nota", text: $note, axis: .vertical)
                 .lineLimit(2...4)
         } header: {
@@ -219,6 +223,7 @@ struct AddEditItemSheet: View {
             selectedCategory = item.category
             selectedStore = item.store
             note = item.note
+            priceText = item.price.formattedPriceOrEmpty
             voiceNoteFilename = item.voiceNoteFilename
             initialVoiceNoteFilename = item.voiceNoteFilename
         }
@@ -230,6 +235,7 @@ struct AddEditItemSheet: View {
 
         switch mode {
         case .add:
+            let parsedPrice = Double(priceText.replacingOccurrences(of: ",", with: "."))
             let newItem = ShoppingItem(
                 name: trimmedName,
                 listID: activeList?.id,
@@ -237,7 +243,7 @@ struct AddEditItemSheet: View {
                 category: selectedCategory,
                 note: note.trimmingCharacters(in: .whitespaces),
                 sortOrder: nextSortOrder(selectedCategory),
-                price: nil,
+                price: parsedPrice,
                 store: selectedStore,
                 voiceNoteFilename: voiceNoteFilename
             )
@@ -253,6 +259,7 @@ struct AddEditItemSheet: View {
             item.category = selectedCategory
             item.store = selectedStore
             item.note = note.trimmingCharacters(in: .whitespaces)
+            item.price = Double(priceText.replacingOccurrences(of: ",", with: "."))
             
             if item.voiceNoteFilename != voiceNoteFilename {
                 if let oldFile = item.voiceNoteFilename {

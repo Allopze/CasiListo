@@ -20,7 +20,7 @@ final class ProductCatalogItem {
     var category: Category {
         get { categoryRelation ?? Category.fallback }
         set {
-            if newValue === Category.fallback {
+            if newValue.name == "Varios" && newValue.isSystem {
                 categoryRelation = nil
             } else {
                 categoryRelation = newValue
@@ -44,7 +44,7 @@ final class ProductCatalogItem {
     ) {
         self.id = UUID()
         self.name = name
-        self.categoryRelation = category === Category.fallback ? nil : category
+        self.categoryRelation = (category?.name == "Varios" && category?.isSystem == true) ? nil : category
         self.categoryRawValue = category?.name ?? "Varios"
         self.storeRawValue = store.rawValue
         self.timesAdded = timesAdded

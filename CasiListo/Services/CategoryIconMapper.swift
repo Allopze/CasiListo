@@ -40,7 +40,7 @@ struct CategoryIconMapper {
             (["mascota", "mascotas", "perro", "perros", "gato", "gatos", "alimento perro", "comida gato", "arena gatos", "veterinaria", "pajaros", "comida mascotas"], "pawprint.fill"),
             
             // Despensa
-            (["despensa", "arroz", "fideos", "pasta", "pastas", "aceite", "vinagre", "sal", "azucar", "harina", "salsa", "conserva", "conservas", "lentejas", "porotos", "garbanzos", "cereal", "cereales", "snack", "snacks", "papas fritas", "frutos secos", "nueces"], "archivebox"),
+            (["despensa", "arroz", "fideos", "pasta", "pastas", "aceite", "vinagre", "sal", "azucar", "harina", "salsa", "conserva", "conservas", "lentejas", "porotos", "garbanzos", "cereal", "cereales", "snack", "snacks", "papas fritas", "frutos secos", "nueces"], "tray.full.fill"),
             
             // Condimentos
             (["condimento", "condimentos", "especia", "especias", "pimienta", "comino", "oregano", "canela", "curcuma", "aderezo", "aderezos", "mayonesa", "ketchup", "mostaza", "salsa", "caldo"], "cookingspoon"),

@@ -1,11 +1,11 @@
 import SwiftUI
-import SwiftData
 
 /// Sección de la lista agrupada por categoría.
 /// Muestra un header discreto con SF Symbol y los ítems de esa categoría.
 struct CategorySectionView: View {
     let category: Category
     let items: [ShoppingItem]
+    var searchText: String = ""
     let isCollapsed: Bool
     let onToggleCollapse: () -> Void
     let onTogglePurchased: (ShoppingItem) -> Void
@@ -13,8 +13,6 @@ struct CategorySectionView: View {
     let onDelete: (ShoppingItem) -> Void
     let onMarkStatus: (ShoppingItem, ShoppingItemStatus) -> Void
 
-    @Environment(\.modelContext) private var modelContext
-    
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 14
     @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 4
@@ -41,6 +39,7 @@ struct CategorySectionView: View {
                 ForEach(items, id: \.id) { item in
                     ItemRowView(
                         item: item,
+                        searchText: searchText,
                         onToggle: {
                             onTogglePurchased(item)
                         },

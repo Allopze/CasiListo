@@ -62,6 +62,7 @@ struct ShoppingListView: View {
                     CategorySectionView(
                         category: group.category,
                         items: group.items,
+                        searchText: viewModel.searchText,
                         isCollapsed: viewModel.isCategoryCollapsed(group.category),
                         onToggleCollapse: {
                             viewModel.toggleCategoryCollapse(group.category)
@@ -85,19 +86,32 @@ struct ShoppingListView: View {
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 1)
         .background(Color.appBackground)
+        .refreshable {
+            HapticFeedback.selection()
+            viewModel.updateDerivedState(items: allItems, categories: categories)
+        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
-            BottomAddBarView(
-                text: $viewModel.quickAddText,
-                onAddQuick: {
-                    viewModel.addQuickItem(
-                        to: activeList,
-                        from: allItems,
-                        categories: categories,
-                        context: modelContext
-                    )
-                },
-                onAddTapped: onAddTapped
-            )
+            VStack(spacing: 8) {
+                if viewModel.showUndoToast, let buffer = viewModel.deletedItemUndoBuffer {
+                    UndoToastView(itemName: buffer.name) {
+                        viewModel.undoLastDelete(context: modelContext)
+                    }
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                }
+
+                BottomAddBarView(
+                    text: $viewModel.quickAddText,
+                    onAddQuick: {
+                        viewModel.addQuickItem(
+                            to: activeList,
+                            from: allItems,
+                            categories: categories,
+                            context: modelContext
+                        )
+                    },
+                    onAddTapped: onAddTapped
+                )
+            }
         }
         .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
         .onAppear {

@@ -22,6 +22,11 @@ final class ShoppingList {
     var skippedCount: Int
     var unavailableCount: Int
     var totalSpent: Double
+    /// Imagen de la boleta almacenada localmente para esta compra, si existe.
+    var receiptImageFilename: String?
+    /// Fecha en la que se registró la boleta. Se mantiene separada de
+    /// `completedAt` para compras importadas o corregidas posteriormente.
+    var receiptCapturedAt: Date?
 
     var status: ShoppingListStatus {
         get { ShoppingListStatus(rawValue: statusRawValue) ?? .active }
@@ -48,7 +53,9 @@ final class ShoppingList {
         pendingCount: Int = 0,
         skippedCount: Int = 0,
         unavailableCount: Int = 0,
-        totalSpent: Double = 0
+        totalSpent: Double = 0,
+        receiptImageFilename: String? = nil,
+        receiptCapturedAt: Date? = nil
     ) {
         self.id = UUID()
         self.title = title
@@ -61,6 +68,7 @@ final class ShoppingList {
         self.skippedCount = skippedCount
         self.unavailableCount = unavailableCount
         self.totalSpent = totalSpent
+        self.receiptImageFilename = receiptImageFilename
+        self.receiptCapturedAt = receiptCapturedAt
     }
 }
-

@@ -3,12 +3,14 @@ import CoreLocation
 import UserNotifications
 import SwiftData
 import Observation
+import os.log
 
 /// Servicio encargado de registrar y gestionar alertas geolocalizadas cuando el usuario
 /// pasa cerca de un supermercado con artículos pendientes.
 @Observable
 @MainActor
 final class GeofenceService: NSObject, CLLocationManagerDelegate {
+    private static let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "CasiListo", category: "GeofenceService")
     static let shared = GeofenceService()
     
     private(set) var authorizationStatus: CLAuthorizationStatus = .notDetermined
@@ -36,7 +38,7 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         do {
             return try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge])
         } catch {
-            print("Error solicitando notificaciones: \(error)")
+            Self.logger.error("Error solicitando notificaciones: \(error)")
             return false
         }
     }
@@ -94,6 +96,13 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         }
     }
     
+    /// Cuenta los productos pendientes para una tienda en la lista activa.
+    ///
+    /// - Note: Crea un `ModelContext` independiente porque este método puede invocarse
+    ///   desde el delegate de `CLLocationManager` en background. Esto garantiza thread safety,
+    ///   pero implica que cambios no persistidos en el contexto principal no serán visibles.
+    ///   En la práctica, esto es un edge case menor: el usuario tendría que tener items
+    ///   sin guardar *y* entrar a un geofence simultáneamente.
     private func fetchPendingCount(for store: Store) -> Int {
         guard let container = modelContainer else { return 0 }
         let context = ModelContext(container)
@@ -123,7 +132,7 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         do {
             return try context.fetchCount(descriptor)
         } catch {
-            print("Error al buscar productos para geofence: \(error)")
+            Self.logger.error("Error al buscar productos para geofence: \(error)")
             return 0
         }
     }
@@ -142,7 +151,7 @@ final class GeofenceService: NSObject, CLLocationManagerDelegate {
         
         UNUserNotificationCenter.current().add(request) { error in
             if let error = error {
-                print("Error enviando notificación: \(error)")
+                Self.logger.error("Error enviando notificación: \(error)")
             }
         }
     }

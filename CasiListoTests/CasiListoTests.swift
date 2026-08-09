@@ -367,6 +367,30 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(CategoryIconMapper.suggestSymbol(for: "caja de clavos"), "tag.fill")
     }
 
+    // MARK: - Undo delete functionality
+
+    func testUndoDeleteRestoresItem() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let vm = ShoppingListViewModel()
+        let item = ShoppingItem(name: "Manzanas", quantity: "1 kg", store: .jumbo)
+        context.insert(item)
+        try context.save()
+
+        vm.deleteItem(item, context: context)
+        XCTAssertTrue(vm.showUndoToast)
+        XCTAssertNotNil(vm.deletedItemUndoBuffer)
+
+        vm.undoLastDelete(context: context)
+        XCTAssertFalse(vm.showUndoToast)
+        XCTAssertNil(vm.deletedItemUndoBuffer)
+
+        let items = try context.fetch(FetchDescriptor<ShoppingItem>())
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items.first?.name, "Manzanas")
+    }
+
     // MARK: - Price formatting (Double extension — field still in SwiftData model)
 
     func testPriceFormattingExtensions() {

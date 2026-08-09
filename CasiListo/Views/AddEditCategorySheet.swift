@@ -231,6 +231,6 @@ struct AddEditCategorySheet: View {
             modelContext.insert(newCategory)
         }
         
-        try? modelContext.save()
+        modelContext.safeSave()
     }
 }

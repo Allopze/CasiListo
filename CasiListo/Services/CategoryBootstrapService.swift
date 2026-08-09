@@ -5,7 +5,7 @@ import OSLog
 /// Servicio que gestiona la inicialización de las categorías por defecto en base de datos
 /// y la vinculación ("healer") de productos huérfanos sin relación establecida.
 @MainActor
-final class CategoryBootstrapService {
+enum CategoryBootstrapService {
     private static let logger = Logger(subsystem: "com.casilisto.app", category: "CategoryBootstrapService")
 
     /// Inicializa las categorías por defecto y cura las relaciones de productos existentes.
@@ -34,7 +34,7 @@ final class CategoryBootstrapService {
                     context.insert(newCat)
                     categoryMap[newCat.name] = newCat
                 }
-                try context.save()
+                context.safeSave()
                 logger.info("Categorías iniciales sembradas con éxito.")
             } else {
                 // Asegurarse de que exista la categoría fallback "Varios"
@@ -42,7 +42,7 @@ final class CategoryBootstrapService {
                     let fallback = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
                     context.insert(fallback)
                     categoryMap[fallback.name] = fallback
-                    try context.save()
+                    context.safeSave()
                 }
                 // Reconciliar sfSymbol con la definición actual de DefaultCategory
                 var sfSymbolsUpdated = false
@@ -54,7 +54,7 @@ final class CategoryBootstrapService {
                     }
                 }
                 if sfSymbolsUpdated {
-                    try context.save()
+                    context.safeSave()
                     logger.info("sfSymbols de categorías actualizados a las definiciones más recientes.")
                 }
             }
@@ -91,7 +91,7 @@ final class CategoryBootstrapService {
             }
             
             if itemsCured > 0 || catalogCured > 0 {
-                try context.save()
+                context.safeSave()
                 logger.info("Relaciones curadas: \(itemsCured) ítems de compras y \(catalogCured) ítems de catálogo vinculados.")
             }
             

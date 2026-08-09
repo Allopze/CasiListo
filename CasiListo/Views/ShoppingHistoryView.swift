@@ -28,6 +28,14 @@ struct ShoppingHistoryView: View {
             .navigationTitle("Historial")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                if !completedLists.isEmpty {
+                    ToolbarItem(placement: .topBarLeading) {
+                        ShareLink(item: exportCSVText(), preview: SharePreview("Historial CasiListo.csv", image: Image(systemName: "tablecells"))) {
+                            Label("Exportar CSV", systemImage: "square.and.arrow.up")
+                        }
+                    }
+                }
+
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Listo") {
                         dismiss()
@@ -44,6 +52,11 @@ struct ShoppingHistoryView: View {
             HStack {
                 Label(list.title, systemImage: list.storeScope?.sfSymbol ?? "bag.fill")
                     .font(.headline)
+                if list.receiptImageFilename != nil {
+                    Image(systemName: "doc.text.viewfinder")
+                        .foregroundStyle(Color.appTextSecondary)
+                        .accessibilityLabel("Tiene boleta asociada")
+                }
                 Spacer()
                 if list.totalSpent > 0 {
                     Text(list.totalSpent.formattedPriceWithSymbol)
@@ -75,5 +88,19 @@ struct ShoppingHistoryView: View {
         }
         .accessibilityElement(children: .combine)
     }
-}
 
+    private func exportCSVText() -> String {
+        var csv = "Fecha,Lista,Supermercado,Producto,Cantidad,Categoria,Estado,Precio\n"
+        for list in completedLists {
+            let listItems = allItems.filter { $0.listID == list.id }
+            let dateStr = (list.completedAt ?? list.createdAt).formatted(date: .numeric, time: .shortened)
+            let storeStr = list.storeScope?.displayName ?? "Todos"
+
+            for item in listItems {
+                let priceStr = item.price != nil ? "\(item.price!)" : ""
+                csv += "\"\(dateStr)\",\"\(list.title)\",\"\(storeStr)\",\"\(item.name)\",\"\(item.quantity)\",\"\(item.category.name)\",\"\(item.status.rawValue)\",\"\(priceStr)\"\n"
+            }
+        }
+        return csv
+    }
+}

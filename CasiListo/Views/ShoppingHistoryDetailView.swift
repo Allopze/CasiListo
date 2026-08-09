@@ -1,11 +1,13 @@
 import SwiftUI
 import SwiftData
+import UIKit
 
 /// Vista de detalle para una lista del historial de compras.
 /// Muestra los productos archivados agrupados por categoría con su estado final.
 struct ShoppingHistoryDetailView: View {
     let list: ShoppingList
     let allItems: [ShoppingItem]
+    @State private var receiptImage: UIImage?
     
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var sectionSpacing: CGFloat = 16
@@ -33,6 +35,11 @@ struct ShoppingHistoryDetailView: View {
                 summaryCard
                     .padding(.horizontal, cardPadding)
                     .padding(.top, 12)
+
+                if let receiptImage {
+                    receiptCard(receiptImage)
+                        .padding(.horizontal, cardPadding)
+                }
                 
                 if listItems.isEmpty {
                     ContentUnavailableView(
@@ -56,6 +63,10 @@ struct ShoppingHistoryDetailView: View {
         .background(Color.appBackground)
         .navigationTitle(list.title)
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            guard let filename = list.receiptImageFilename else { return }
+            receiptImage = ReceiptImageStore.image(named: filename)
+        }
     }
     
     private var summaryCard: some View {
@@ -121,6 +132,23 @@ struct ShoppingHistoryDetailView: View {
         .background(Color.appCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+    }
+
+    private func receiptCard(_ image: UIImage) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Label("Boleta asociada", systemImage: "doc.text.viewfinder")
+                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+
+            Image(uiImage: image)
+                .resizable()
+                .scaledToFit()
+                .frame(maxWidth: .infinity, maxHeight: 320)
+                .clipShape(RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
+                .accessibilityLabel("Foto de la boleta asociada a esta compra")
+        }
+        .padding(16)
+        .background(Color.appCardBackground)
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
     }
     
     private func statIndicator(title: String, count: Int, icon: String, color: Color) -> some View {
@@ -205,7 +233,7 @@ struct ShoppingHistoryDetailView: View {
             // Tag del supermercado si difiere de la lista
             if item.store != list.storeScope {
                 Text(item.store.displayName)
-                    .font(.system(size: storeTextSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                    .font(.system(size: storeTextSize, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
@@ -222,19 +250,19 @@ struct ShoppingHistoryDetailView: View {
         switch status {
         case .purchased:
             Image(systemName: "checkmark.circle.fill")
-                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                .font(.system(size: statusIconSize, weight: .bold))
                 .foregroundStyle(.green)
         case .skipped:
             Image(systemName: "clock.fill")
-                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                .font(.system(size: statusIconSize, weight: .bold))
                 .foregroundStyle(.orange)
         case .unavailable:
             Image(systemName: "exclamationmark.triangle.fill")
-                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                .font(.system(size: statusIconSize, weight: .bold))
                 .foregroundStyle(.red)
         case .pending:
             Image(systemName: "circle")
-                .font(.system(size: statusIconSize * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                .font(.system(size: statusIconSize, weight: .bold))
                 .foregroundStyle(Color.appTextSecondary)
         }
     }

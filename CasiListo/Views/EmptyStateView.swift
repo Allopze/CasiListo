@@ -1,31 +1,61 @@
 import SwiftUI
 
-/// Pantalla vacía mostrada cuando no hay productos en la lista.
 struct EmptyStateView: View {
     let onAddTapped: () -> Void
     var hasHistory: Bool = false
     var onShowHistory: (() -> Void)? = nil
+    var onQuickAdd: ((String) -> Void)? = nil
+
+    @ScaledMetric(relativeTo: .body) private var logoSize: CGFloat = 80
+    @ScaledMetric(relativeTo: .body) private var mainSpacing: CGFloat = 20
 
     @Environment(AppSettings.self) private var appSettings
     private var accessibilityTextSizeScale: Double {
         appSettings.accessibilityTextSizeScale
     }
 
+    private let quickStaples = ["Leche 🥛", "Pan 🍞", "Huevos 🥚", "Manzanas 🍎", "Café ☕️", "Mantequilla 🧈"]
+
     var body: some View {
-        VStack(spacing: 20 * CGFloat(accessibilityTextSizeScale)) {
+        VStack(spacing: mainSpacing) {
             Spacer()
 
-            LogoView(size: 80 * CGFloat(accessibilityTextSizeScale))
-                .padding(.bottom, 8)
+            LogoView(size: logoSize)
+                .padding(.bottom, 4)
 
             Text("Tu lista está vacía")
                 .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(Color.appTextPrimary)
 
-            Text("Añade productos para tu próxima compra")
+            Text("Añade productos para tu próxima compra o selecciona uno de los básicos:")
                 .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(Color.appTextSecondary)
                 .multilineTextAlignment(.center)
+
+            // Chips de productos básicos rápidos
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 8) {
+                    ForEach(quickStaples, id: \.self) { staple in
+                        Button {
+                            HapticFeedback.impact()
+                            let cleanName = staple.components(separatedBy: " ").first ?? staple
+                            onQuickAdd?(cleanName)
+                        } label: {
+                            Text(staple)
+                                .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                                .foregroundStyle(Color.appTextPrimary)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 8)
+                                .background(Color.appCardBackground)
+                                .clipShape(Capsule())
+                                .overlay(Capsule().strokeBorder(Theme.accentYellow.opacity(0.3), lineWidth: 1))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+                .padding(.horizontal, 4)
+            }
+            .padding(.vertical, 4)
 
             AdaptiveGlassEffectContainer(spacing: 12) {
                 Button {
@@ -48,12 +78,12 @@ struct EmptyStateView: View {
                     .adaptiveGlassButtonStyle()
                 }
             }
-            .padding(.top, 8)
+            .padding(.top, 4)
 
             Spacer()
             Spacer()
         }
-        .padding(.horizontal, 40)
+        .padding(.horizontal, 24)
     }
 }
 

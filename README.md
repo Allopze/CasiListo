@@ -10,8 +10,8 @@
 
 | Característica | Descripción |
 |---|---|
-| **Categorías inteligentes** | 9 categorías predefinidas (Frutas, Lácteos, Carnes, Despensa, Bebidas, Limpieza, Higiene, Congelados, Otros) con íconos SF Symbols |
-| **Autocompletado** | Base de datos integrada de ~90 productos frecuentes con sugerencias en tiempo real |
+| **Categorías inteligentes** | 15 categorías predefinidas (Frutas y verduras, Lácteos y huevos, Carnes, Despensa, Bebidas, Vinos, Congelados, Conservas, Hogar y limpieza, Aseo personal, Mascotas, Panadería y dulces, Pescados, Condimentos, Varios) con íconos SF Symbols y orden personalizable |
+| **Autocompletado** | Base de datos integrada de ~290 productos frecuentes con sugerencias en tiempo real |
 | **Categorización automática** | Al seleccionar un producto sugerido, la categoría se asigna automáticamente |
 | **Marcar como comprado** | Checkbox animado con feedback háptico para tachar productos |
 | **Búsqueda** | Filtrado en tiempo real por nombre, nota o categoría |
@@ -40,19 +40,29 @@ CasiListo/
 ├── CasiListoApp.swift          # Punto de entrada (@main)
 ├── Models/
 │   ├── ShoppingItem.swift      # Modelo SwiftData del producto
-│   ├── Category.swift          # Enum de categorías con iconos y orden
-│   └── SuggestedProducts.swift # Base de datos de productos sugeridos
+│   ├── Category.swift          # Modelo SwiftData + DefaultCategory enum
+│   ├── ShoppingList.swift      # Modelo SwiftData de sesión/historial
+│   ├── Store.swift             # Supermercados (Jumbo / Líder)
+│   ├── ProductCatalogItem.swift # Productos frecuentes catalogados
+│   ├── SuggestedProducts.swift # Base de datos de ~290 sugerencias
+│   └── UserStats.swift         # Estadísticas y gamificación
 ├── ViewModels/
-│   └── ShoppingListViewModel.swift  # Lógica de filtrado, agrupación y acciones
+│   ├── ShoppingListViewModel.swift  # Lógica de filtrado, agrupación y acciones
+│   └── ShoppingModeViewModel.swift  # Lógica de la sesión activa de compra
+├── Services/
+│   ├── AppSettings.swift             # Estado global observable de ajustes
+│   ├── GeofenceService.swift         # Alertas por cercanía
+│   ├── VoiceNoteService.swift        # Grabación y reproducción de audio
+│   ├── ShoppingListLifecycleService.swift # Ciclo de vida e historial de listas
+│   ├── CategoryBootstrapService.swift # Inicialización de categorías
+│   └── WidgetDataBridge.swift        # Sincronización con widget nativo
 ├── Views/
 │   ├── ContentView.swift       # Vista principal con NavigationStack
+│   ├── ShoppingListView.swift  # Lista activa agrupada por categoría
 │   ├── AddEditItemSheet.swift  # Modal para crear/editar productos
-│   ├── CategorySectionView.swift # Sección agrupada por categoría
-│   ├── ItemRowView.swift       # Fila individual de producto
-│   ├── EmptyStateView.swift    # Pantalla cuando la lista está vacía
-│   ├── PreviewSupport.swift    # Fixtures y previews de Xcode
-│   └── Components/
-│       └── CategoryPickerView.swift  # Selector visual de categorías (grid de chips)
+│   ├── ShoppingModeView.swift  # Modo compra pantalla completa
+│   ├── AchievementsView.swift  # Vista de medallas y rachas
+│   └── SettingsSheet.swift     # Hojas de ajustes y accesibilidad
 └── Theme/
     └── Theme.swift             # Sistema de diseño (colores, fuentes, animaciones, glass effects)
 ```
@@ -117,19 +127,23 @@ No se requieren dependencias externas — el proyecto utiliza únicamente framew
 | `id` | `UUID` | Identificador único |
 | `name` | `String` | Nombre del producto |
 | `quantity` | `String` | Cantidad libre (ej: "2", "1 kg", "500 g") |
-| `categoryRawValue` | `String` | Clave de categoría (persistencia) |
+| `category` | `Category` | Categoría asociada (relación SwiftData) |
+| `store` | `Store` | Supermercado preferido (.jumbo / .lider) |
 | `note` | `String` | Nota opcional |
-| `isPurchased` | `Bool` | Estado comprado/pendiente |
+| `status` | `ShoppingItemStatus` | Estado (pending, purchased, skipped, unavailable) |
+| `price` | `Double?` | Precio estimado opcional |
+| `voiceNoteFilename` | `String?` | Archivo de nota de voz asociante |
 | `sortOrder` | `Int` | Orden dentro de su categoría |
 | `createdAt` | `Date` | Fecha de creación |
 
-### `Category` (enum)
+### `Category` (SwiftData `@Model`)
 
-9 categorías predefinidas, cada una con:
+15 categorías predefinidas con modelo persistido y soporte para personalización:
 
-- Nombre para mostrar (`displayName`)
+- Nombre (`name`)
 - Ícono SF Symbol (`sfSymbol`)
-- Índice de orden (`sortIndex`)
+- Orden (`sortIndex`)
+- Sistema / Personalizada (`isSystem`)
 
 ---
 

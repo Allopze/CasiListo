@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		89DA07002FC112FD0037C4D0 /* CasiListoWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 89DA07012FC112FD0037C001 /* CasiListoWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		89DA05FF2FC112FD0037C4D0 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -30,9 +34,19 @@
 		};
 /* End PBXContainerItemProxy section */
 
-/* Begin PBXBuildFile section */
-		89DA07002FC112FD0037C4D0 /* CasiListoWidget.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 89DA07012FC112FD0037C001 /* CasiListoWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-/* End PBXBuildFile section */
+/* Begin PBXCopyFilesBuildPhase section */
+		89DA070C2FC112FD0037C00C /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				89DA07002FC112FD0037C4D0 /* CasiListoWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		89DA05EF2FC112FA0037C4D0 /* CasiListo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CasiListo.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -42,29 +56,18 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		89DA070E2FC112FD0037C00E /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+		89DA070E2FC112FD0037C00E /* Exceptions for "CasiListoWidget" folder in "CasiListoWidget" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
-				CasiListoWidget.entitlements,
 				Info.plist,
 			);
 			target = 89DA07042FC112FD0037C004 /* CasiListoWidget */;
-		};
-		89DA070F2FC112FD0037C00F /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			membershipExceptions = (
-				CasiListo.entitlements,
-			);
-			target = 89DA05EE2FC112FA0037C4D0 /* CasiListo */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		89DA05F12FC112FA0037C4D0 /* CasiListo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				89DA070F2FC112FD0037C00F,
-			);
 			path = CasiListo;
 			sourceTree = "<group>";
 		};
@@ -81,26 +84,12 @@
 		89DA07022FC112FD0037C002 /* CasiListoWidget */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				89DA070E2FC112FD0037C00E,
+				89DA070E2FC112FD0037C00E /* Exceptions for "CasiListoWidget" folder in "CasiListoWidget" target */,
 			);
 			path = CasiListoWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
-
-/* Begin PBXCopyFilesBuildPhase section */
-		89DA070C2FC112FD0037C00C /* Embed App Extensions */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 13;
-			files = (
-				89DA07002FC112FD0037C4D0 /* CasiListoWidget.appex in Embed App Extensions */,
-			);
-			name = "Embed App Extensions";
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		89DA05EC2FC112FA0037C4D0 /* Frameworks */ = {
@@ -166,7 +155,7 @@
 				89DA05EB2FC112FA0037C4D0 /* Sources */,
 				89DA05EC2FC112FA0037C4D0 /* Frameworks */,
 				89DA05ED2FC112FA0037C4D0 /* Resources */,
-				89DA070C2FC112FD0037C00C /* Embed App Extensions */,
+				89DA070C2FC112FD0037C00C /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
@@ -182,28 +171,6 @@
 			productName = CasiListo;
 			productReference = 89DA05EF2FC112FA0037C4D0 /* CasiListo.app */;
 			productType = "com.apple.product-type.application";
-		};
-		89DA07042FC112FD0037C004 /* CasiListoWidget */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = 89DA070B2FC112FD0037C00B /* Build configuration list for PBXNativeTarget "CasiListoWidget" */;
-			buildPhases = (
-				89DA07062FC112FD0037C006 /* Sources */,
-				89DA07032FC112FD0037C003 /* Frameworks */,
-				89DA07052FC112FD0037C005 /* Resources */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				89DA07022FC112FD0037C002 /* CasiListoWidget */,
-			);
-			name = CasiListoWidget;
-			packageProductDependencies = (
-			);
-			productName = CasiListoWidget;
-			productReference = 89DA07012FC112FD0037C001 /* CasiListoWidget.appex */;
-			productType = "com.apple.product-type.app-extension";
 		};
 		89DA05FD2FC112FD0037C4D0 /* CasiListoTests */ = {
 			isa = PBXNativeTarget;
@@ -251,6 +218,28 @@
 			productReference = 89DA06082FC112FD0037C4D0 /* CasiListoUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
+		89DA07042FC112FD0037C004 /* CasiListoWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 89DA070B2FC112FD0037C00B /* Build configuration list for PBXNativeTarget "CasiListoWidget" */;
+			buildPhases = (
+				89DA07062FC112FD0037C006 /* Sources */,
+				89DA07032FC112FD0037C003 /* Frameworks */,
+				89DA07052FC112FD0037C005 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				89DA07022FC112FD0037C002 /* CasiListoWidget */,
+			);
+			name = CasiListoWidget;
+			packageProductDependencies = (
+			);
+			productName = CasiListoWidget;
+			productReference = 89DA07012FC112FD0037C001 /* CasiListoWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -259,7 +248,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2650;
-				LastUpgradeCheck = 2650;
+				LastUpgradeCheck = 2700;
 				TargetAttributes = {
 					89DA05EE2FC112FA0037C4D0 = {
 						CreatedOnToolsVersion = 26.5;
@@ -439,6 +428,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
@@ -496,6 +486,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				VALIDATE_PRODUCT = YES;
 			};
@@ -506,20 +497,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = CasiListo/CasiListo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CasiListo usa la cámara para fotografiar boletas y registrar productos y precios.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "CasiListo puede avisarte cuando pasas cerca de un supermercado con productos pendientes.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CasiListo usa tu ubicación para recordarte compras pendientes cerca del supermercado.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micrófono para guardar notas de voz en productos de tu lista.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CasiListo usa tus fotos solo cuando eliges una boleta para registrar productos y precios.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -543,20 +536,22 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = CasiListo/CasiListo.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "CasiListo usa la cámara para fotografiar boletas y registrar productos y precios.";
 				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "CasiListo puede avisarte cuando pasas cerca de un supermercado con productos pendientes.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CasiListo usa tu ubicación para recordarte compras pendientes cerca del supermercado.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micrófono para guardar notas de voz en productos de tu lista.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CasiListo usa tus fotos solo cuando eliges una boleta para registrar productos y precios.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations = UIInterfaceOrientationPortrait;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",

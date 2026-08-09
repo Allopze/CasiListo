@@ -11,7 +11,6 @@ struct ContentView: View {
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
-    @State private var showsShoppingMode = false
 
     private var activeList: ShoppingList? {
         allLists.first { $0.status == .active }
@@ -29,28 +28,7 @@ struct ContentView: View {
     }
 
     var body: some View {
-        ZStack {
-            Color.appBackground.ignoresSafeArea()
-
-            if showsShoppingMode {
-                ShoppingModeView(
-                    activeList: activeList,
-                    allItems: activeItems,
-                    selectedStore: viewModel.selectedStore,
-                    onFinished: {
-                        withAnimation(.easeInOut) {
-                            showsShoppingMode = false
-                        }
-                    },
-                    onCancel: {
-                        withAnimation(.easeInOut) {
-                            showsShoppingMode = false
-                        }
-                    }
-                )
-                .transition(.move(edge: .trailing))
-            } else {
-                NavigationStack {
+        NavigationStack {
                     ZStack {
                         Color.appBackground.ignoresSafeArea()
 
@@ -58,7 +36,16 @@ struct ContentView: View {
                             EmptyStateView(
                                 onAddTapped: { presentAddItem() },
                                 hasHistory: !completedLists.isEmpty,
-                                onShowHistory: { viewModel.presentHistory() }
+                                onShowHistory: { viewModel.presentHistory() },
+                                onQuickAdd: { name in
+                                    viewModel.quickAddText = name
+                                    viewModel.addQuickItem(
+                                        to: activeList,
+                                        from: activeItems,
+                                        categories: categories,
+                                        context: modelContext
+                                    )
+                                }
                             )
                         } else {
                             ShoppingListView(
@@ -112,10 +99,8 @@ struct ContentView: View {
                     } message: {
                         Text("Esta acción mueve los productos comprados al historial y los quita de la lista actual.")
                     }
-                }
-                .tint(Theme.accentYellow)
-            }
         }
+        .tint(Theme.accentYellow)
         .task {
             if resetStorageForUITestsIfNeeded() {
                 return
@@ -132,7 +117,7 @@ struct ContentView: View {
             let itemCount = (try? modelContext.fetchCount(itemDescriptor)) ?? 0
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
             
-            if itemCount == 0 || !hasSeeded {
+            if itemCount == 0 && !hasSeeded {
                 SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
                 UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
             }
@@ -192,9 +177,30 @@ struct ContentView: View {
 
             Button {
                 HapticFeedback.selection()
+                viewModel.presentTextImporter()
+            } label: {
+                Label("Importar desde texto", systemImage: "doc.on.clipboard")
+            }
+
+            Button {
+                HapticFeedback.selection()
+                viewModel.presentTemplates()
+            } label: {
+                Label("Usar plantilla", systemImage: "square.grid.2x2")
+            }
+
+            Button {
+                HapticFeedback.selection()
                 viewModel.presentHistory()
             } label: {
                 Label("Historial", systemImage: "clock.arrow.circlepath")
+            }
+
+            Button {
+                HapticFeedback.impact()
+                viewModel.presentReceipt()
+            } label: {
+                Label("Registrar boleta", systemImage: "doc.text.viewfinder")
             }
 
             Button {
@@ -249,6 +255,34 @@ struct ContentView: View {
             SettingsSheet()
         case .history:
             ShoppingHistoryView(completedLists: completedLists, allItems: allItems)
+        case .receipt:
+            ReceiptCaptureSheet(
+                activeList: activeList,
+                activeItems: activeItems,
+                allItems: allItems,
+                completedLists: completedLists,
+                categories: categories
+            )
+        case .textImporter:
+            TextImporterSheet(
+                activeList: activeList,
+                allItems: activeItems,
+                categories: categories,
+                viewModel: viewModel,
+                onFinished: {
+                    viewModel.updateDerivedState(items: activeItems, categories: categories)
+                }
+            )
+        case .templates:
+            TemplatesSheet(
+                activeList: activeList,
+                allItems: activeItems,
+                categories: categories,
+                viewModel: viewModel,
+                onFinished: {
+                    viewModel.updateDerivedState(items: activeItems, categories: categories)
+                }
+            )
         }
     }
 
