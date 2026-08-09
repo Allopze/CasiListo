@@ -179,14 +179,17 @@ struct CasiListoWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        switch family {
-        case .systemSmall:
-            SmallWidgetView(snapshot: entry.snapshot)
-        case .systemMedium:
-            MediumWidgetView(snapshot: entry.snapshot)
-        default:
-            SmallWidgetView(snapshot: entry.snapshot)
+        Group {
+            switch family {
+            case .systemSmall:
+                SmallWidgetView(snapshot: entry.snapshot)
+            case .systemMedium:
+                MediumWidgetView(snapshot: entry.snapshot)
+            default:
+                SmallWidgetView(snapshot: entry.snapshot)
+            }
         }
+        .widgetURL(URL(string: "casilisto://open"))
     }
 }
 

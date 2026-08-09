@@ -4,11 +4,12 @@ import WidgetKit
 /// Puente entre la app principal y el widget.
 /// Serializa el estado de la lista activa a App Group UserDefaults
 /// y notifica a WidgetKit para que recargue sus timelines.
+@MainActor
 enum WidgetDataBridge {
     private static let groupID = "group.com.allopze.CasiListo"
     private static let key = "widgetSnapshot"
 
-    struct Snapshot: Codable {
+    struct Snapshot: Codable, Sendable {
         let pendingCount: Int
         let purchasedCount: Int
         let topItems: [String]
@@ -30,9 +31,6 @@ enum WidgetDataBridge {
         else { return }
         defaults.set(data, forKey: key)
         
-        // Recargar widgets en el main actor
-        Task { @MainActor in
-            WidgetCenter.shared.reloadAllTimelines()
-        }
+        WidgetCenter.shared.reloadAllTimelines()
     }
 }
