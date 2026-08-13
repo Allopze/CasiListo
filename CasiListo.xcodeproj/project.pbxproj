@@ -504,9 +504,14 @@
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleTypeRole = Editor;
+						CFBundleURLName = "com.allopze.CasiListo";
+						CFBundleURLSchemes = (casilisto);
+					},
+				);
 				INFOPLIST_KEY_NSCameraUsageDescription = "CasiListo usa la cámara para fotografiar boletas y registrar productos y precios.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "CasiListo puede avisarte cuando pasas cerca de un supermercado con productos pendientes.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CasiListo usa tu ubicación para recordarte compras pendientes cerca del supermercado.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micrófono para guardar notas de voz en productos de tu lista.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CasiListo usa tus fotos solo cuando eliges una boleta para registrar productos y precios.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -543,9 +548,14 @@
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleURLTypes = (
+					{
+						CFBundleTypeRole = Editor;
+						CFBundleURLName = "com.allopze.CasiListo";
+						CFBundleURLSchemes = (casilisto);
+					},
+				);
 				INFOPLIST_KEY_NSCameraUsageDescription = "CasiListo usa la cámara para fotografiar boletas y registrar productos y precios.";
-				INFOPLIST_KEY_NSLocationAlwaysAndWhenInUseUsageDescription = "CasiListo puede avisarte cuando pasas cerca de un supermercado con productos pendientes.";
-				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "CasiListo usa tu ubicación para recordarte compras pendientes cerca del supermercado.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micrófono para guardar notas de voz en productos de tu lista.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CasiListo usa tus fotos solo cuando eliges una boleta para registrar productos y precios.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;

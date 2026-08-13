@@ -37,7 +37,7 @@ enum PreviewFixtures {
         )
 
         let context = container.mainContext
-        CategoryBootstrapService.bootstrap(context: context)
+        try! CategoryBootstrapService.bootstrap(context: context)
 
         for item in items {
             context.insert(item)

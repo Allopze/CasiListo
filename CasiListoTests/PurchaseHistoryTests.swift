@@ -44,7 +44,7 @@ final class PurchaseHistoryTests: XCTestCase {
         context.insert(activeList)
         [jumboItem, liderItem, pendingItem].forEach { context.insert($0) }
 
-        ShoppingListLifecycleService.archivePurchasedItems(
+        try ShoppingListLifecycleService.archivePurchasedItems(
             from: [jumboItem, liderItem, pendingItem],
             activeList: activeList,
             context: context
@@ -76,7 +76,7 @@ final class PurchaseHistoryTests: XCTestCase {
         context.insert(activeList)
         context.insert(item)
 
-        ShoppingListLifecycleService.archivePurchasedItems(
+        try ShoppingListLifecycleService.archivePurchasedItems(
             from: [item],
             activeList: activeList,
             context: context
@@ -97,7 +97,7 @@ final class PurchaseHistoryTests: XCTestCase {
         context.insert(activeList)
         context.insert(pendingItem)
 
-        ShoppingListLifecycleService.archivePurchasedItems(
+        try ShoppingListLifecycleService.archivePurchasedItems(
             from: [pendingItem],
             activeList: activeList,
             context: context

@@ -10,9 +10,6 @@ enum ShoppingItemStatus: String, Codable, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
-    var isActionableInShoppingMode: Bool {
-        self == .pending
-    }
 }
 
 /// Modelo principal de un ítem de la lista de compra.

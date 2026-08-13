@@ -45,6 +45,7 @@ final class ShoppingListViewModel {
     var presentedSheet: ShoppingListSheetDestination?
     var quickAddText: String = ""
     var showUndoToast: Bool = false
+    var persistenceErrorMessage: String?
     @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, category: Category, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)? = nil
     @ObservationIgnored private var undoTimerTask: Task<Void, Never>? = nil
     @ObservationIgnored private var collapsedCategories: Set<String> = []
@@ -61,13 +62,17 @@ final class ShoppingListViewModel {
     @ObservationIgnored private var latestCategories: [Category] = []
 
     func updateDerivedState(items: [ShoppingItem], categories: [Category]) {
-        latestItems = items
-        latestCategories = categories
-        recomputeSnapshot()
+        PerformanceSignpost.measure("Recalcular lista") {
+            latestItems = items
+            latestCategories = categories
+            recomputeSnapshot()
+        }
     }
 
     func rederiveFilters() {
-        recomputeSnapshot()
+        PerformanceSignpost.measure("Aplicar filtros") {
+            recomputeSnapshot()
+        }
     }
 
     private func recomputeSnapshot() {
@@ -91,10 +96,9 @@ final class ShoppingListViewModel {
             }
             // Filtro de búsqueda
             if !searchText.isEmpty {
-                let query = searchText.lowercased()
-                return item.name.lowercased().contains(query)
-                    || item.note.lowercased().contains(query)
-                    || item.category.displayName.lowercased().contains(query)
+                return ProductNameNormalizer.contains(item.name, query: searchText)
+                    || ProductNameNormalizer.contains(item.note, query: searchText)
+                    || ProductNameNormalizer.contains(item.category.displayName, query: searchText)
             }
             return true
         }
@@ -198,13 +202,29 @@ final class ShoppingListViewModel {
 
     /// Alterna el estado de comprado de un ítem.
     func togglePurchased(_ item: ShoppingItem, context: ModelContext? = nil) {
+        let previousStatus = item.status
         item.status = item.status == .purchased ? .pending : .purchased
-        context?.safeSave()
+        guard let context else { return }
+        do {
+            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+            HapticFeedback.success()
+        } catch {
+            item.status = previousStatus
+            presentPersistenceError(error)
+        }
     }
 
     func markItem(_ item: ShoppingItem, as status: ShoppingItemStatus, context: ModelContext? = nil) {
+        let previousStatus = item.status
         item.status = status
-        context?.safeSave()
+        guard let context else { return }
+        do {
+            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+            HapticFeedback.success()
+        } catch {
+            item.status = previousStatus
+            presentPersistenceError(error)
+        }
     }
 
     func presentAddItem() {
@@ -249,7 +269,8 @@ final class ShoppingListViewModel {
 
     /// Elimina un ítem con soporte de Deshacer (Undo).
     func deleteItem(_ item: ShoppingItem, context: ModelContext) {
-        deletedItemUndoBuffer = (
+        finalizePendingUndo()
+        let buffer = (
             name: item.name,
             quantity: item.quantity,
             category: item.category,
@@ -262,8 +283,17 @@ final class ShoppingListViewModel {
             voiceNoteFilename: item.voiceNoteFilename,
             listID: item.listID
         )
-        context.delete(item)
-        context.safeSave()
+        do {
+            try ShoppingPersistenceCoordinator(context: context).deleteItem(
+                item,
+                remainingItems: latestItems.filter { $0.id != item.id }
+            )
+        } catch {
+            presentPersistenceError(error)
+            return
+        }
+
+        deletedItemUndoBuffer = buffer
 
         withAnimation(Theme.defaultAnimation) {
             showUndoToast = true
@@ -273,13 +303,7 @@ final class ShoppingListViewModel {
         undoTimerTask = Task { @MainActor in
             try? await Task.sleep(for: .seconds(4))
             guard !Task.isCancelled else { return }
-            if let filename = self.deletedItemUndoBuffer?.voiceNoteFilename {
-                VoiceNoteService.shared.deleteVoiceNote(filename: filename)
-            }
-            withAnimation(Theme.defaultAnimation) {
-                showUndoToast = false
-                deletedItemUndoBuffer = nil
-            }
+            self.finalizePendingUndo()
         }
     }
 
@@ -299,8 +323,16 @@ final class ShoppingListViewModel {
             store: buffer.store,
             voiceNoteFilename: buffer.voiceNoteFilename
         )
-        context.insert(restoredItem)
-        context.safeSave()
+        do {
+            context.insert(restoredItem)
+            try ShoppingPersistenceCoordinator(context: context).saveItem(
+                restoredItem,
+                allActiveItems: latestItems + [restoredItem]
+            )
+        } catch {
+            presentPersistenceError(error)
+            return
+        }
 
         withAnimation(Theme.defaultAnimation) {
             showUndoToast = false
@@ -327,9 +359,13 @@ final class ShoppingListViewModel {
             if duplicate.quantity.isEmpty && !draft.quantity.isEmpty {
                 duplicate.quantity = draft.quantity
             }
-            quickAddText = ""
-            context.safeSave()
-            HapticFeedback.selection()
+            do {
+                try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+                quickAddText = ""
+                HapticFeedback.success()
+            } catch {
+                presentPersistenceError(error)
+            }
             return
         }
 
@@ -345,13 +381,17 @@ final class ShoppingListViewModel {
         )
         withAnimation(Theme.defaultAnimation) {
             context.insert(newItem)
-            context.safeSave()
             if let activeList {
                 ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
             }
-            quickAddText = ""
         }
-        HapticFeedback.success()
+        do {
+            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: allItems + [newItem])
+            quickAddText = ""
+            HapticFeedback.success()
+        } catch {
+            presentPersistenceError(error)
+        }
     }
 
     /// Busca un producto equivalente dentro de la lista activa para evitar duplicados accidentales.
@@ -361,21 +401,11 @@ final class ShoppingListViewModel {
         in items: [ShoppingItem],
         excluding excludedID: UUID? = nil
     ) -> ShoppingItem? {
-        let normalizedName = normalizedProductName(name)
-        guard !normalizedName.isEmpty else { return nil }
-
-        return items.first { item in
-            item.id != excludedID
-                && item.store == store
-                && normalizedProductName(item.name) == normalizedName
-        }
+        DuplicatePolicy.duplicate(named: name, store: store, in: items, excluding: excludedID)
     }
 
     func normalizedProductName(_ value: String) -> String {
-        value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-            .lowercased()
+        ProductNameNormalizer.normalize(value)
     }
 
     /// Calcula el siguiente sortOrder disponible para una categoría.
@@ -383,6 +413,22 @@ final class ShoppingListViewModel {
         let categoryItems = items.filter { $0.category.name == category.name }
         let maxOrder = categoryItems.map(\.sortOrder).max() ?? -1
         return maxOrder + 1
+    }
+
+    func presentPersistenceError(_ error: Error) {
+        persistenceErrorMessage = error.localizedDescription
+    }
+
+    private func finalizePendingUndo() {
+        undoTimerTask?.cancel()
+        undoTimerTask = nil
+        if let filename = deletedItemUndoBuffer?.voiceNoteFilename {
+            try? LocalFileStore.shared.deleteVoiceNote(named: filename)
+        }
+        withAnimation(Theme.defaultAnimation) {
+            showUndoToast = false
+            deletedItemUndoBuffer = nil
+        }
     }
 
     private func parseTrailingMultiplier(_ parts: [String]) -> QuickAddDraft? {

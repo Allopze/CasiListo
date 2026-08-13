@@ -1,0 +1,44 @@
+name: iOS verification
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: macos-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.0'
+      - name: Require Xcode 26 or newer
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          major="$(xcodebuild -version | awk '/Xcode/{split($2, v, "."); print v[1]}')"
+          test "$major" -ge 26
+      - name: Build and run unit/UI tests
+        shell: bash
+        run: |
+          set -o pipefail
+          mkdir -p artifacts
+          xcodebuild test \
+            -project CasiListo.xcodeproj \
+            -scheme CasiListo \
+            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            -resultBundlePath artifacts/CasiListoTests.xcresult | tee artifacts/xcodebuild-test.log
+      - name: Validate privacy manifests
+        if: always()
+        run: bash ci/validate-privacy-manifests.sh artifacts
+      - name: Upload verification artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-verification-artifacts
+          path: artifacts
+          if-no-files-found: warn

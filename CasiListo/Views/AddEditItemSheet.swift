@@ -42,6 +42,8 @@ struct AddEditItemSheet: View {
     @State private var initialVoiceNoteFilename: String? = nil
     @State private var recordedVoiceNoteFilenames: Set<String> = []
     @State private var didSave: Bool = false
+    @State private var hasExplicitCategorySelection = false
+    @State private var saveErrorMessage: String?
 
     @FocusState private var isNameFocused: Bool
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
@@ -100,10 +102,7 @@ struct AddEditItemSheet: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(isEditing ? "Guardar" : "Añadir") {
-                        saveItem()
-                        didSave = true
-                        HapticFeedback.success()
-                        dismiss()
+                        attemptSave()
                     }
                     .fontWeight(.semibold)
                     .disabled(!isValid)
@@ -119,7 +118,8 @@ struct AddEditItemSheet: View {
                         name = initialName
                         quantity = initialQuantity
                         onQuickAddConsumed()
-                        if let suggested = SuggestedProducts.suggestedCategory(for: name, in: categories) {
+                        if !hasExplicitCategorySelection,
+                           let suggested = SuggestedProducts.suggestedCategory(for: name, in: categories) {
                             selectedCategory = suggested
                         }
                     }
@@ -134,6 +134,14 @@ struct AddEditItemSheet: View {
         .presentationDragIndicator(.visible)
         .onDisappear {
             cleanupTemporaryVoiceNotesIfNeeded()
+        }
+        .alert(
+            "No se pudo guardar el producto",
+            isPresented: Binding(get: { saveErrorMessage != nil }, set: { if !$0 { saveErrorMessage = nil } })
+        ) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text(saveErrorMessage ?? "Inténtalo nuevamente.")
         }
     }
 
@@ -163,7 +171,8 @@ struct AddEditItemSheet: View {
                     let nextSuggestions = SuggestedProducts.suggestions(for: newValue)
                     showSuggestions = !newValue.isEmpty && !nextSuggestions.isEmpty
 
-                    if let suggested = SuggestedProducts.suggestedCategory(for: newValue, in: categories) {
+                    if !hasExplicitCategorySelection,
+                       let suggested = SuggestedProducts.suggestedCategory(for: newValue, in: categories) {
                         selectedCategory = suggested
                     }
                 }
@@ -172,7 +181,8 @@ struct AddEditItemSheet: View {
                 SuggestionsListView(suggestions: suggestions) { suggestion in
                     name = suggestion
                     showSuggestions = false
-                    if let category = SuggestedProducts.suggestedCategory(for: suggestion, in: categories) {
+                    if !hasExplicitCategorySelection,
+                       let category = SuggestedProducts.suggestedCategory(for: suggestion, in: categories) {
                         selectedCategory = category
                     }
                 }
@@ -208,7 +218,13 @@ struct AddEditItemSheet: View {
 
     private var categorySection: some View {
         Section {
-            CategoryPickerView(selectedCategory: $selectedCategory)
+            CategoryPickerView(selectedCategory: Binding(
+                get: { selectedCategory },
+                set: {
+                    selectedCategory = $0
+                    hasExplicitCategorySelection = true
+                }
+            ))
                 .listRowInsets(.init(top: 12, leading: 12, bottom: 12, trailing: 12))
                 .listRowBackground(Color.clear)
         } header: {
@@ -226,51 +242,71 @@ struct AddEditItemSheet: View {
             priceText = item.price.formattedPriceOrEmpty
             voiceNoteFilename = item.voiceNoteFilename
             initialVoiceNoteFilename = item.voiceNoteFilename
+            hasExplicitCategorySelection = true
         }
     }
 
-    private func saveItem() {
+    private func attemptSave() {
+        do {
+            try saveItem()
+            didSave = true
+            HapticFeedback.success()
+            dismiss()
+        } catch {
+            saveErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func saveItem() throws {
         guard !trimmedName.isEmpty else { return }
         guard duplicateItem == nil else { return }
 
-        switch mode {
-        case .add:
-            let parsedPrice = Double(priceText.replacingOccurrences(of: ",", with: "."))
-            let newItem = ShoppingItem(
-                name: trimmedName,
-                listID: activeList?.id,
-                quantity: quantity.trimmingCharacters(in: .whitespaces),
-                category: selectedCategory,
-                note: note.trimmingCharacters(in: .whitespaces),
-                sortOrder: nextSortOrder(selectedCategory),
-                price: parsedPrice,
-                store: selectedStore,
-                voiceNoteFilename: voiceNoteFilename
-            )
-            modelContext.insert(newItem)
-            if let activeList {
-                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
-            }
-            modelContext.safeSave()
+        let promotedFilename = try voiceNoteService.promoteTemporaryVoiceNoteIfNeeded(voiceNoteFilename)
+        let promotedDraft = promotedFilename != voiceNoteFilename
 
-        case .edit(let item):
-            item.name = trimmedName
-            item.quantity = quantity.trimmingCharacters(in: .whitespaces)
-            item.category = selectedCategory
-            item.store = selectedStore
-            item.note = note.trimmingCharacters(in: .whitespaces)
-            item.price = Double(priceText.replacingOccurrences(of: ",", with: "."))
-            
-            if item.voiceNoteFilename != voiceNoteFilename {
-                if let oldFile = item.voiceNoteFilename {
-                    voiceNoteService.deleteVoiceNote(filename: oldFile)
+        do {
+            switch mode {
+            case .add:
+                let newItem = ShoppingItem(
+                    name: trimmedName,
+                    listID: activeList?.id,
+                    quantity: quantity.trimmingCharacters(in: .whitespaces),
+                    category: selectedCategory,
+                    note: note.trimmingCharacters(in: .whitespaces),
+                    sortOrder: nextSortOrder(selectedCategory),
+                    price: Double(priceText.replacingOccurrences(of: ",", with: ".")),
+                    store: selectedStore,
+                    voiceNoteFilename: promotedFilename
+                )
+                modelContext.insert(newItem)
+                if let activeList {
+                    ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
                 }
-                item.voiceNoteFilename = voiceNoteFilename
+                try ShoppingPersistenceCoordinator(context: modelContext).saveItem(newItem, allActiveItems: allItems + [newItem])
+
+            case .edit(let item):
+                let oldFilename = item.voiceNoteFilename
+                item.name = trimmedName
+                item.quantity = quantity.trimmingCharacters(in: .whitespaces)
+                item.category = selectedCategory
+                item.store = selectedStore
+                item.note = note.trimmingCharacters(in: .whitespaces)
+                item.price = Double(priceText.replacingOccurrences(of: ",", with: "."))
+                item.voiceNoteFilename = promotedFilename
+                if let activeList {
+                    ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems)
+                }
+                try ShoppingPersistenceCoordinator(context: modelContext).commit(itemsForWidget: allItems)
+                if oldFilename != promotedFilename, let oldFilename {
+                    voiceNoteService.deleteVoiceNote(filename: oldFilename)
+                }
             }
-            if let activeList {
-                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems)
+            voiceNoteFilename = promotedFilename
+        } catch {
+            if promotedDraft, let promotedFilename {
+                voiceNoteService.deleteVoiceNote(filename: promotedFilename)
             }
-            modelContext.safeSave()
+            throw error
         }
     }
 

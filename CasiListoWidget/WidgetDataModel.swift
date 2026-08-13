@@ -5,8 +5,8 @@ import Foundation
 struct WidgetSnapshot: Codable, Sendable {
     let pendingCount: Int
     let purchasedCount: Int
-    /// Primeros 5 nombres de ítems pendientes, para el widget mediano.
-    let topItems: [String]
+    /// Primeros cinco ítems pendientes, con identificador estable.
+    let topItems: [WidgetItemSnapshot]
     let updatedAt: Date
 
     static let groupID = "group.com.allopze.CasiListo"
@@ -24,4 +24,9 @@ struct WidgetSnapshot: Codable, Sendable {
     }
 
     var isPlaceholder: Bool { updatedAt == .distantPast }
+}
+
+struct WidgetItemSnapshot: Codable, Identifiable, Sendable {
+    let id: UUID
+    let name: String
 }

@@ -24,6 +24,7 @@ struct AddEditCategorySheet: View {
     @State private var name: String = ""
     @State private var selectedSymbol: String = "tag.fill"
     @State private var autoAssignSymbol: Bool = true
+    @State private var errorMessage: String?
     
     @FocusState private var isNameFocused: Bool
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
@@ -172,9 +173,13 @@ struct AddEditCategorySheet: View {
 
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Guardar") {
-                        saveCategory()
-                        HapticFeedback.success()
-                        dismiss()
+                        do {
+                            try saveCategory()
+                            HapticFeedback.success()
+                            dismiss()
+                        } catch {
+                            errorMessage = error.localizedDescription
+                        }
                     }
                     .fontWeight(.semibold)
                     .disabled(!isValid)
@@ -194,9 +199,17 @@ struct AddEditCategorySheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+        .alert(
+            "No se pudo guardar la categoría",
+            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Inténtalo nuevamente.")
+        }
     }
 
-    private func saveCategory() {
+    private func saveCategory() throws {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
 
@@ -231,6 +244,6 @@ struct AddEditCategorySheet: View {
             modelContext.insert(newCategory)
         }
         
-        modelContext.safeSave()
+        try ShoppingPersistenceCoordinator(context: modelContext).commitWithoutWidget()
     }
 }

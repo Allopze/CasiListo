@@ -40,16 +40,24 @@ final class CasiListoUITests: XCTestCase {
     }
 
     @MainActor
-    func testShoppingModeSupportsSkippedAndUnavailableActions() throws {
+    func testListSupportsSkippedAndUnavailableActions() throws {
         let app = launchFreshApp()
 
-        app.buttons["Entrar a Modo Compra"].tap()
+        app.buttons["toolbar-add-product"].tap()
+        let nameField = app.textFields["item-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        nameField.typeText("Producto con estados")
+        app.buttons["Añadir"].tap()
 
-        let moreActions = app.buttons.matching(NSPredicate(format: "label CONTAINS 'Mas acciones'")).firstMatch
-        XCTAssertTrue(moreActions.waitForExistence(timeout: 5))
-        moreActions.tap()
+        let item = app.buttons.containing(.staticText, identifier: "Producto con estados").firstMatch
+        XCTAssertTrue(item.waitForExistence(timeout: 5))
+        item.press(forDuration: 1)
 
         XCTAssertTrue(app.buttons["Posponer"].waitForExistence(timeout: 5))
         app.buttons["Posponer"].tap()
+
+        item.press(forDuration: 1)
+        XCTAssertTrue(app.buttons["No encontrado"].waitForExistence(timeout: 5))
+        app.buttons["No encontrado"].tap()
     }
 }

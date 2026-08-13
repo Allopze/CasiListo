@@ -59,33 +59,16 @@ enum ReceiptImageStore {
         guard let data = image.jpegData(compressionQuality: 0.82) else {
             throw StorageError.couldNotEncodeImage
         }
-
-        let directory = try receiptsDirectory()
-        let filename = "boleta-\(UUID().uuidString).jpg"
-        try data.write(to: directory.appending(path: filename), options: .atomic)
-        return filename
+        return try LocalFileStore.shared.saveReceiptData(data)
     }
 
     static func image(named filename: String) -> UIImage? {
-        guard let directory = try? receiptsDirectory() else { return nil }
-        return UIImage(contentsOfFile: directory.appending(path: filename).path)
+        guard let url = try? LocalFileStore.shared.receiptURL(named: filename) else { return nil }
+        return UIImage(contentsOfFile: url.path)
     }
 
     static func delete(named filename: String) {
-        guard let directory = try? receiptsDirectory() else { return }
-        try? FileManager.default.removeItem(at: directory.appending(path: filename))
-    }
-
-    private static func receiptsDirectory() throws -> URL {
-        let root = try FileManager.default.url(
-            for: .applicationSupportDirectory,
-            in: .userDomainMask,
-            appropriateFor: nil,
-            create: true
-        )
-        let directory = root.appending(path: "Receipts", directoryHint: .isDirectory)
-        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return directory
+        try? LocalFileStore.shared.deleteReceipt(named: filename)
     }
 }
 
@@ -142,7 +125,7 @@ nonisolated enum ReceiptStoreDetector {
     static func detectStoreRawValue(in recognizedLines: [String]) -> String? {
         let header = recognizedLines
             .prefix(headerLineLimit)
-            .map(ProductNameMatcher.normalized)
+            .map(ProductNameNormalizer.normalize)
             .joined(separator: " ")
 
         if header.contains("jumbo") {
@@ -191,7 +174,7 @@ private nonisolated enum ReceiptLineParser {
                   let price = Double(digits), price > 0, price < 1_000_000
             else { continue }
 
-            let key = "\(ProductNameMatcher.normalized(name))|\(price)"
+            let key = "\(ProductNameNormalizer.normalize(name))|\(price)"
             guard seen.insert(key).inserted else { continue }
             parsed.append(RecognizedReceiptLine(name: name, price: price))
         }
@@ -201,20 +184,11 @@ private nonisolated enum ReceiptLineParser {
 }
 
 nonisolated enum ProductNameMatcher {
-    static func normalized(_ value: String) -> String {
-        value
-            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current)
-            .lowercased()
-            .components(separatedBy: CharacterSet.alphanumerics.inverted)
-            .filter { !$0.isEmpty }
-            .joined(separator: " ")
-    }
-
     static func bestMatch(for scannedName: String, in items: [ShoppingItem]) -> ShoppingItem? {
-        let scanned = normalized(scannedName)
+        let scanned = ProductNameNormalizer.normalize(scannedName)
         guard !scanned.isEmpty else { return nil }
 
-        if let exact = items.first(where: { normalized($0.name) == scanned }) {
+        if let exact = items.first(where: { ProductNameNormalizer.normalize($0.name) == scanned }) {
             return exact
         }
 
@@ -222,7 +196,7 @@ nonisolated enum ProductNameMatcher {
         var best: (item: ShoppingItem, score: Double)?
 
         for item in items {
-            let product = normalized(item.name)
+            let product = ProductNameNormalizer.normalize(item.name)
             let productTokens = Set(product.split(separator: " ").map(String.init))
             guard !productTokens.isEmpty else { continue }
 
@@ -259,14 +233,14 @@ enum ReceiptPriceHistory {
         allItems: [ShoppingItem],
         completedLists: [ShoppingList]
     ) -> ReceiptPriceComparison? {
-        let normalizedName = ProductNameMatcher.normalized(productName)
+        let normalizedName = ProductNameNormalizer.normalize(productName)
         guard !normalizedName.isEmpty else { return nil }
 
         let completedByID = Dictionary(uniqueKeysWithValues: completedLists.map { ($0.id, $0) })
         let candidate = allItems
             .compactMap { item -> (price: Double, date: Date)? in
                 guard item.store == store,
-                      ProductNameMatcher.normalized(item.name) == normalizedName,
+                      ProductNameNormalizer.normalize(item.name) == normalizedName,
                       let price = item.price,
                       let listID = item.listID,
                       let list = completedByID[listID]
@@ -355,12 +329,20 @@ enum ReceiptPurchaseService {
             purchaseItems.append(item)
         }
 
-        completedList.purchasedCount = purchaseItems.count
-        completedList.totalSpent = purchaseItems.compactMap(\.price).reduce(0, +)
-        if let activeList {
-            ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems)
+        do {
+            completedList.purchasedCount = purchaseItems.count
+            completedList.totalSpent = purchaseItems.compactMap(\.price).reduce(0, +)
+            let currentItems = try context.fetch(FetchDescriptor<ShoppingItem>())
+            if let activeList {
+                ShoppingListLifecycleService.updateActiveListCounters(activeList, items: currentItems)
+            }
+            let activeItems = currentItems.filter { $0.listID == activeList?.id }
+            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: activeItems)
+            return completedList
+        } catch {
+            context.rollback()
+            ReceiptImageStore.delete(named: receiptFilename)
+            throw error
         }
-        context.safeSave()
-        return completedList
     }
 }

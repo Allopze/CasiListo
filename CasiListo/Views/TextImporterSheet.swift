@@ -15,6 +15,7 @@ struct TextImporterSheet: View {
     @State private var rawText: String = ""
     @State private var parsedItems: [ParsedRow] = []
     @State private var isPreviewing: Bool = false
+    @State private var errorMessage: String?
 
     struct ParsedRow: Identifiable {
         let id = UUID()
@@ -23,6 +24,7 @@ struct TextImporterSheet: View {
         var category: Category
         var store: Store
         var isSelected: Bool = true
+        var isDuplicate: Bool = false
     }
 
     var body: some View {
@@ -64,6 +66,14 @@ struct TextImporterSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .alert(
+            "No se pudieron importar los productos",
+            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Inténtalo nuevamente.")
+        }
     }
 
     private var textInputView: some View {
@@ -123,6 +133,7 @@ struct TextImporterSheet: View {
                         Toggle("", isOn: $item.isSelected)
                             .labelsHidden()
                             .tint(Theme.accentYellow)
+                            .disabled(item.isDuplicate)
 
                         VStack(alignment: .leading, spacing: 2) {
                             Text(item.name)
@@ -142,6 +153,12 @@ struct TextImporterSheet: View {
                                 Label(item.category.name, systemImage: item.category.sfSymbol)
                                     .font(.caption)
                                     .foregroundStyle(Color.appTextSecondary)
+
+                                if item.isDuplicate {
+                                    Text("Ya existe en esta tienda")
+                                        .font(.caption)
+                                        .foregroundStyle(.orange)
+                                }
                             }
                         }
 
@@ -164,6 +181,7 @@ struct TextImporterSheet: View {
             .filter { !$0.isEmpty }
 
         var result: [ParsedRow] = []
+        var knownKeys = Set(allItems.map { DuplicatePolicy.key(named: $0.name, store: $0.store) })
 
         for line in lines {
             // Eliminar viñetas comunes ("- ", "* ", "1. ", "• ")
@@ -176,37 +194,53 @@ struct TextImporterSheet: View {
                 ?? Category.fallback
             let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: draft.name)
 
+            let key = DuplicatePolicy.key(named: draft.name, store: store)
+            let isDuplicate = knownKeys.contains(key)
             result.append(ParsedRow(
                 name: draft.name,
                 quantity: draft.quantity,
                 category: category,
-                store: store
+                store: store,
+                isSelected: !isDuplicate,
+                isDuplicate: isDuplicate
             ))
+            knownKeys.insert(key)
         }
 
         parsedItems = result
         withAnimation {
             isPreviewing = true
         }
-        HapticFeedback.success()
+        HapticFeedback.selection()
     }
 
     private func importSelectedItems() {
-        let selected = parsedItems.filter(\.isSelected)
+        let selected = parsedItems.filter { $0.isSelected && !$0.isDuplicate }
+        var itemsWithNewEntries = allItems
+        var insertedItems: [ShoppingItem] = []
         for item in selected {
             let newItem = ShoppingItem(
                 name: item.name,
                 listID: activeList?.id,
                 quantity: item.quantity,
                 category: item.category,
-                sortOrder: viewModel.nextSortOrder(for: item.category, in: allItems),
+                sortOrder: viewModel.nextSortOrder(for: item.category, in: itemsWithNewEntries),
                 store: item.store
             )
             modelContext.insert(newItem)
+            itemsWithNewEntries.append(newItem)
+            insertedItems.append(newItem)
         }
-        modelContext.safeSave()
-        HapticFeedback.success()
-        dismiss()
-        onFinished()
+        do {
+            try ShoppingPersistenceCoordinator(context: modelContext).importItems(
+                insertedItems,
+                allActiveItems: itemsWithNewEntries
+            )
+            HapticFeedback.success()
+            dismiss()
+            onFinished()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

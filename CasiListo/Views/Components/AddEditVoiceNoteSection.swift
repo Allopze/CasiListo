@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFoundation
+import UIKit
 
 /// Sección para grabar y reproducir notas de voz dentro del formulario de edición.
 struct AddEditVoiceNoteSection: View {
@@ -11,7 +12,10 @@ struct AddEditVoiceNoteSection: View {
     @State private var recordingPulse = false
     @State private var recordingDuration = 0
     @State private var recordingDurationTask: Task<Void, Never>? = nil
+    @State private var errorMessage: String?
     @Environment(VoiceNoteService.self) private var voiceNoteService
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AccessibilityFocusState private var shouldFocusRecordButton: Bool
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
@@ -24,8 +28,8 @@ struct AddEditVoiceNoteSection: View {
                             .fill(Color.red)
                             .frame(width: 8, height: 8)
                             .opacity(recordingPulse ? 1.0 : 0.2)
-                            .animation(Animation.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: recordingPulse)
-                            .onAppear { recordingPulse = true }
+                            .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: recordingPulse)
+                            .onAppear { recordingPulse = !reduceMotion }
                             .onDisappear { recordingPulse = false }
                         
                         Text("Grabando... \(recordingDuration)s")
@@ -44,6 +48,7 @@ struct AddEditVoiceNoteSection: View {
                             .clipShape(Capsule())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Detener grabación de nota de voz")
                     
                 } else if let filename = voiceNoteFilename {
                     Image(systemName: "waveform")
@@ -66,6 +71,7 @@ struct AddEditVoiceNoteSection: View {
                             .clipShape(Circle())
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Eliminar nota de voz")
                     
                 } else {
                     Image(systemName: "mic.fill")
@@ -82,6 +88,8 @@ struct AddEditVoiceNoteSection: View {
                             .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                     }
                     .buttonStyle(.plain)
+                    .accessibilityLabel("Grabar nota de voz")
+                    .accessibilityFocused($shouldFocusRecordButton)
                 }
             }
             .listRowInsets(.init(top: 8, leading: 12, bottom: 8, trailing: 12))
@@ -91,24 +99,51 @@ struct AddEditVoiceNoteSection: View {
         .onDisappear {
             stopRecordingIfNeeded()
         }
+        .onChange(of: voiceNoteService.isRecording) { _, serviceIsRecording in
+            guard isRecording, !serviceIsRecording else { return }
+            recordingDurationTask?.cancel()
+            recordingDurationTask = nil
+            isRecording = false
+            if let lastError = voiceNoteService.lastError {
+                errorMessage = lastError.errorDescription
+            }
+        }
+        .alert(
+            "No se pudo usar el micrófono",
+            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("Intentar nuevamente") { startRecording() }
+            Button("Ir a Ajustes") { openAppSettings() }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Inténtalo nuevamente.")
+        }
+        .onChange(of: errorMessage) { oldValue, newValue in
+            if oldValue != nil, newValue == nil {
+                shouldFocusRecordButton = true
+            }
+        }
     }
 
     @MainActor
     private func startRecording() {
-        let filename = "voice_\(UUID().uuidString).m4a"
         if #available(iOS 17.0, *) {
             Task {
                 let granted = await AVAudioApplication.requestRecordPermission()
-                if granted {
+                guard granted else {
+                    errorMessage = VoiceNoteError.permissionDenied.errorDescription
+                    return
+                }
+                switch voiceNoteService.startRecording() {
+                case .success(let filename):
                     HapticFeedback.selection()
-                    let success = voiceNoteService.startRecording(filename: filename)
-                    if success {
-                        self.voiceNoteFilename = filename
-                        self.onRecorded(filename)
-                        self.isRecording = true
-                        self.recordingDuration = 0
-                        self.startRecordingDurationTask()
-                    }
+                    self.voiceNoteFilename = filename
+                    self.onRecorded(filename)
+                    self.isRecording = true
+                    self.recordingDuration = 0
+                    self.startRecordingDurationTask()
+                case .failure(let error):
+                    errorMessage = error.errorDescription
                 }
             }
         }
@@ -116,7 +151,7 @@ struct AddEditVoiceNoteSection: View {
     
     @MainActor
     private func stopRecording() {
-        HapticFeedback.success()
+        HapticFeedback.selection()
         recordingDurationTask?.cancel()
         recordingDurationTask = nil
         voiceNoteService.stopRecording()
@@ -155,5 +190,10 @@ struct AddEditVoiceNoteSection: View {
             onRemoved(filename)
             voiceNoteFilename = nil
         }
+    }
+
+    private func openAppSettings() {
+        guard let url = URL(string: UIApplication.openSettingsURLString), UIApplication.shared.canOpenURL(url) else { return }
+        UIApplication.shared.open(url)
     }
 }

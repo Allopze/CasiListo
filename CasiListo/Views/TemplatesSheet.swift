@@ -11,6 +11,7 @@ struct TemplatesSheet: View {
     let categories: [Category]
     let viewModel: ShoppingListViewModel
     let onFinished: () -> Void
+    @State private var errorMessage: String?
 
     struct PresetTemplate: Identifiable {
         let id: String
@@ -102,6 +103,14 @@ struct TemplatesSheet: View {
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+        .alert(
+            "No se pudo aplicar la plantilla",
+            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Los productos que ya estaban en la lista se omitieron.")
+        }
     }
 
     private func templateCard(_ template: PresetTemplate) -> some View {
@@ -160,25 +169,43 @@ struct TemplatesSheet: View {
     }
 
     private func applyTemplate(_ template: PresetTemplate) {
+        var itemsWithNewEntries = allItems
+        var insertedItems: [ShoppingItem] = []
+        var addedCount = 0
         for item in template.items {
             let category = SuggestedProducts.suggestedCategory(for: item.name, in: categories)
                 ?? categories.first { $0.name == "Varios" }
                 ?? Category.fallback
             let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: item.name)
+            guard !DuplicatePolicy.isDuplicate(named: item.name, store: store, in: itemsWithNewEntries) else { continue }
 
             let newItem = ShoppingItem(
                 name: item.name,
                 listID: activeList?.id,
                 quantity: item.quantity,
                 category: category,
-                sortOrder: viewModel.nextSortOrder(for: category, in: allItems),
+                sortOrder: viewModel.nextSortOrder(for: category, in: itemsWithNewEntries),
                 store: store
             )
             modelContext.insert(newItem)
+            itemsWithNewEntries.append(newItem)
+            insertedItems.append(newItem)
+            addedCount += 1
         }
-        modelContext.safeSave()
-        HapticFeedback.success()
-        dismiss()
-        onFinished()
+        guard addedCount > 0 else {
+            errorMessage = "Todos los productos de esta plantilla ya existen en el supermercado seleccionado."
+            return
+        }
+        do {
+            try ShoppingPersistenceCoordinator(context: modelContext).importItems(
+                insertedItems,
+                allActiveItems: itemsWithNewEntries
+            )
+            HapticFeedback.success()
+            dismiss()
+            onFinished()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

@@ -246,12 +246,20 @@ struct ItemRowView: View {
 private extension Text {
     init(highlighting text: String, query: String) {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, let range = text.range(of: trimmed, options: [.caseInsensitive, .diacriticInsensitive]) else {
+        let normalizedQuery = ProductNameNormalizer.normalize(query)
+        guard !normalizedQuery.isEmpty, ProductNameNormalizer.contains(text, query: query) else {
+            self.init(text)
+            return
+        }
+        let queryForRange = text.range(of: trimmed, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+            ? trimmed
+            : normalizedQuery
+        guard let range = text.range(of: queryForRange, options: [.caseInsensitive, .diacriticInsensitive]) else {
             self.init(text)
             return
         }
         var attributed = AttributedString(text)
-        if let attrRange = attributed.range(of: trimmed, options: [.caseInsensitive, .diacriticInsensitive]) {
+        if let attrRange = attributed.range(of: String(text[range]), options: [.caseInsensitive, .diacriticInsensitive]) {
             attributed[attrRange].backgroundColor = Theme.accentYellow.opacity(0.35)
             attributed[attrRange].inlinePresentationIntent = .stronglyEmphasized
         }

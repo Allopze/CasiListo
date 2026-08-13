@@ -378,14 +378,13 @@ struct ReceiptCaptureSheet: View {
         isSaving = true
 
         do {
-            try ReceiptPurchaseService.register(
+            try ShoppingPersistenceCoordinator(context: modelContext).registerReceipt(
                 entries: entries,
                 receiptImage: receiptImage,
                 store: selectedStore,
                 activeList: activeList,
                 allItems: allItems,
-                categories: categories,
-                context: modelContext
+                categories: categories
             )
             HapticFeedback.success()
             dismiss()

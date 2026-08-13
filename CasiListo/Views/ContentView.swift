@@ -4,13 +4,13 @@ import SwiftData
 /// Vista principal de la app.
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(GeofenceService.self) private var geofenceService
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
+    @AccessibilityFocusState private var shouldFocusAddButton: Bool
 
     private var activeList: ShoppingList? {
         allLists.first { $0.status == .active }
@@ -83,16 +83,17 @@ struct ContentView: View {
                         titleVisibility: .visible
                     ) {
                         Button("Archivar \(viewModel.itemCounts(from: activeItems).purchased) comprados", role: .destructive) {
-                            HapticFeedback.impact()
                             let purchasedCount = viewModel.itemCounts(from: activeItems).purchased
-                            var stats = UserStats.load()
-                            stats.recordPurchase(productsCount: purchasedCount)
-                            withAnimation(Theme.defaultAnimation) {
-                                ShoppingListLifecycleService.archivePurchasedItems(
+                            do {
+                                try ShoppingPersistenceCoordinator(context: modelContext).archivePurchased(
                                     from: activeItems,
-                                    activeList: activeList,
-                                    context: modelContext
+                                    activeList: activeList
                                 )
+                                var stats = UserStats.load()
+                                stats.recordPurchase(productsCount: purchasedCount)
+                                HapticFeedback.success()
+                            } catch {
+                                viewModel.presentPersistenceError(error)
                             }
                         }
                         Button("Cancelar", role: .cancel) {}
@@ -101,31 +102,48 @@ struct ContentView: View {
                     }
         }
         .tint(Theme.accentYellow)
+        .alert(
+            "No se pudieron guardar los cambios",
+            isPresented: Binding(
+                get: { viewModel.persistenceErrorMessage != nil },
+                set: { if !$0 { viewModel.persistenceErrorMessage = nil } }
+            )
+        ) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text(viewModel.persistenceErrorMessage ?? "Inténtalo nuevamente.")
+        }
         .task {
             if resetStorageForUITestsIfNeeded() {
                 return
             }
             
-            // Inicializar servicios
-            CategoryBootstrapService.bootstrap(context: modelContext)
-            geofenceService.initialize(with: modelContext.container)
-            
-            let list = ShoppingListLifecycleService.bootstrap(context: modelContext)
-            SuggestedProducts.seedCatalogItems(in: modelContext)
+            let persistence = ShoppingPersistenceCoordinator(context: modelContext)
+            do {
+                // Limpieza única de la preferencia heredada de geofencing.
+                UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
+                try CategoryBootstrapService.bootstrap(context: modelContext)
+                let list = try ShoppingListLifecycleService.bootstrap(context: modelContext)
+                try SuggestedProducts.seedCatalogItems(in: modelContext)
 
             let itemDescriptor = FetchDescriptor<ShoppingItem>()
             let itemCount = (try? modelContext.fetchCount(itemDescriptor)) ?? 0
             let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
             
             if itemCount == 0 && !hasSeeded {
-                SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
+                try SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
                 UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
             }
-            
-            WidgetDataBridge.write(items: activeItems)
+                try persistence.cleanUnreferencedFiles()
+                WidgetDataBridge.write(items: activeItems)
+            } catch {
+                viewModel.presentPersistenceError(error)
+            }
         }
-        .onChange(of: activeItems) { _, newItems in
-            WidgetDataBridge.write(items: newItems)
+        .onChange(of: viewModel.presentedSheet) { oldValue, newValue in
+            if oldValue != nil, newValue == nil {
+                shouldFocusAddButton = true
+            }
         }
     }
 
@@ -136,6 +154,7 @@ struct ContentView: View {
         .adaptiveGlassButtonStyle()
         .accessibilityLabel("Añadir producto")
         .accessibilityIdentifier("toolbar-add-product")
+        .accessibilityFocused($shouldFocusAddButton)
     }
 
     private var formattedShareText: String {
@@ -315,12 +334,15 @@ struct ContentView: View {
         }
 
         UserDefaults.standard.set(false, forKey: "hasSeededDefaultProducts")
-        CategoryBootstrapService.bootstrap(context: modelContext)
-        let list = ShoppingListLifecycleService.createActiveList(in: modelContext)
-        SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
-        SuggestedProducts.seedCatalogItems(in: modelContext)
-        UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
-        try? modelContext.save()
+        do {
+            try CategoryBootstrapService.bootstrap(context: modelContext)
+            let list = try ShoppingListLifecycleService.createActiveList(in: modelContext)
+            try SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
+            try SuggestedProducts.seedCatalogItems(in: modelContext)
+            UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
+        } catch {
+            viewModel.presentPersistenceError(error)
+        }
         return true
     }
 }

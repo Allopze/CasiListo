@@ -9,7 +9,7 @@ enum CategoryBootstrapService {
     private static let logger = Logger(subsystem: "com.casilisto.app", category: "CategoryBootstrapService")
 
     /// Inicializa las categorías por defecto y cura las relaciones de productos existentes.
-    static func bootstrap(context: ModelContext) {
+    static func bootstrap(context: ModelContext) throws {
         do {
             // 1. Asegurar la existencia de las categorías por defecto
             let categoryDescriptor = FetchDescriptor<Category>()
@@ -34,7 +34,7 @@ enum CategoryBootstrapService {
                     context.insert(newCat)
                     categoryMap[newCat.name] = newCat
                 }
-                context.safeSave()
+                try context.save()
                 logger.info("Categorías iniciales sembradas con éxito.")
             } else {
                 // Asegurarse de que exista la categoría fallback "Varios"
@@ -42,7 +42,7 @@ enum CategoryBootstrapService {
                     let fallback = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
                     context.insert(fallback)
                     categoryMap[fallback.name] = fallback
-                    context.safeSave()
+                    try context.save()
                 }
                 // Reconciliar sfSymbol con la definición actual de DefaultCategory
                 var sfSymbolsUpdated = false
@@ -54,7 +54,7 @@ enum CategoryBootstrapService {
                     }
                 }
                 if sfSymbolsUpdated {
-                    context.safeSave()
+                    try context.save()
                     logger.info("sfSymbols de categorías actualizados a las definiciones más recientes.")
                 }
             }
@@ -91,12 +91,13 @@ enum CategoryBootstrapService {
             }
             
             if itemsCured > 0 || catalogCured > 0 {
-                context.safeSave()
+                try context.save()
                 logger.info("Relaciones curadas: \(itemsCured) ítems de compras y \(catalogCured) ítems de catálogo vinculados.")
             }
             
         } catch {
             logger.error("Error durante el bootstrap de categorías: \(error.localizedDescription)")
+            throw error
         }
     }
 }

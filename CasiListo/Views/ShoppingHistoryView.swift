@@ -90,17 +90,19 @@ struct ShoppingHistoryView: View {
     }
 
     private func exportCSVText() -> String {
-        var csv = "Fecha,Lista,Supermercado,Producto,Cantidad,Categoria,Estado,Precio\n"
-        for list in completedLists {
-            let listItems = allItems.filter { $0.listID == list.id }
-            let dateStr = (list.completedAt ?? list.createdAt).formatted(date: .numeric, time: .shortened)
-            let storeStr = list.storeScope?.displayName ?? "Todos"
+        PerformanceSignpost.measure("Exportar CSV") {
+            let itemsByListID = Dictionary(grouping: allItems, by: \.listID)
+            var rows = [["Fecha", "Lista", "Supermercado", "Producto", "Cantidad", "Categoria", "Estado", "Precio"]]
+            for list in completedLists {
+                let dateStr = (list.completedAt ?? list.createdAt).formatted(date: .numeric, time: .shortened)
+                let storeStr = list.storeScope?.displayName ?? "Todos"
 
-            for item in listItems {
-                let priceStr = item.price != nil ? "\(item.price!)" : ""
-                csv += "\"\(dateStr)\",\"\(list.title)\",\"\(storeStr)\",\"\(item.name)\",\"\(item.quantity)\",\"\(item.category.name)\",\"\(item.status.rawValue)\",\"\(priceStr)\"\n"
+                for item in itemsByListID[list.id] ?? [] {
+                    let priceStr = item.price.map { String($0) } ?? ""
+                    rows.append([dateStr, list.title, storeStr, item.name, item.quantity, item.category.name, item.status.rawValue, priceStr])
+                }
             }
+            return CSVSerializer.document(rows: rows)
         }
-        return csv
     }
 }

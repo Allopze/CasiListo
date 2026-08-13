@@ -119,25 +119,24 @@ struct SuggestedProducts {
     /// Filtra productos sugeridos cuyo nombre contiene el texto dado.
     static func suggestions(for text: String) -> [String] {
         guard !text.isEmpty else { return [] }
-        let lowered = text.lowercased()
-        return allProducts.filter { $0.lowercased().contains(lowered) }
+        return allProducts.filter { ProductNameNormalizer.contains($0, query: text) }
     }
 
     /// Devuelve la categoría más probable para un nombre de producto.
     /// Primero intenta coincidencia exacta; si no hay, prueba coincidencia por prefijo
     /// para cubrir variantes como "Tomates cherry" → "Tomates" (Frutas y verduras).
     static func suggestedCategory(for productName: String, in categories: [Category]) -> Category? {
-        let lowered = productName.lowercased()
+        let normalizedName = ProductNameNormalizer.normalize(productName)
         let sortedEntries = byCategory.sorted { $0.key.sortIndex < $1.key.sortIndex }
         for (defaultCat, products) in sortedEntries {
-            if products.contains(where: { $0.lowercased() == lowered }) {
+            if products.contains(where: { ProductNameNormalizer.normalize($0) == normalizedName }) {
                 return categories.first { $0.name == defaultCat.rawValue }
             }
         }
         for (defaultCat, products) in sortedEntries {
             if products.contains(where: {
-                let p = $0.lowercased()
-                return lowered.hasPrefix(p) || p.hasPrefix(lowered)
+                let candidate = ProductNameNormalizer.normalize($0)
+                return normalizedName.hasPrefix(candidate) || candidate.hasPrefix(normalizedName)
             }) {
                 return categories.first { $0.name == defaultCat.rawValue }
             }
@@ -153,9 +152,9 @@ struct SuggestedProducts {
 
     /// Siembra los productos sugeridos por defecto en la base de datos de SwiftData.
     @MainActor
-    static func seedDefaultItems(in context: ModelContext, listID: UUID? = nil) {
+    static func seedDefaultItems(in context: ModelContext, listID: UUID? = nil) throws {
         let catDescriptor = FetchDescriptor<Category>()
-        let categories = (try? context.fetch(catDescriptor)) ?? []
+        let categories = try context.fetch(catDescriptor)
         
         var order = 0
         for defaultCat in DefaultCategory.allCases {
@@ -175,21 +174,21 @@ struct SuggestedProducts {
                 order += 1
             }
         }
-        context.safeSave()
+        try context.save()
     }
 
     @MainActor
-    static func seedCatalogItems(in context: ModelContext) {
+    static func seedCatalogItems(in context: ModelContext) throws {
         let catalogDescriptor = FetchDescriptor<ProductCatalogItem>()
-        let existingCatalog = (try? context.fetch(catalogDescriptor)) ?? []
-        let existingNames = Set(existingCatalog.map { $0.name.lowercased() })
+        let existingCatalog = try context.fetch(catalogDescriptor)
+        let existingNames = Set(existingCatalog.map { ProductNameNormalizer.normalize($0.name) })
         
         let catDescriptor = FetchDescriptor<Category>()
-        let categories = (try? context.fetch(catDescriptor)) ?? []
+        let categories = try context.fetch(catDescriptor)
 
         for (defaultCat, products) in byCategory {
             let realCategory = categories.first { $0.name == defaultCat.rawValue }
-            for productName in products where !existingNames.contains(productName.lowercased()) {
+            for productName in products where !existingNames.contains(ProductNameNormalizer.normalize(productName)) {
                 let catalogItem = ProductCatalogItem(
                     name: productName,
                     category: realCategory,
@@ -199,6 +198,6 @@ struct SuggestedProducts {
             }
         }
 
-        context.safeSave()
+        try context.save()
     }
 }

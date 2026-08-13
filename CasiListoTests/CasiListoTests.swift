@@ -197,6 +197,32 @@ final class CasiListoTests: XCTestCase {
         XCTAssertNil(vm.duplicateItem(named: "Leche", store: .jumbo, in: items, excluding: item.id))
     }
 
+    func testProductNameNormalizerAndDuplicatePolicyHandleSpacesAndTildes() {
+        let item = ShoppingItem(name: "  Café molido  ", store: .jumbo)
+        XCTAssertEqual(ProductNameNormalizer.normalize("Café molido"), "cafe molido")
+        XCTAssertTrue(DuplicatePolicy.isDuplicate(named: "CAFE   MOLIDO", store: .jumbo, in: [item]))
+        XCTAssertFalse(DuplicatePolicy.isDuplicate(named: "CAFE MOLIDO", store: .lider, in: [item]))
+    }
+
+    func testCSVSerializerEscapesRFC4180ValuesAndFormulaPrefixes() {
+        let csv = CSVSerializer.document(rows: [["=SUM(A1:A2)", "A\"B", "Primera\nsegunda"]])
+        XCTAssertEqual(csv, "\"'=SUM(A1:A2)\",\"A\"\"B\",\"Primera\nsegunda\"\r\n")
+    }
+
+    func testAppRouteAcceptsOnlyPublicListRoute() {
+        XCTAssertEqual(AppRoute(url: URL(string: "casilisto://list")!), .list)
+        XCTAssertEqual(AppRoute(url: URL(string: "casilisto://list/")!), .list)
+        XCTAssertNil(AppRoute(url: URL(string: "casilisto://unsupported")!))
+        XCTAssertNil(AppRoute(url: URL(string: "casilisto://list?screen=settings")!))
+        XCTAssertNil(AppRoute(url: URL(string: "https://casilisto.example/list")!))
+    }
+
+    func testPublicSchemaBaselineContainsCurrentPersistentModels() {
+        XCTAssertEqual(CasiListoSchemaV1.versionIdentifier, Schema.Version(1, 0, 0))
+        XCTAssertEqual(CasiListoMigrationPlan.schemas.count, 1)
+        XCTAssertTrue(CasiListoSchemaV1.models.contains { $0 == ShoppingItem.self })
+    }
+
     // MARK: - Archivado y ciclo de vida de lista
 
     func testArchivePurchasedItemsCreatesCompletedList() throws {
@@ -210,7 +236,7 @@ final class CasiListoTests: XCTestCase {
         context.insert(purchased)
         context.insert(pending)
 
-        ShoppingListLifecycleService.archivePurchasedItems(
+        try ShoppingListLifecycleService.archivePurchasedItems(
             from: [purchased, pending],
             activeList: activeList,
             context: context
@@ -238,7 +264,7 @@ final class CasiListoTests: XCTestCase {
         context.insert(activeList)
         [p1, p2, pending, skipped, unavailable].forEach { context.insert($0) }
 
-        ShoppingListLifecycleService.archivePurchasedItems(
+        try ShoppingListLifecycleService.archivePurchasedItems(
             from: [p1, p2, pending, skipped, unavailable],
             activeList: activeList,
             context: context
@@ -266,7 +292,7 @@ final class CasiListoTests: XCTestCase {
         context.insert(varios)
         try context.save()
 
-        CategoryBootstrapService.bootstrap(context: context)
+        try CategoryBootstrapService.bootstrap(context: context)
 
         var catDescriptor = FetchDescriptor<CasiListo.Category>()
         let fetched = try context.fetch(catDescriptor)
@@ -278,7 +304,7 @@ final class CasiListoTests: XCTestCase {
         let container = try makeInMemoryContainer()
         let context = container.mainContext
 
-        CategoryBootstrapService.bootstrap(context: context)
+        try CategoryBootstrapService.bootstrap(context: context)
 
         let catDescriptor2 = FetchDescriptor<CasiListo.Category>()
         let categories = try context.fetch(catDescriptor2)
@@ -323,6 +349,55 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(items.first?.name, "Manzanas")
     }
 
+    func testSecondDeleteReplacesTheSingleUndoBuffer() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let first = ShoppingItem(name: "Pan")
+        let second = ShoppingItem(name: "Leche")
+        context.insert(first)
+        context.insert(second)
+        try context.save()
+
+        let viewModel = ShoppingListViewModel()
+        viewModel.updateDerivedState(items: [first, second], categories: [])
+        viewModel.deleteItem(first, context: context)
+        viewModel.deleteItem(second, context: context)
+
+        XCTAssertEqual(viewModel.deletedItemUndoBuffer?.name, "Leche")
+        viewModel.undoLastDelete(context: context)
+        let remaining = try context.fetch(FetchDescriptor<ShoppingItem>())
+        XCTAssertEqual(remaining.map(\.name).sorted(), ["Leche"])
+    }
+
+    func testListFilteringPerformanceAtReleaseDataVolumes() {
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let dataSets = [1_000, 5_000, 10_000].map { count in
+            (0..<count).map { index in
+                ShoppingItem(
+                    name: "Producto \(index)",
+                    category: category,
+                    status: index.isMultiple(of: 4) ? .purchased : .pending,
+                    store: index.isMultiple(of: 2) ? .jumbo : .lider
+                )
+            }
+        }
+        let viewModel = ShoppingListViewModel()
+
+        measure(metrics: [XCTClockMetric()]) {
+            for items in dataSets {
+                viewModel.searchText = "producto"
+                viewModel.updateDerivedState(items: items, categories: [category])
+                _ = viewModel.derivedGroups
+            }
+        }
+    }
+
+    func testFileStoreFailureIsSurfacedDuringStartupCleanup() throws {
+        let container = try makeInMemoryContainer()
+        let coordinator = ShoppingPersistenceCoordinator(context: container.mainContext, fileStore: FailingFileStore())
+        XCTAssertThrowsError(try coordinator.cleanUnreferencedFiles())
+    }
+
     // MARK: - Price formatting (Double extension — field still in SwiftData model)
 
     func testPriceFormattingExtensions() {
@@ -350,4 +425,18 @@ final class CasiListoTests: XCTestCase {
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
         )
     }
+}
+
+private struct FailingFileStore: FileStore {
+    private enum ForcedError: Error { case fileSystemUnavailable }
+
+    func saveReceiptData(_ data: Data) throws -> String { throw ForcedError.fileSystemUnavailable }
+    func receiptURL(named filename: String) throws -> URL { throw ForcedError.fileSystemUnavailable }
+    func finalVoiceNoteURL(named filename: String) throws -> URL { throw ForcedError.fileSystemUnavailable }
+    func temporaryVoiceNoteURL(named filename: String) throws -> URL { throw ForcedError.fileSystemUnavailable }
+    func promoteTemporaryVoiceNote(named filename: String) throws -> String { throw ForcedError.fileSystemUnavailable }
+    func deleteVoiceNote(named filename: String) throws { throw ForcedError.fileSystemUnavailable }
+    func deleteReceipt(named filename: String) throws { throw ForcedError.fileSystemUnavailable }
+    func cleanupUnreferencedFiles(voiceNoteFilenames: Set<String>, receiptFilenames: Set<String>) throws { throw ForcedError.fileSystemUnavailable }
+    func resetAllFiles() throws { throw ForcedError.fileSystemUnavailable }
 }

@@ -9,6 +9,8 @@ struct VoiceNotePlayerButton: View {
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     @Environment(VoiceNoteService.self) private var voiceNoteService
+    @State private var errorMessage: String?
+    @AccessibilityFocusState private var shouldFocusPlaybackButton: Bool
     private let waveBarHeights: [CGFloat] = [8, 16, 11, 18]
     
     var body: some View {
@@ -19,7 +21,9 @@ struct VoiceNotePlayerButton: View {
             if isPlaying {
                 voiceNoteService.stopPlaying()
             } else {
-                _ = voiceNoteService.startPlaying(filename: filename)
+                if case .failure(let error) = voiceNoteService.startPlaying(filename: filename) {
+                    errorMessage = error.errorDescription
+                }
             }
         } label: {
             HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {
@@ -64,5 +68,26 @@ struct VoiceNotePlayerButton: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isPlaying ? "Detener nota de voz" : "Reproducir nota de voz")
+        .accessibilityFocused($shouldFocusPlaybackButton)
+        .alert(
+            "No se pudo reproducir la nota",
+            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("Intentar nuevamente") { retryPlayback() }
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Inténtalo nuevamente.")
+        }
+        .onChange(of: errorMessage) { oldValue, newValue in
+            if oldValue != nil, newValue == nil {
+                shouldFocusPlaybackButton = true
+            }
+        }
+    }
+
+    private func retryPlayback() {
+        if case .failure(let error) = voiceNoteService.startPlaying(filename: filename) {
+            errorMessage = error.errorDescription
+        }
     }
 }

@@ -17,7 +17,7 @@ struct PendingItemsProvider: TimelineProvider {
             snapshot: WidgetSnapshot(
                 pendingCount: 5,
                 purchasedCount: 2,
-                topItems: ["Leche", "Pan", "Tomates", "Huevos", "Aceite"],
+                topItems: ["Leche", "Pan", "Tomates", "Huevos", "Aceite"].map { WidgetItemSnapshot(id: UUID(), name: $0) },
                 updatedAt: .now
             )
         )
@@ -29,7 +29,7 @@ struct PendingItemsProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<PendingItemsEntry>) -> Void) {
         let entry = PendingItemsEntry(date: .now, snapshot: WidgetSnapshot.read())
-        // La app llama WidgetCenter.reloadAllTimelines() al mutar items.
+        // La app solicita un refresh coalescido del kind tras un commit.
         // El refresh cada 30 min es solo el fallback.
         let nextRefresh = Calendar.current.date(byAdding: .minute, value: 30, to: .now) ?? .now
         completion(Timeline(entries: [entry], policy: .after(nextRefresh)))
@@ -153,12 +153,12 @@ struct MediumWidgetView: View {
                         .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(textColorSecondary)
                 } else {
-                    ForEach(snapshot.topItems.prefix(5), id: \.self) { name in
+                    ForEach(snapshot.topItems.prefix(5)) { item in
                         HStack(spacing: 6) {
                             Circle()
                                 .stroke(checkboxBorderColor, lineWidth: 1.5)
                                 .frame(width: 10, height: 10)
-                            Text(name)
+                            Text(item.name)
                                 .font(.system(size: 13, design: .rounded))
                                 .foregroundStyle(textColorItemName)
                                 .lineLimit(1)
@@ -179,7 +179,7 @@ struct CasiListoWidgetEntryView: View {
     @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        Group {
+        let content = Group {
             switch family {
             case .systemSmall:
                 SmallWidgetView(snapshot: entry.snapshot)
@@ -189,7 +189,13 @@ struct CasiListoWidgetEntryView: View {
                 SmallWidgetView(snapshot: entry.snapshot)
             }
         }
-        .widgetURL(URL(string: "casilisto://open"))
+        if #available(iOS 18.0, *) {
+            content
+                .widgetAccentable()
+                .widgetURL(URL(string: "casilisto://list"))
+        } else {
+            content.widgetURL(URL(string: "casilisto://list"))
+        }
     }
 }
 

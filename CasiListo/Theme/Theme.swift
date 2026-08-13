@@ -300,23 +300,6 @@ enum HapticFeedback {
     }
 }
 
-// MARK: - ModelContext Save with Logging
-
-import SwiftData
-
-extension ModelContext {
-    private static let logger = Logger(subsystem: "com.casilisto.app", category: "SwiftData")
-
-    /// Intenta guardar el contexto. Registra errores en vez de silenciarlos con `try?`.
-    func safeSave(caller: String = #function) {
-        do {
-            try save()
-        } catch {
-            Self.logger.error("Error guardando contexto desde \(caller, privacy: .public): \(error.localizedDescription, privacy: .public)")
-        }
-    }
-}
-
 extension UIColor {
     /// Crea un UIColor desde un string hexadecimal (RGB de 6 dígitos).
     nonisolated convenience init(hex: String) {
@@ -360,21 +343,6 @@ extension Color {
 
     /// Separador sutil.
     static let appSeparator = Color(light: UIColor(hex: "ECECEC"), dark: UIColor(hex: "3A3938"))
-
-    /// Fondo inmersivo para el modo compra. Se mantiene oscuro en claro y oscuro para asegurar contraste.
-    static let shoppingModeBackground = Color(hex: "101412")
-
-    /// Superficie de tarjeta y controles del modo compra.
-    static let shoppingModeSurface = Color.white.opacity(0.09)
-
-    /// Superficie para controles secundarios del modo compra.
-    static let shoppingModeControlBackground = Color.white.opacity(0.14)
-
-    /// Texto primario del modo compra.
-    static let shoppingModeText = Color.white
-
-    /// Texto secundario del modo compra.
-    static let shoppingModeSecondaryText = Color.white.opacity(0.80)
 
     // MARK: - Helpers
 

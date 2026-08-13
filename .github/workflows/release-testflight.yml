@@ -1,0 +1,75 @@
+name: Release to TestFlight
+
+on:
+  workflow_dispatch:
+
+jobs:
+  archive-export-upload:
+    runs-on: macos-latest
+    timeout-minutes: 60
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.0'
+      - name: Validate Xcode, version and build number
+        shell: bash
+        run: |
+          set -euo pipefail
+          major="$(xcodebuild -version | awk '/Xcode/{split($2, v, "."); print v[1]}')"
+          test "$major" -ge 26
+          settings="$(xcodebuild -showBuildSettings -project CasiListo.xcodeproj -scheme CasiListo -configuration Release)"
+          marketing="$(printf '%s\n' "$settings" | awk -F' = ' '/MARKETING_VERSION/{print $2; exit}')"
+          build="$(printf '%s\n' "$settings" | awk -F' = ' '/CURRENT_PROJECT_VERSION/{print $2; exit}')"
+          test -n "$marketing"
+          test -n "$build"
+          [[ "$build" =~ ^[0-9]+$ ]]
+          bash ci/validate-privacy-manifests.sh artifacts
+      - name: Archive Release
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          xcodebuild archive \
+            -project CasiListo.xcodeproj \
+            -scheme CasiListo \
+            -configuration Release \
+            -archivePath artifacts/CasiListo.xcarchive \
+            -destination 'generic/platform=iOS' \
+            -allowProvisioningUpdates | tee artifacts/xcodebuild-archive.log
+      - name: Export IPA
+        shell: bash
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive \
+            -archivePath artifacts/CasiListo.xcarchive \
+            -exportPath artifacts/export \
+            -exportOptionsPlist ci/ExportOptions-AppStore.plist | tee artifacts/xcodebuild-export.log
+      - name: Upload to TestFlight with App Store Connect JWT
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$ASC_KEY_ID"
+          test -n "$ASC_ISSUER_ID"
+          test -n "$ASC_PRIVATE_KEY"
+          key_dir="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$key_dir"
+          key_path="$key_dir/AuthKey_${ASC_KEY_ID}.p8"
+          trap 'rm -f "$key_path"' EXIT
+          printf '%s' "$ASC_PRIVATE_KEY" > "$key_path"
+          xcrun iTMSTransporter -m upload \
+            -assetFile artifacts/export/CasiListo.ipa \
+            -apiKey "$ASC_KEY_ID" \
+            -apiIssuer "$ASC_ISSUER_ID"
+      - name: Upload release artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: casilisto-release-artifacts
+          path: artifacts
+          if-no-files-found: warn

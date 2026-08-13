@@ -1,24 +1,21 @@
 import SwiftUI
 import SwiftData
 
-/// Vista de administración de categorías dinámicas.
-/// Permite reordenar, editar y crear nuevas categorías.
+/// Administración de categorías. La eliminación siempre explica qué datos se
+/// reasignarán a «Varios» antes de modificar la base local.
 struct CategoryManagementView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \Category.sortIndex) private var categories: [Category]
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var sheetMode: AddEditCategorySheet.Mode? = nil
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+    @State private var sheetMode: AddEditCategorySheet.Mode?
+    @State private var categoryPendingDeletion: Category?
+    @State private var errorMessage: String?
 
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 20
     @ScaledMetric(relativeTo: .body) private var rowSpacing: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var listPadding: CGFloat = 16
 
     var body: some View {
         ZStack {
             Color.appBackground.ignoresSafeArea()
-
             List {
                 Section {
                     ForEach(categories) { category in
@@ -27,12 +24,7 @@ struct CategoryManagementView: View {
                             .listRowBackground(Color.appCardBackground)
                             .swipeActions(edge: .trailing) {
                                 if category.name != "Varios" {
-                                    Button(role: .destructive) {
-                                        HapticFeedback.impact()
-                                        withAnimation(Theme.defaultAnimation) {
-                                            deleteCategory(category)
-                                        }
-                                    } label: {
+                                    Button(role: .destructive) { categoryPendingDeletion = category } label: {
                                         Label("Eliminar", systemImage: "trash")
                                     }
                                 }
@@ -40,14 +32,10 @@ struct CategoryManagementView: View {
                     }
                     .onMove(perform: moveCategories)
                 } header: {
-                    Text("MIS CATEGORÍAS")
-                        .font(Theme.captionDynamic)
-                        .foregroundStyle(Color.appTextSecondary)
-                        .bold()
+                    Text("MIS CATEGORÍAS").font(Theme.captionDynamic).foregroundStyle(Color.appTextSecondary).bold()
                 } footer: {
                     Text("Arrastra las categorías para cambiar el orden de visualización de tu lista de compras.")
-                        .font(Theme.captionDynamic)
-                        .foregroundStyle(Color.appTextSecondary)
+                        .font(Theme.captionDynamic).foregroundStyle(Color.appTextSecondary)
                 }
             }
             .listStyle(.insetGrouped)
@@ -57,27 +45,37 @@ struct CategoryManagementView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button {
-                    HapticFeedback.selection()
-                    sheetMode = .add
-                } label: {
-                    Image(systemName: "plus")
-                        .bold()
-                        .foregroundStyle(Theme.accentYellow)
-                }
-                .accessibilityLabel("Nueva categoría")
+                Button { sheetMode = .add } label: { Image(systemName: "plus").bold().foregroundStyle(Theme.accentYellow) }
+                    .accessibilityLabel("Nueva categoría")
             }
         }
-        .sheet(item: $sheetMode) { mode in
-            AddEditCategorySheet(mode: mode)
+        .sheet(item: $sheetMode) { AddEditCategorySheet(mode: $0) }
+        .confirmationDialog(
+            "¿Eliminar \(categoryPendingDeletion?.name ?? "esta categoría")?",
+            isPresented: Binding(get: { categoryPendingDeletion != nil }, set: { if !$0 { categoryPendingDeletion = nil } }),
+            titleVisibility: .visible
+        ) {
+            Button("Reasignar y eliminar", role: .destructive) {
+                if let category = categoryPendingDeletion { deleteCategory(category) }
+            }
+            Button("Cancelar", role: .cancel) {}
+        } message: {
+            if let category = categoryPendingDeletion {
+                Text("\(affectedItemCount(for: category)) producto(s) y \(affectedCatalogCount(for: category)) sugerencia(s) se reasignarán a «Varios». Esta acción no se puede deshacer.")
+            }
+        }
+        .alert(
+            "No se pudo actualizar la categoría",
+            isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
+        ) {
+            Button("Entendido", role: .cancel) {}
+        } message: {
+            Text(errorMessage ?? "Inténtalo nuevamente.")
         }
     }
 
     private func categoryRow(for category: Category) -> some View {
-        Button {
-            HapticFeedback.selection()
-            sheetMode = .edit(category)
-        } label: {
+        Button { sheetMode = .edit(category) } label: {
             HStack(spacing: rowSpacing) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: iconSize, weight: .semibold))
@@ -85,34 +83,13 @@ struct CategoryManagementView: View {
                     .frame(width: 32, height: 32)
                     .background(Theme.accentYellow.opacity(0.12))
                     .clipShape(Circle())
-
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(category.name)
-                        .font(Theme.bodyBoldDynamic)
-                        .foregroundStyle(Color.appTextPrimary)
-
-                    if category.name == "Varios" {
-                        Text("Categoría predeterminada del sistema")
-                            .font(Theme.captionDynamic)
-                            .foregroundStyle(Color.appTextSecondary)
-                    } else if category.isSystem {
-                        Text("Categoría del sistema")
-                            .font(Theme.captionDynamic)
-                            .foregroundStyle(Color.appTextSecondary)
-                    } else {
-                        Text("Personalizada")
-                            .font(Theme.captionDynamic)
-                            .foregroundStyle(Color.appTextSecondary)
-                    }
+                    Text(category.name).font(Theme.bodyBoldDynamic).foregroundStyle(Color.appTextPrimary)
+                    Text(category.name == "Varios" ? "Categoría predeterminada del sistema" : (category.isSystem ? "Categoría del sistema" : "Personalizada"))
+                        .font(Theme.captionDynamic).foregroundStyle(Color.appTextSecondary)
                 }
-
                 Spacer()
-
-                if category.name != "Varios" {
-                    Image(systemName: "chevron.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundStyle(Color.appTextSecondary)
-                }
+                if category.name != "Varios" { Image(systemName: "chevron.right").font(.system(size: 12, weight: .bold)).foregroundStyle(Color.appTextSecondary) }
             }
             .contentShape(Rectangle())
         }
@@ -120,41 +97,40 @@ struct CategoryManagementView: View {
     }
 
     private func moveCategories(from source: IndexSet, to destination: Int) {
-        var sortedCategories = categories
-        sortedCategories.move(fromOffsets: source, toOffset: destination)
-        for (index, category) in sortedCategories.enumerated() {
-            category.sortIndex = index
+        var sorted = categories
+        sorted.move(fromOffsets: source, toOffset: destination)
+        for (index, category) in sorted.enumerated() { category.sortIndex = index }
+        do {
+            try ShoppingPersistenceCoordinator(context: modelContext).commitWithoutWidget()
+            HapticFeedback.success()
+        } catch {
+            errorMessage = error.localizedDescription
         }
-        modelContext.safeSave()
-        HapticFeedback.selection()
     }
+
+    private func affectedItemCount(for category: Category) -> Int { category.items?.count ?? 0 }
+    private func affectedCatalogCount(for category: Category) -> Int { category.catalogItems?.count ?? 0 }
 
     private func deleteCategory(_ category: Category) {
         guard category.name != "Varios" else { return }
-
-        // Buscar fallback
         let fallback = Category.resolvedFallback(in: modelContext)
-
-        // Reasociar ítems de compras
-        if let items = category.items {
-            for item in items {
-                item.categoryRelation = fallback
-                item.categoryRawValue = fallback.name
-            }
+        for item in category.items ?? [] {
+            item.categoryRelation = fallback
+            item.categoryRawValue = fallback.name
         }
-
-        // Reasociar catálogo de sugerencias
-        if let catalog = category.catalogItems {
-            for item in catalog {
-                item.categoryRelation = fallback
-                item.categoryRawValue = fallback.name
-            }
+        for item in category.catalogItems ?? [] {
+            item.categoryRelation = fallback
+            item.categoryRawValue = fallback.name
         }
-
         category.items = []
         category.catalogItems = []
-
         modelContext.delete(category)
-        modelContext.safeSave()
+        do {
+            try ShoppingPersistenceCoordinator(context: modelContext).commitWithoutWidget()
+            categoryPendingDeletion = nil
+            HapticFeedback.success()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 }

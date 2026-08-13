@@ -3,42 +3,42 @@ import SwiftData
 
 @MainActor
 enum ShoppingListLifecycleService {
-    static func bootstrap(context: ModelContext) -> ShoppingList {
-        let listDescriptor = FetchDescriptor<ShoppingList>()
-        let lists = (try? context.fetch(listDescriptor)) ?? []
-        
-        let itemDescriptor = FetchDescriptor<ShoppingItem>()
-        let items = (try? context.fetch(itemDescriptor)) ?? []
-
-        let activeList = lists.first { $0.status == .active } ?? createActiveList(in: context)
-        assignOrphanItems(items, to: activeList, context: context)
+    static func bootstrap(context: ModelContext) throws -> ShoppingList {
+        let lists = try context.fetch(FetchDescriptor<ShoppingList>())
+        let items = try context.fetch(FetchDescriptor<ShoppingItem>())
+        let activeList: ShoppingList
+        if let existing = lists.first(where: { $0.status == .active }) {
+            activeList = existing
+        } else {
+            activeList = try createActiveList(in: context)
+        }
+        try assignOrphanItems(items, to: activeList, context: context)
         return activeList
     }
 
-    static func createActiveList(in context: ModelContext, title: String = "Compra actual") -> ShoppingList {
+    static func createActiveList(in context: ModelContext, title: String = "Compra actual") throws -> ShoppingList {
         let list = ShoppingList(title: title)
         context.insert(list)
-        context.safeSave()
+        try context.save()
         return list
     }
 
+    /// Una lista activa puede reunir productos de más de un supermercado. Al
+    /// cerrarla, cada tienda se conserva como una compra independiente.
     static func archivePurchasedItems(
         from items: [ShoppingItem],
         activeList: ShoppingList?,
         store: Store? = nil,
         title: String? = nil,
-        context: ModelContext
-    ) {
-        let purchasedItems = items.filter { item in
-            item.status == .purchased && (store == nil || item.store == store)
+        context: ModelContext,
+        coordinator: ShoppingPersistenceCoordinator? = nil
+    ) throws {
+        let purchasedItems = items.filter {
+            $0.status == .purchased && (store == nil || $0.store == store)
         }
         guard !purchasedItems.isEmpty else { return }
 
-        // Una lista activa puede reunir productos de más de un supermercado.
-        // Al cerrarla, cada tienda se conserva como una compra independiente
-        // para que el historial y la comparación de precios mantengan contexto.
         let purchasesByStore = Dictionary(grouping: purchasedItems) { store ?? $0.store }
-
         for (purchaseStore, storeItems) in purchasesByStore {
             let completedList = ShoppingList(
                 title: title ?? defaultHistoryTitle(store: purchaseStore),
@@ -52,17 +52,22 @@ enum ShoppingListLifecycleService {
                 totalSpent: storeItems.compactMap(\.price).reduce(0, +)
             )
             context.insert(completedList)
-
             for item in storeItems {
                 item.listID = completedList.id
             }
         }
 
+        let currentItems = try context.fetch(FetchDescriptor<ShoppingItem>())
         if let activeList {
-            updateActiveListCounters(activeList, items: fetchItems(in: context, fallback: items))
+            updateActiveListCounters(activeList, items: currentItems)
         }
 
-        context.safeSave()
+        let activeItems = currentItems.filter { $0.listID == activeList?.id }
+        if let coordinator {
+            try coordinator.commit(itemsForWidget: activeItems)
+        } else {
+            try context.save()
+        }
     }
 
     static func updateActiveListCounters(_ list: ShoppingList, items: [ShoppingItem]) {
@@ -78,34 +83,20 @@ enum ShoppingListLifecycleService {
         _ items: [ShoppingItem],
         to activeList: ShoppingList,
         context: ModelContext
-    ) {
-        var changed = false
-
+    ) throws {
         for item in items where item.listID == nil {
             item.listID = activeList.id
             if item.statusRawValue == nil {
                 item.status = item.isPurchased ? .purchased : .pending
             }
-            changed = true
         }
 
         updateActiveListCounters(activeList, items: items)
-
-        if changed {
-            context.safeSave()
-        }
-    }
-
-    private static func fetchItems(in context: ModelContext, fallback: [ShoppingItem]) -> [ShoppingItem] {
-        let descriptor = FetchDescriptor<ShoppingItem>()
-        return (try? context.fetch(descriptor)) ?? fallback
+        try context.save()
     }
 
     private static func defaultHistoryTitle(store: Store?) -> String {
         let date = Date().formatted(date: .abbreviated, time: .omitted)
-        if let store {
-            return "Compra \(store.displayName) - \(date)"
-        }
-        return "Compra completada - \(date)"
+        return store.map { "Compra \($0.displayName) - \(date)" } ?? "Compra completada - \(date)"
     }
 }

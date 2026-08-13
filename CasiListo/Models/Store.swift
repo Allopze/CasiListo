@@ -24,22 +24,4 @@ enum Store: String, CaseIterable, Codable, Identifiable {
         }
     }
     
-    // Coordenadas geográficas para recordatorios geolocalizados (Los Ángeles, Chile)
-    var latitude: Double {
-        switch self {
-        case .jumbo: return -37.4628
-        case .lider: return -37.44626
-        }
-    }
-    
-    var longitude: Double {
-        switch self {
-        case .jumbo: return -72.3559
-        case .lider: return -72.33196
-        }
-    }
-    
-    var geofenceRadius: Double {
-        return 250.0 // 250 metros
-    }
 }

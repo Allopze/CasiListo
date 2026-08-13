@@ -24,8 +24,6 @@
 | **Feedback háptico** | Vibraciones sutiles en cada interacción |
 | **Accesibilidad** | Labels, hints y acciones accesibles en todos los elementos interactivos |
 | **Filtro por Supermercado** | Asignación de cada producto a un supermercado (Jumbo o Líder) con filtro rápido en la cabecera. |
-| **Modo Compra 🛒** | Interfaz de pantalla completa enfocada categoría por categoría con checkboxes gigantes, temporizador y auto-avance. |
-| **Recordatorios Geolocalizados 📍** | Alertas cuando pasas cerca de Jumbo o Líder (Los Ángeles, Chile) con el recuento de artículos pendientes en esa tienda. |
 | **Notas de Voz por Producto 🎤** | Grabación inline de audios de hasta 30 segundos para añadir indicaciones de marcas o pasillos. |
 | **Mis Logros y Rachas 🏆** | Sistema de medallas y racha semanal para incentivar el hábito de compra. |
 
@@ -47,11 +45,9 @@ CasiListo/
 │   ├── SuggestedProducts.swift # Base de datos de ~290 sugerencias
 │   └── UserStats.swift         # Estadísticas y gamificación
 ├── ViewModels/
-│   ├── ShoppingListViewModel.swift  # Lógica de filtrado, agrupación y acciones
-│   └── ShoppingModeViewModel.swift  # Lógica de la sesión activa de compra
+│   └── ShoppingListViewModel.swift  # Lógica de filtrado, agrupación y acciones
 ├── Services/
 │   ├── AppSettings.swift             # Estado global observable de ajustes
-│   ├── GeofenceService.swift         # Alertas por cercanía
 │   ├── VoiceNoteService.swift        # Grabación y reproducción de audio
 │   ├── ShoppingListLifecycleService.swift # Ciclo de vida e historial de listas
 │   ├── CategoryBootstrapService.swift # Inicialización de categorías
@@ -60,7 +56,6 @@ CasiListo/
 │   ├── ContentView.swift       # Vista principal con NavigationStack
 │   ├── ShoppingListView.swift  # Lista activa agrupada por categoría
 │   ├── AddEditItemSheet.swift  # Modal para crear/editar productos
-│   ├── ShoppingModeView.swift  # Modo compra pantalla completa
 │   ├── AchievementsView.swift  # Vista de medallas y rachas
 │   └── SettingsSheet.swift     # Hojas de ajustes y accesibilidad
 └── Theme/
@@ -86,7 +81,7 @@ CasiListo utiliza un sistema de diseño centralizado en `Theme.swift`:
 | Requisito | Versión |
 |---|---|
 | **iOS** | 17.0+ |
-| **Xcode** | 16.0+ |
+| **Xcode** | 26.0+ para archivar y subir a App Store Connect |
 | **Swift** | 5.9+ |
 
 > Los efectos Liquid Glass nativos (`glassEffect`) requieren **iOS 26+**. En versiones anteriores se aplica un fallback visual con `ultraThinMaterial`.
