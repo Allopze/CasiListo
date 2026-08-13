@@ -14,7 +14,7 @@ final class CasiListoUITests: XCTestCase {
     func testCreateMarkArchiveAndOpenHistory() throws {
         let app = launchFreshApp()
 
-        let addProductButton = app.buttons["toolbar-add-product"]
+        let addProductButton = app.buttons["quick-add-product"]
         XCTAssertTrue(addProductButton.waitForExistence(timeout: 5))
         addProductButton.tap()
 
@@ -25,7 +25,7 @@ final class CasiListoUITests: XCTestCase {
 
         app.buttons["Añadir"].tap()
 
-        let createdItem = app.buttons.containing(.staticText, identifier: "Producto UI Test").firstMatch
+        let createdItem = app.buttons["Marcar Producto UI Test como comprado"]
         XCTAssertTrue(createdItem.waitForExistence(timeout: 5))
         createdItem.tap()
 
@@ -43,13 +43,13 @@ final class CasiListoUITests: XCTestCase {
     func testListSupportsSkippedAndUnavailableActions() throws {
         let app = launchFreshApp()
 
-        app.buttons["toolbar-add-product"].tap()
+        app.buttons["quick-add-product"].tap()
         let nameField = app.textFields["item-name-field"]
         XCTAssertTrue(nameField.waitForExistence(timeout: 5))
         nameField.typeText("Producto con estados")
         app.buttons["Añadir"].tap()
 
-        let item = app.buttons.containing(.staticText, identifier: "Producto con estados").firstMatch
+        let item = app.staticTexts["Producto con estados"]
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         item.press(forDuration: 1)
 
@@ -59,5 +59,20 @@ final class CasiListoUITests: XCTestCase {
         item.press(forDuration: 1)
         XCTAssertTrue(app.buttons["No encontrado"].waitForExistence(timeout: 5))
         app.buttons["No encontrado"].tap()
+    }
+
+    @MainActor
+    func testCategoryCardsCollapseAndExpand() throws {
+        let app = launchFreshApp()
+        let categoryCard = app.buttons["category-section-Aseo personal"]
+
+        XCTAssertTrue(categoryCard.waitForExistence(timeout: 5))
+        XCTAssertEqual(categoryCard.value as? String, "Colapsada")
+
+        categoryCard.tap()
+        XCTAssertEqual(categoryCard.value as? String, "Expandida")
+
+        categoryCard.tap()
+        XCTAssertEqual(categoryCard.value as? String, "Colapsada")
     }
 }

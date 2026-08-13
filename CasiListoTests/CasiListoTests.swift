@@ -177,6 +177,35 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(groups.first?.items.first?.name, "Pan")
     }
 
+    func testCategoryCanBeCollapsedAndExpanded() {
+        let viewModel = ShoppingListViewModel()
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let item = ShoppingItem(name: "Pan", category: category)
+
+        viewModel.updateDerivedState(items: [item], categories: [category])
+        XCTAssertTrue(viewModel.isCategoryCollapsed(category))
+
+        viewModel.toggleCategoryCollapse(category)
+        XCTAssertFalse(viewModel.isCategoryCollapsed(category))
+
+        viewModel.toggleCategoryCollapse(category)
+        XCTAssertTrue(viewModel.isCategoryCollapsed(category))
+    }
+
+    func testAddingAnItemExpandsOnlyItsCategory() {
+        let viewModel = ShoppingListViewModel()
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let existingItem = ShoppingItem(name: "Pan", category: category)
+
+        viewModel.updateDerivedState(items: [existingItem], categories: [category])
+        XCTAssertTrue(viewModel.isCategoryCollapsed(category))
+
+        let newItem = ShoppingItem(name: "Leche", category: category)
+        viewModel.updateDerivedState(items: [existingItem, newItem], categories: [category])
+
+        XCTAssertFalse(viewModel.isCategoryCollapsed(category))
+    }
+
     // MARK: - duplicateItem
 
     func testDuplicateItemNormalizesNameAndRespectsStore() {

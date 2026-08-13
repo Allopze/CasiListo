@@ -1,4 +1,5 @@
 import SwiftData
+import Foundation
 
 /// Baseline del primer binario público. Las versiones posteriores deben añadir
 /// un esquema nuevo y una etapa explícita, con fixture V1 en los tests.

@@ -5,6 +5,7 @@ import SwiftUI
 struct ItemRowView: View {
     let item: ShoppingItem
     var searchText: String = ""
+    var showsStore: Bool = true
     let onToggle: () -> Void
     let onEdit: () -> Void
     let onDelete: () -> Void
@@ -12,7 +13,7 @@ struct ItemRowView: View {
 
     @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 28
     @ScaledMetric(relativeTo: .body) private var scaledEditButtonSize: CGFloat = 44
-    @ScaledMetric(relativeTo: .body) private var scaledPaddingVertical: CGFloat = 10
+    @ScaledMetric(relativeTo: .body) private var scaledPaddingVertical: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var scaledSpacing: CGFloat = 14
     @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 9
     @ScaledMetric(relativeTo: .caption) private var storePaddingHorizontal: CGFloat = 6
@@ -27,22 +28,23 @@ struct ItemRowView: View {
 
     var body: some View {
         HStack(spacing: scaledSpacing) {
-            // Toda la tarjeta (excepto el botón de edición) al tocarla completa o descompleta el ítem.
             Button {
                 toggleItem()
             } label: {
-                HStack(spacing: scaledSpacing) {
-                    checkboxView
-                    rowContent
-                    Spacer()
-                }
-                .contentShape(Rectangle())
+                checkboxView
+                    .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
             }
             .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(accessibilityLabel)
+            .accessibilityLabel(item.isPurchased ? "Marcar \(item.name) como pendiente" : "Marcar \(item.name) como comprado")
             .accessibilityValue(item.isPurchased ? "Comprado" : "Pendiente")
-            .accessibilityHint("Toca para marcar o desmarcar el producto")
+            .accessibilityHint("Cambia el estado del producto")
+            .accessibilityIdentifier("item-toggle-\(item.id.uuidString)")
+
+            rowContent
+                .accessibilityElement(children: .combine)
+                .accessibilityLabel(accessibilityLabel)
+
+            Spacer(minLength: 0)
 
             if let voiceNote = item.voiceNoteFilename {
                 VoiceNotePlayerButton(filename: voiceNote)
@@ -133,9 +135,12 @@ struct ItemRowView: View {
         }
     }
 
+    @ViewBuilder
     private var metaChips: some View {
-        HStack(spacing: 5) {
-            Text(item.store.displayName)
+        if showsStore || !item.quantity.isEmpty || item.status == .skipped || item.status == .unavailable {
+            HStack(spacing: 5) {
+                if showsStore {
+                    Text(item.store.displayName)
                     .font(.system(size: storeTextSize, weight: .bold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, storePaddingHorizontal)
@@ -143,11 +148,12 @@ struct ItemRowView: View {
                     .background(item.store.color.opacity(item.isPurchased ? 0.35 : 0.68))
                     .clipShape(Capsule())
                     .accessibilityLabel("Tienda: \(item.store.displayName)")
+                }
 
-            if !item.quantity.isEmpty {
-                Text(item.quantity)
+                if !item.quantity.isEmpty {
+                    Text(item.quantity)
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Theme.accentYellow)
+                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextSecondary)
                     .padding(.horizontal, pillPaddingHorizontal)
                     .padding(.vertical, pillPaddingVertical)
                     .background(quantityBackground)
@@ -155,15 +161,16 @@ struct ItemRowView: View {
                     .accessibilityLabel("Cantidad \(item.quantity)")
             }
 
-            if item.status == .skipped || item.status == .unavailable {
-                Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
+                if item.status == .skipped || item.status == .unavailable {
+                    Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(item.status == .skipped ? Color.orange : Color.red)
                     .labelStyle(.titleAndIcon)
                     .padding(.horizontal, pillPaddingHorizontal)
                     .padding(.vertical, pillPaddingVertical)
                     .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.10))
-                    .clipShape(Capsule())
+                        .clipShape(Capsule())
+                }
             }
         }
     }
@@ -197,11 +204,13 @@ struct ItemRowView: View {
         } label: {
             Image(systemName: "pencil")
                 .font(.system(size: editButtonSymbolSize, weight: .semibold))
-                .foregroundStyle(Theme.accentYellow)
+                .foregroundStyle(Color.appTextSecondary)
                 .frame(width: max(Theme.minimumTouchTarget, scaledEditButtonSize),
                        height: max(Theme.minimumTouchTarget, scaledEditButtonSize))
-                .background(Theme.accentYellow.opacity(0.12))
-                .clipShape(Circle())
+                .overlay {
+                    Circle()
+                        .stroke(Color.appSeparator.opacity(0.85), lineWidth: 1)
+                }
         }
         .buttonStyle(.plain)
         .accessibilityLabel("Editar \(item.name)")
@@ -210,7 +219,7 @@ struct ItemRowView: View {
     private var quantityBackground: some ShapeStyle {
         item.isPurchased
             ? Color.appTextPurchased.opacity(0.1)
-            : Theme.accentYellow.opacity(0.15)
+            : Color.appTextSecondary.opacity(0.1)
     }
 
     private var accessibilityLabel: String {
@@ -264,22 +273,5 @@ private extension Text {
             attributed[attrRange].inlinePresentationIntent = .stronglyEmphasized
         }
         self.init(attributed)
-    }
-}
-
-// MARK: - Equatable Conformance for SwiftUI List Optimization
-extension ItemRowView: Equatable {
-    static func == (lhs: ItemRowView, rhs: ItemRowView) -> Bool {
-        lhs.item.id == rhs.item.id &&
-        lhs.item.name == rhs.item.name &&
-        lhs.item.quantity == rhs.item.quantity &&
-        lhs.item.isPurchased == rhs.item.isPurchased &&
-        lhs.item.status == rhs.item.status &&
-        lhs.item.note == rhs.item.note &&
-        lhs.item.store == rhs.item.store &&
-        lhs.item.voiceNoteFilename == rhs.item.voiceNoteFilename &&
-        lhs.searchText == rhs.searchText &&
-        lhs.accessibilityTextSizeScale == rhs.accessibilityTextSizeScale &&
-        lhs.reduceMotion == rhs.reduceMotion
     }
 }

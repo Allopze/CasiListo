@@ -378,7 +378,7 @@ struct ReceiptCaptureSheet: View {
         isSaving = true
 
         do {
-            try ShoppingPersistenceCoordinator(context: modelContext).registerReceipt(
+            _ = try ShoppingPersistenceCoordinator(context: modelContext).registerReceipt(
                 entries: entries,
                 receiptImage: receiptImage,
                 store: selectedStore,

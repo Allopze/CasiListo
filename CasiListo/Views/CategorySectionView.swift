@@ -1,11 +1,13 @@
 import SwiftUI
 
 /// Sección de la lista agrupada por categoría.
-/// Muestra un header discreto con SF Symbol y los ítems de esa categoría.
+/// La cabecera funciona como una tarjeta principal y permite expandir o contraer
+/// los ítems de la categoría.
 struct CategorySectionView: View {
     let category: Category
     let items: [ShoppingItem]
     var searchText: String = ""
+    var showsStore: Bool = true
     let isCollapsed: Bool
     let onToggleCollapse: () -> Void
     let onTogglePurchased: (ShoppingItem) -> Void
@@ -14,22 +16,18 @@ struct CategorySectionView: View {
     let onMarkStatus: (ShoppingItem, ShoppingItemStatus) -> Void
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
-    @ScaledMetric(relativeTo: .body) private var paddingVertical: CGFloat = 14
-    @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 4
-    @ScaledMetric(relativeTo: .body) private var listRowInsetSide: CGFloat = 30 // Theme.cardPadding + 14
-    @ScaledMetric(relativeTo: .body) private var hStackSpacing: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var sfSymbolSize: CGFloat = 18
-    @ScaledMetric(relativeTo: .body) private var imageWidth: CGFloat = 24
+    @ScaledMetric(relativeTo: .body) private var headerPaddingVertical: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 2
+    @ScaledMetric(relativeTo: .body) private var hStackSpacing: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var sfSymbolSize: CGFloat = 19
+    @ScaledMetric(relativeTo: .body) private var imageWidth: CGFloat = 32
     @ScaledMetric(relativeTo: .caption) private var countPaddingHorizontal: CGFloat = 10
     @ScaledMetric(relativeTo: .caption) private var countPaddingVertical: CGFloat = 4
-    @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.cornerRadius
-    @ScaledMetric(relativeTo: .body) private var smallCornerRadius: CGFloat = Theme.smallCornerRadius
-    @ScaledMetric(relativeTo: .body) private var rowBackgroundPaddingVertical: CGFloat = 3
+    @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
     @ScaledMetric(relativeTo: .body) private var topPadding: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 4
-    @ScaledMetric(relativeTo: .body) private var collapsedPaddingVertical: CGFloat = 6
-    @ScaledMetric(relativeTo: .body) private var collapsedOuterPadding: CGFloat = 1
+    @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 0
+    @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 64
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
@@ -40,6 +38,7 @@ struct CategorySectionView: View {
                     ItemRowView(
                         item: item,
                         searchText: searchText,
+                        showsStore: showsStore,
                         onToggle: {
                             onTogglePurchased(item)
                         },
@@ -53,15 +52,15 @@ struct CategorySectionView: View {
                             onMarkStatus(item, status)
                         }
                     )
-                    .equatable()
                     .listRowInsets(.init(
                         top: listRowInsetTop,
-                        leading: listRowInsetSide,
+                        leading: cardPadding,
                         bottom: listRowInsetTop,
-                        trailing: listRowInsetSide
+                        trailing: cardPadding
                     ))
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(rowBackground)
+                    .listRowSeparator(.visible, edges: .bottom)
+                    .listRowSeparatorTint(Color.appSeparator.opacity(0.85))
+                    .listRowBackground(Color.clear)
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             HapticFeedback.impact()
@@ -115,10 +114,10 @@ struct CategorySectionView: View {
             HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: sfSymbolSize, weight: .bold))
-                    .foregroundStyle(Category.accentColor(forName: category.name))
+                    .foregroundStyle(categoryAccent)
                     .frame(width: imageWidth, height: imageWidth)
-                    .background(Category.accentColor(forName: category.name).opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .background(categoryAccent.opacity(0.16))
+                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 
                 Text(category.displayName)
                     .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
@@ -132,18 +131,26 @@ struct CategorySectionView: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: chevronSize, weight: .bold))
                     .foregroundStyle(Color.appTextSecondary)
-                    .rotationEffect(.degrees(isCollapsed ? -90 : 0))
+                    .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 180))
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
             }
             .textCase(nil)
-            .padding(.vertical, isCollapsed ? collapsedPaddingVertical : paddingVertical)
+            .padding(.vertical, headerPaddingVertical)
             .padding(.horizontal, cardPadding)
-            .background(Color.appCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.04), radius: 4, x: 0, y: 2)
+            .frame(maxWidth: .infinity, minHeight: headerMinimumHeight, alignment: .leading)
+            .background {
+                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .stroke(Color.appSeparator.opacity(0.8), lineWidth: 1)
+                    }
+            }
+            .shadow(color: .black.opacity(0.025), radius: 4, x: 0, y: 2)
             .padding(.horizontal, cardPadding)
-            .padding(.top, isCollapsed ? collapsedOuterPadding : topPadding)
-            .padding(.bottom, isCollapsed ? collapsedOuterPadding : bottomPadding)
+            .padding(.top, topPadding)
+            .padding(.bottom, bottomPadding)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -155,10 +162,12 @@ struct CategorySectionView: View {
         }())
         .accessibilityValue(isCollapsed ? "Colapsada" : "Expandida")
         .accessibilityHint(isCollapsed ? "Toca para expandir la categoría" : "Toca para colapsar la categoría")
+        .accessibilityIdentifier("category-section-\(category.name)")
     }
 
     private var pendingCount: Int { items.filter { !$0.isPurchased }.count }
     private var purchasedCount: Int { items.filter { $0.isPurchased }.count }
+    private var categoryAccent: Color { Category.accentColor(forName: category.name) }
 
     @ViewBuilder
     private var categoryBadge: some View {
@@ -170,18 +179,18 @@ struct CategorySectionView: View {
                 .monospacedDigit()
                 .padding(.horizontal, countPaddingHorizontal)
                 .padding(.vertical, countPaddingVertical)
-                .background(Color.green)
+                .background(Color.green.opacity(0.85))
                 .clipShape(Capsule())
         } else if purchasedCount > 0 {
             HStack(spacing: 4) {
                 Text("\(pendingCount)")
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(Color.black)
+                    .foregroundStyle(categoryAccent)
                     .bold()
                     .monospacedDigit()
                     .padding(.horizontal, countPaddingHorizontal)
                     .padding(.vertical, countPaddingVertical)
-                    .background(Theme.accentYellow)
+                    .background(categoryAccent.opacity(0.16))
                     .clipShape(Capsule())
                 Label("\(purchasedCount)", systemImage: "checkmark")
                     .font(Theme.captionFont(scale: accessibilityTextSizeScale))
@@ -190,27 +199,19 @@ struct CategorySectionView: View {
                     .monospacedDigit()
                     .padding(.horizontal, countPaddingHorizontal)
                     .padding(.vertical, countPaddingVertical)
-                    .background(Color.green)
+                    .background(Color.green.opacity(0.85))
                     .clipShape(Capsule())
             }
         } else {
             Text("\(pendingCount)")
                 .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(Color.black)
+                .foregroundStyle(categoryAccent)
                 .bold()
                 .monospacedDigit()
                 .padding(.horizontal, countPaddingHorizontal)
                 .padding(.vertical, countPaddingVertical)
-                .background(Theme.accentYellow)
+                .background(categoryAccent.opacity(0.16))
                 .clipShape(Capsule())
         }
-    }
-
-    private var rowBackground: some View {
-        RoundedRectangle(cornerRadius: smallCornerRadius, style: .continuous)
-            .fill(Color.appCardBackground)
-            .padding(.horizontal, cardPadding)
-            .padding(.vertical, rowBackgroundPaddingVertical)
-            .shadow(color: .black.opacity(0.02), radius: 3, x: 0, y: 1)
     }
 }

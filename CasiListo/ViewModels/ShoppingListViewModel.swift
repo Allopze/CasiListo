@@ -48,7 +48,11 @@ final class ShoppingListViewModel {
     var persistenceErrorMessage: String?
     @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, category: Category, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)? = nil
     @ObservationIgnored private var undoTimerTask: Task<Void, Never>? = nil
-    @ObservationIgnored private var collapsedCategories: Set<String> = []
+    /// Categorías que la persona usuaria ha contraído en esta sesión.
+    /// Debe permanecer observable: la vista consulta este estado para decidir
+    /// si muestra los productos de cada tarjeta.
+    private var collapsedCategories: Set<String> = []
+    @ObservationIgnored private var hasInitializedCategoryCollapseState = false
 
     // MARK: - Snapshot derivado
 
@@ -63,8 +67,20 @@ final class ShoppingListViewModel {
 
     func updateDerivedState(items: [ShoppingItem], categories: [Category]) {
         PerformanceSignpost.measure("Recalcular lista") {
+            let previousItemIDs = Set(latestItems.map(\.id))
             latestItems = items
             latestCategories = categories
+
+            if hasInitializedCategoryCollapseState {
+                let newCategories = items
+                    .filter { !previousItemIDs.contains($0.id) }
+                    .map { $0.category.name }
+                collapsedCategories.subtract(newCategories)
+            } else if !items.isEmpty && !categories.isEmpty {
+                collapsedCategories = Set(categories.map(\.name))
+                hasInitializedCategoryCollapseState = true
+            }
+
             recomputeSnapshot()
         }
     }
@@ -255,8 +271,8 @@ final class ShoppingListViewModel {
         presentedSheet = .templates
     }
 
-    func isCategoryCollapsed(_ category: Category) -> Bool {
-        collapsedCategories.contains(category.name)
+    func isCategoryCollapsed(_ category: Category, forceExpanded: Bool = false) -> Bool {
+        !forceExpanded && collapsedCategories.contains(category.name)
     }
 
     func toggleCategoryCollapse(_ category: Category) {
@@ -265,6 +281,11 @@ final class ShoppingListViewModel {
         } else {
             collapsedCategories.insert(category.name)
         }
+    }
+
+    func resetCategoryCollapseState() {
+        collapsedCategories.removeAll()
+        hasInitializedCategoryCollapseState = false
     }
 
     /// Elimina un ítem con soporte de Deshacer (Undo).

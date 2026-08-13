@@ -10,7 +10,6 @@ struct ContentView: View {
     @Query(sort: \Category.sortIndex) private var categories: [Category]
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
-    @AccessibilityFocusState private var shouldFocusAddButton: Bool
 
     private var activeList: ShoppingList? {
         allLists.first { $0.status == .active }
@@ -60,6 +59,7 @@ struct ContentView: View {
                         }
                     }
                     .navigationTitle("CasiListo")
+                    .navigationBarTitleDisplayMode(.inline)
                     .searchable(
                         text: $viewModel.searchText,
                         placement: .navigationBarDrawer(displayMode: .automatic),
@@ -67,14 +67,10 @@ struct ContentView: View {
                     )
                     .adaptiveSearchToolbarBehavior()
                     .adaptiveSearchPresentationToolbarBehavior()
+                    .toolbarBackground(Color.appBackground, for: .navigationBar)
+                    .toolbarBackground(.visible, for: .navigationBar)
                     .toolbar {
                         ToolbarItem(placement: .topBarTrailing) { menuButton }
-                        if #available(iOS 26.0, *) {
-                            ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                        }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            addButton
-                        }
                     }
                     .sheet(item: $viewModel.presentedSheet) { sheetContent(for: $0) }
                     .confirmationDialog(
@@ -140,21 +136,6 @@ struct ContentView: View {
                 viewModel.presentPersistenceError(error)
             }
         }
-        .onChange(of: viewModel.presentedSheet) { oldValue, newValue in
-            if oldValue != nil, newValue == nil {
-                shouldFocusAddButton = true
-            }
-        }
-    }
-
-    private var addButton: some View {
-        Button { presentAddItem() } label: {
-            Image(systemName: "plus").fontWeight(.semibold)
-        }
-        .adaptiveGlassButtonStyle()
-        .accessibilityLabel("Añadir producto")
-        .accessibilityIdentifier("toolbar-add-product")
-        .accessibilityFocused($shouldFocusAddButton)
     }
 
     private var formattedShareText: String {
@@ -315,6 +296,8 @@ struct ContentView: View {
         guard ProcessInfo.processInfo.arguments.contains("-ui-testing-reset") else {
             return false
         }
+
+        viewModel.resetCategoryCollapseState()
 
         for item in allItems {
             modelContext.delete(item)

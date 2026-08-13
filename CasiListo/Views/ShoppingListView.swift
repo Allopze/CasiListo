@@ -63,7 +63,11 @@ struct ShoppingListView: View {
                         category: group.category,
                         items: group.items,
                         searchText: viewModel.searchText,
-                        isCollapsed: viewModel.isCategoryCollapsed(group.category),
+                        showsStore: viewModel.selectedStore == nil,
+                        isCollapsed: viewModel.isCategoryCollapsed(
+                            group.category,
+                            forceExpanded: !viewModel.searchText.isEmpty
+                        ),
                         onToggleCollapse: {
                             viewModel.toggleCategoryCollapse(group.category)
                         },
@@ -82,7 +86,7 @@ struct ShoppingListView: View {
             }
         }
         .listStyle(.plain)
-        .listSectionSpacing(.compact)
+        .listSectionSpacing(.custom(12))
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 1)
         .background(Color.appBackground)
@@ -112,6 +116,9 @@ struct ShoppingListView: View {
                     onAddTapped: onAddTapped
                 )
             }
+            .frame(maxWidth: .infinity)
+            .padding(.top, 8)
+            .background(Color.appBackground.ignoresSafeArea(edges: .bottom))
         }
         .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
         .onAppear {

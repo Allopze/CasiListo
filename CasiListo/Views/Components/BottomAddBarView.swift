@@ -97,13 +97,20 @@ struct BottomAddBarView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir producto")
+                        .accessibilityIdentifier("quick-add-product")
                     }
                 }
                 .padding(.horizontal, cardPadding)
                 .padding(.top, 4)
                 .padding(.bottom, bottomPadding)
             }
-            .background(Color.appBackground.opacity(0.85))
+            .background {
+                Color.appBackground
+                    .overlay(alignment: .top) {
+                        Color.appSeparator.opacity(0.7)
+                            .frame(height: 1)
+                    }
+            }
         }
         .task(id: text) {
             try? await Task.sleep(for: .milliseconds(150))
