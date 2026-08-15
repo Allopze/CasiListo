@@ -47,7 +47,8 @@ struct ContentView: View {
                                         categories: categories,
                                         context: modelContext
                                     )
-                                }
+                                },
+                                onShowTemplates: { viewModel.presentTemplates() }
                             )
                         } else {
                             ShoppingListView(
@@ -126,17 +127,12 @@ struct ContentView: View {
                 UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
                 UserDefaults.standard.removeObject(forKey: "user_stats")
                 try CategoryBootstrapService.bootstrap(context: modelContext)
-                let list = try ShoppingListLifecycleService.bootstrap(context: modelContext)
+                _ = try ShoppingListLifecycleService.bootstrap(context: modelContext)
                 try SuggestedProducts.seedCatalogItems(in: modelContext)
 
-            let itemDescriptor = FetchDescriptor<ShoppingItem>()
-            let itemCount = (try? modelContext.fetchCount(itemDescriptor)) ?? 0
-            let hasSeeded = UserDefaults.standard.bool(forKey: "hasSeededDefaultProducts")
-            
-            if itemCount == 0 && !hasSeeded {
-                try SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
-                UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
-            }
+                // La lista parte vacía: el catálogo completo vive en su pestaña
+                // y como plantilla. Se limpia el flag del seed legado.
+                UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
                 try persistence.cleanUnreferencedFiles()
                 WidgetDataBridge.write(items: activeItems)
             } catch {
@@ -288,11 +284,18 @@ struct ContentView: View {
 
     @discardableResult
     private func resetStorageForUITestsIfNeeded() -> Bool {
-        guard ProcessInfo.processInfo.arguments.contains("-ui-testing-reset") else {
+        let arguments = ProcessInfo.processInfo.arguments
+        // "-ui-testing-reset" siembra el fixture de 363 productos que usan los
+        // tests existentes; "-ui-testing-reset-empty" reproduce el primer
+        // arranque real (lista vacía, catálogo poblado).
+        let seedsListFixture = arguments.contains("-ui-testing-reset")
+        let startsEmpty = arguments.contains("-ui-testing-reset-empty")
+        guard seedsListFixture || startsEmpty else {
             return false
         }
 
         viewModel.resetCategoryCollapseState()
+        UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
 
         for item in allItems {
             modelContext.delete(item)
@@ -311,13 +314,14 @@ struct ContentView: View {
             }
         }
 
-        UserDefaults.standard.set(false, forKey: "hasSeededDefaultProducts")
+        UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
         do {
             try CategoryBootstrapService.bootstrap(context: modelContext)
             let list = try ShoppingListLifecycleService.createActiveList(in: modelContext)
-            try SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
+            if seedsListFixture && !startsEmpty {
+                try SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
+            }
             try SuggestedProducts.seedCatalogItems(in: modelContext)
-            UserDefaults.standard.set(true, forKey: "hasSeededDefaultProducts")
         } catch {
             viewModel.presentPersistenceError(error)
         }

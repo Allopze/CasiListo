@@ -8,8 +8,7 @@ enum AppTab: Hashable {
     case ajustes
 }
 
-/// Raíz de navegación: Compra · Historial · Ajustes.
-/// (El Catálogo se incorpora como pestaña propia en la siguiente fase.)
+/// Raíz de navegación: Compra · Catálogo · Historial · Ajustes.
 struct MainTabView: View {
     @State private var selection: AppTab = .compra
 
@@ -23,6 +22,10 @@ struct MainTabView: View {
             ContentView(onShowHistory: { selection = .historial })
                 .tabItem { Label("Compra", systemImage: "cart.fill") }
                 .tag(AppTab.compra)
+
+            CatalogView()
+                .tabItem { Label("Catálogo", systemImage: "books.vertical.fill") }
+                .tag(AppTab.catalogo)
 
             ShoppingHistoryView()
                 .tabItem { Label("Historial", systemImage: "clock.arrow.circlepath") }

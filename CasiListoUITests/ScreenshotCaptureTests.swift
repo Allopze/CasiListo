@@ -6,6 +6,7 @@ final class ScreenshotCaptureTests: XCTestCase {
     @MainActor
     func testCaptureMainListExpanded() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset"]
         app.launch()
@@ -35,6 +36,7 @@ final class ScreenshotCaptureTests: XCTestCase {
     @MainActor
     func testCaptureReceiptClosingFlow() throws {
         continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset"]
         app.launch()
@@ -67,6 +69,43 @@ final class ScreenshotCaptureTests: XCTestCase {
         receiptOption.tap()
         sleep(1)
         save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/capture-receipt-closing.png")
+    }
+
+    @MainActor
+    func testFirstRunStartsEmptyAndTemplatePopulatesList() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing-reset-empty"]
+        app.launch()
+
+        let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] ?? "/tmp"
+
+        // Primer arranque real: lista vacía con acceso a plantillas.
+        let templatesButton = app.buttons["empty-state-templates"]
+        XCTAssertTrue(templatesButton.waitForExistence(timeout: 10))
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/capture-empty-start.png")
+
+        templatesButton.tap()
+
+        // La primera tarjeta es "Catálogo completo"; aplicarla puebla la lista.
+        let applyButton = app.buttons.matching(
+            NSPredicate(format: "label BEGINSWITH 'Añadir estos'")
+        ).firstMatch
+        XCTAssertTrue(applyButton.waitForExistence(timeout: 5))
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/capture-templates.png")
+        applyButton.tap()
+
+        XCTAssertTrue(app.staticTexts["355 pendientes"].waitForExistence(timeout: 10))
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/capture-template-applied.png")
+
+        // El catálogo también quedó poblado.
+        app.tabBars.buttons["Catálogo"].tap()
+        let catalogSection = app.buttons["catalog-section-Aseo personal"]
+        XCTAssertTrue(catalogSection.waitForExistence(timeout: 5))
+        catalogSection.tap()
+        sleep(1)
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/capture-catalog.png")
     }
 
     private func save(screenshot: XCUIScreenshot, to path: String) {

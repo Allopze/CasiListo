@@ -5,6 +5,7 @@ struct EmptyStateView: View {
     var hasHistory: Bool = false
     var onShowHistory: (() -> Void)? = nil
     var onQuickAdd: ((String) -> Void)? = nil
+    var onShowTemplates: (() -> Void)? = nil
 
     @ScaledMetric(relativeTo: .body) private var logoSize: CGFloat = 80
     @ScaledMetric(relativeTo: .body) private var mainSpacing: CGFloat = 20
@@ -66,6 +67,18 @@ struct EmptyStateView: View {
                         .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                 }
                 .adaptiveGlassProminentButtonStyle()
+
+                if let showTemplates = onShowTemplates {
+                    Button {
+                        HapticFeedback.selection()
+                        showTemplates()
+                    } label: {
+                        Label("Usar plantilla", systemImage: "square.grid.2x2")
+                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                    }
+                    .adaptiveGlassButtonStyle()
+                    .accessibilityIdentifier("empty-state-templates")
+                }
 
                 if hasHistory, let showHistory = onShowHistory {
                     Button {

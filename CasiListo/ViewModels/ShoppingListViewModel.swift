@@ -493,6 +493,7 @@ final class ShoppingListViewModel {
                 ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
             }
         }
+        CatalogService.recordAddition(name: draft.name, category: category, store: store, context: context)
         do {
             try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: allItems + [newItem])
             quickAddText = ""

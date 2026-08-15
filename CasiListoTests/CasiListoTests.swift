@@ -348,6 +348,101 @@ final class CasiListoTests: XCTestCase {
         XCTAssertFalse(stored.contains("Bebidas"))
     }
 
+    // MARK: - CatalogService
+
+    func testCatalogAddToActiveListCreatesItemAndCountsUsage() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let activeList = ShoppingList(title: "Compra actual")
+        let catalogItem = ProductCatalogItem(name: "Cerveza", category: category, store: .jumbo)
+        context.insert(category)
+        context.insert(activeList)
+        context.insert(catalogItem)
+
+        let created = try CatalogService.addToActiveList(
+            catalogItem,
+            activeList: activeList,
+            activeItems: [],
+            context: context
+        )
+
+        XCTAssertEqual(created?.name, "Cerveza")
+        XCTAssertEqual(created?.listID, activeList.id)
+        XCTAssertEqual(created?.store, .jumbo)
+        XCTAssertEqual(catalogItem.timesAdded, 1)
+        XCTAssertNotNil(catalogItem.lastAddedAt)
+
+        // Añadir de nuevo con el equivalente ya en la lista es un no-op.
+        let again = try CatalogService.addToActiveList(
+            catalogItem,
+            activeList: activeList,
+            activeItems: [created!],
+            context: context
+        )
+        XCTAssertNil(again)
+        XCTAssertEqual(catalogItem.timesAdded, 1)
+    }
+
+    func testCatalogAddUsesNextSortOrderWithinCategory() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let activeList = ShoppingList(title: "Compra actual")
+        let existing = ShoppingItem(name: "Jugo", listID: activeList.id, category: category, sortOrder: 5)
+        let catalogItem = ProductCatalogItem(name: "Cerveza", category: category, store: .jumbo)
+        context.insert(category)
+        context.insert(activeList)
+        context.insert(existing)
+        context.insert(catalogItem)
+
+        let created = try CatalogService.addToActiveList(
+            catalogItem,
+            activeList: activeList,
+            activeItems: [existing],
+            context: context
+        )
+
+        XCTAssertEqual(created?.sortOrder, 6)
+    }
+
+    func testCatalogRemoveFromActiveListDeletesPendingMatch() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let activeList = ShoppingList(title: "Compra actual")
+        let pending = ShoppingItem(name: "Cerveza", listID: activeList.id, category: category, store: .jumbo)
+        let catalogItem = ProductCatalogItem(name: "cerveza", category: category, store: .jumbo)
+        context.insert(category)
+        context.insert(activeList)
+        context.insert(pending)
+        context.insert(catalogItem)
+
+        try CatalogService.removeFromActiveList(
+            catalogItem,
+            activeList: activeList,
+            activeItems: [pending],
+            context: context
+        )
+
+        let remaining = try context.fetch(FetchDescriptor<ShoppingItem>())
+        XCTAssertTrue(remaining.isEmpty)
+    }
+
+    func testCatalogRecordAdditionUpsertsByNormalizedName() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        context.insert(category)
+
+        CatalogService.recordAddition(name: "Café Molido", category: category, store: .jumbo, context: context)
+        CatalogService.recordAddition(name: "  cafe molido ", category: category, store: .lider, context: context)
+
+        let entries = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.timesAdded, 2)
+    }
+
     // MARK: - Archivado y ciclo de vida de lista
 
     func testArchivePurchasedItemsCreatesCompletedList() throws {

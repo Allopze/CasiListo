@@ -285,6 +285,12 @@ struct AddEditItemSheet: View {
                 if let activeList {
                     ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
                 }
+                CatalogService.recordAddition(
+                    name: trimmedName,
+                    category: selectedCategory,
+                    store: selectedStore,
+                    context: modelContext
+                )
                 try ShoppingPersistenceCoordinator(context: modelContext).saveItem(newItem, allActiveItems: allItems + [newItem])
                 onItemAdded?(newItem)
 

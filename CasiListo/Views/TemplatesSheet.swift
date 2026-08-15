@@ -19,6 +19,25 @@ struct TemplatesSheet: View {
         let emoji: String
         let description: String
         let items: [(name: String, quantity: String)]
+        /// Las plantillas grandes muestran un resumen en vez de listar cada producto.
+        var isSummarized: Bool = false
+    }
+
+    /// Plantilla generada con todo el catálogo de productos habituales,
+    /// para partir con la lista completa desde un arranque vacío.
+    private var fullCatalogTemplate: PresetTemplate {
+        var seen = Set<String>()
+        let uniqueNames = DefaultCategory.allCases
+            .flatMap { SuggestedProducts.byCategory[$0] ?? [] }
+            .filter { seen.insert(ProductNameNormalizer.normalize($0)).inserted }
+        return PresetTemplate(
+            id: "catalogo-completo",
+            title: "Catálogo completo",
+            emoji: "🛒",
+            description: "Todos los productos habituales, organizados en \(DefaultCategory.allCases.count) categorías.",
+            items: uniqueNames.map { (name: $0, quantity: "") },
+            isSummarized: true
+        )
     }
 
     private let templates: [PresetTemplate] = [
@@ -28,12 +47,12 @@ struct TemplatesSheet: View {
             emoji: "🥩",
             description: "Carnes, carbón, choripanes y bebidas para el fin de semana.",
             items: [
-                ("Lomo vetado", "1.5 kg"),
-                ("Chorizos", "1 pack"),
+                ("Lomo liso", "1.5 kg"),
+                ("Chorizo cocinar", "1 pack"),
                 ("Carbón", "1 saco"),
                 ("Pan marraqueta", "1 kg"),
-                ("Pebre / Tomates", "1 kg"),
-                ("Cerveza / Bebidas", "6 pack")
+                ("Tomates", "1 kg"),
+                ("Cerveza", "6 pack")
             ]
         ),
         PresetTemplate(
@@ -42,13 +61,13 @@ struct TemplatesSheet: View {
             emoji: "🍳",
             description: "Esenciales para comenzar cada mañana.",
             items: [
-                ("Leche entera", "2 lt"),
+                ("Leche semi", "2 lt"),
                 ("Huevos", "12 un"),
-                ("Pan molde", "1 un"),
+                ("Pan marraqueta", "1 kg"),
                 ("Mantequilla", "1 un"),
                 ("Queso laminado", "200 g"),
-                ("Jamón", "200 g"),
-                ("Café", "1 frasco")
+                ("Jamón de pavo", "200 g"),
+                ("Café grano", "1 frasco")
             ]
         ),
         PresetTemplate(
@@ -57,12 +76,12 @@ struct TemplatesSheet: View {
             emoji: "🧹",
             description: "Detergente, lavaloza y artículos de aseo.",
             items: [
-                ("Detergente líquido", "3 lt"),
-                ("Lavaloza", "750 ml"),
+                ("Detergente", "3 lt"),
+                ("Lavavajillas", "750 ml"),
                 ("Papel higiénico", "12 rollos"),
-                ("Toalla de papel", "3 rollos"),
-                ("Limpiador multiuso", "1 lt"),
-                ("Esponjas de loza", "1 pack")
+                ("Papel de cocina", "3 rollos"),
+                ("Limpiasuelo", "1 lt"),
+                ("Toallas desinfectante", "1 pack")
             ]
         ),
         PresetTemplate(
@@ -71,12 +90,12 @@ struct TemplatesSheet: View {
             emoji: "🥫",
             description: "Arroz, fideos, aceite y conservas esenciales.",
             items: [
-                ("Arroz grado 1", "2 kg"),
-                ("Fideos", "3 paquetes"),
-                ("Aceite vegetal", "1 lt"),
+                ("Arroz", "2 kg"),
+                ("Fideo", "3 paquetes"),
+                ("Aceite girasol", "1 lt"),
                 ("Salsa de tomate", "3 cajitas"),
-                ("Atún en agua", "4 latas"),
-                ("Sal de mesa", "1 kg")
+                ("Atún en aceite", "4 latas"),
+                ("Sal fina", "1 kg")
             ]
         )
     ]
@@ -85,6 +104,7 @@ struct TemplatesSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 16) {
+                    templateCard(fullCatalogTemplate)
                     ForEach(templates) { template in
                         templateCard(template)
                     }
@@ -132,18 +152,27 @@ struct TemplatesSheet: View {
 
             Divider()
 
-            VStack(alignment: .leading, spacing: 6) {
-                ForEach(template.items, id: \.name) { item in
-                    HStack {
-                        Image(systemName: "plus.circle.fill")
-                            .foregroundStyle(Theme.accentYellow)
-                            .font(.caption)
-                        Text(item.name)
-                            .font(.subheadline)
-                        Spacer()
-                        Text(item.quantity)
-                            .font(.caption)
-                            .foregroundStyle(Color.appTextSecondary)
+            if template.isSummarized {
+                Label(
+                    "\(template.items.count) productos — los que ya tengas en la lista se omiten.",
+                    systemImage: "square.stack.3d.up.fill"
+                )
+                .font(.caption)
+                .foregroundStyle(Color.appTextSecondary)
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(template.items, id: \.name) { item in
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                                .foregroundStyle(Theme.accentYellow)
+                                .font(.caption)
+                            Text(item.name)
+                                .font(.subheadline)
+                            Spacer()
+                            Text(item.quantity)
+                                .font(.caption)
+                                .foregroundStyle(Color.appTextSecondary)
+                        }
                     }
                 }
             }
@@ -172,19 +201,30 @@ struct TemplatesSheet: View {
         var itemsWithNewEntries = allItems
         var insertedItems: [ShoppingItem] = []
         var addedCount = 0
+
+        // Índices incrementales para que aplicar plantillas grandes sea O(n).
+        var existingKeys = Set(allItems.map { "\(ProductNameNormalizer.normalize($0.name))|\($0.store.rawValue)" })
+        var nextOrders: [String: Int] = [:]
+        func nextOrder(for category: Category) -> Int {
+            let next = nextOrders[category.name] ?? viewModel.nextSortOrder(for: category, in: allItems)
+            nextOrders[category.name] = next + 1
+            return next
+        }
+
         for item in template.items {
             let category = SuggestedProducts.suggestedCategory(for: item.name, in: categories)
                 ?? categories.first { $0.name == "Varios" }
                 ?? Category.fallback
             let store = viewModel.selectedStore ?? SuggestedProducts.suggestedStore(for: item.name)
-            guard !DuplicatePolicy.isDuplicate(named: item.name, store: store, in: itemsWithNewEntries) else { continue }
+            let key = "\(ProductNameNormalizer.normalize(item.name))|\(store.rawValue)"
+            guard existingKeys.insert(key).inserted else { continue }
 
             let newItem = ShoppingItem(
                 name: item.name,
                 listID: activeList?.id,
                 quantity: item.quantity,
                 category: category,
-                sortOrder: viewModel.nextSortOrder(for: category, in: itemsWithNewEntries),
+                sortOrder: nextOrder(for: category),
                 store: store
             )
             modelContext.insert(newItem)
