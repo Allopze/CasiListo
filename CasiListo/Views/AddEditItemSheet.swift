@@ -60,8 +60,10 @@ struct AddEditItemSheet: View {
         !trimmedName.isEmpty && duplicateItem == nil
     }
 
+    @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
+
     private var suggestions: [String] {
-        SuggestedProducts.suggestions(for: name)
+        CatalogService.suggestions(for: name, in: catalogItems)
     }
 
     private var trimmedName: String {
@@ -171,7 +173,7 @@ struct AddEditItemSheet: View {
                 .submitLabel(.done)
                 .accessibilityIdentifier("item-name-field")
                 .onChange(of: name) { _, newValue in
-                    let nextSuggestions = SuggestedProducts.suggestions(for: newValue)
+                    let nextSuggestions = CatalogService.suggestions(for: newValue, in: catalogItems)
                     showSuggestions = !newValue.isEmpty && !nextSuggestions.isEmpty
 
                     if !hasExplicitCategorySelection,

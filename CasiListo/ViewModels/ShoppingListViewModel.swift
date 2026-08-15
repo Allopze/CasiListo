@@ -457,10 +457,14 @@ final class ShoppingListViewModel {
         let draft = quickAddDraft(from: quickAddText)
         guard !draft.name.isEmpty else { return }
 
-        let category = SuggestedProducts.suggestedCategory(for: draft.name, in: categories)
+        // El catálogo es la fuente principal de categoría y tienda: recuerda
+        // las elecciones reales del usuario para ese producto.
+        let catalogMatch = CatalogService.match(named: draft.name, context: context)
+        let category = catalogMatch?.category
+            ?? SuggestedProducts.suggestedCategory(for: draft.name, in: categories)
             ?? categories.first { $0.name == "Varios" }
             ?? Category.fallback
-        let store = selectedStore ?? SuggestedProducts.suggestedStore(for: draft.name)
+        let store = selectedStore ?? catalogMatch?.store ?? SuggestedProducts.suggestedStore(for: draft.name)
 
         if let duplicate = duplicateItem(named: draft.name, store: store, in: allItems) {
             if duplicate.quantity.isEmpty && !draft.quantity.isEmpty {

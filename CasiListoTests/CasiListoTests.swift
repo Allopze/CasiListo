@@ -429,6 +429,16 @@ final class CasiListoTests: XCTestCase {
         XCTAssertTrue(remaining.isEmpty)
     }
 
+    func testCatalogSuggestionsOrderByUsageThenName() {
+        let occasional = ProductCatalogItem(name: "Cerveza artesanal", timesAdded: 1)
+        let frequent = ProductCatalogItem(name: "Cerveza", timesAdded: 5)
+        let unrelated = ProductCatalogItem(name: "Pan", timesAdded: 9)
+
+        let names = CatalogService.suggestions(for: "cerv", in: [occasional, unrelated, frequent])
+
+        XCTAssertEqual(names, ["Cerveza", "Cerveza artesanal"])
+    }
+
     func testCatalogRecordAdditionUpsertsByNormalizedName() throws {
         let container = try makeInMemoryContainer()
         let context = container.mainContext

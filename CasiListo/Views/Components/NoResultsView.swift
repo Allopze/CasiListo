@@ -1,42 +1,108 @@
 import SwiftUI
 
-/// Vista que se muestra cuando una búsqueda en la lista de compras no arroja resultados.
+/// Vista para cuando la lista no muestra productos: distingue entre una
+/// búsqueda sin resultados (ofrece añadir directo o desde el catálogo)
+/// y un filtrado que dejó la lista vacía.
 struct NoResultsView: View {
     let searchText: String
+    var catalogMatches: [ProductCatalogItem] = []
+    /// Añade el texto buscado directamente (hereda el parser de cantidades).
+    var onQuickAddSearch: (() -> Void)? = nil
+    /// Abre el formulario completo con el texto precargado.
     var onAddSearch: (() -> Void)? = nil
+    var onAddCatalogItem: ((ProductCatalogItem) -> Void)? = nil
+
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
+
+    private var isSearching: Bool {
+        !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 
     var body: some View {
         VStack(spacing: 12 * CGFloat(accessibilityTextSizeScale)) {
-            Image(systemName: "magnifyingglass")
+            Image(systemName: isSearching ? "magnifyingglass" : "line.3.horizontal.decrease.circle")
                 .font(.system(size: 40 * CGFloat(accessibilityTextSizeScale)))
                 .foregroundStyle(Color.appTextPurchased)
 
-            Text("Sin resultados")
+            Text(isSearching ? "No está en tu compra" : "Nada con estos filtros")
                 .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(Color.appTextSecondary)
 
-            Text("No se encontraron productos para \"\(searchText)\"")
+            Text(isSearching
+                 ? "\"\(searchText)\" no aparece en la lista actual."
+                 : "Prueba mostrar los comprados o cambiar de supermercado.")
                 .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                 .foregroundStyle(Color.appTextPurchased)
                 .multilineTextAlignment(.center)
 
-            if !searchText.trimmingCharacters(in: .whitespaces).isEmpty, let onAddSearch {
-                Button {
-                    HapticFeedback.impact()
-                    onAddSearch()
-                } label: {
-                    Label("Añadir \"\(searchText)\"", systemImage: "plus")
-                        .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                        .foregroundStyle(.black)
-                        .frame(minHeight: Theme.minimumTouchTarget)
-                        .padding(.horizontal, 16)
-                        .background(Theme.accentYellow)
-                        .clipShape(Capsule())
+            if isSearching {
+                if let onQuickAddSearch {
+                    Button {
+                        HapticFeedback.impact()
+                        onQuickAddSearch()
+                    } label: {
+                        Label("Añadir \"\(searchText)\"", systemImage: "plus")
+                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                            .foregroundStyle(Color(hex: "1A1A1A"))
+                            .frame(minHeight: Theme.minimumTouchTarget)
+                            .padding(.horizontal, 16)
+                            .background(Theme.accentYellow)
+                            .clipShape(Capsule())
+                    }
+                    .buttonStyle(.plain)
+                    .padding(.top, 8)
+                    .accessibilityLabel("Añadir \(searchText) a la compra")
                 }
-                .buttonStyle(.plain)
-                .padding(.top, 8)
-                .accessibilityLabel("Añadir \(searchText)")
+
+                if let onAddSearch {
+                    Button {
+                        HapticFeedback.selection()
+                        onAddSearch()
+                    } label: {
+                        Text("Añadir con detalles…")
+                            .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                            .foregroundStyle(Color.appTextSecondary)
+                            .frame(minHeight: Theme.minimumTouchTarget)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Añadir \(searchText) con detalles")
+                }
+
+                if !catalogMatches.isEmpty, let onAddCatalogItem {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("DE TU CATÁLOGO")
+                            .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                            .foregroundStyle(Color.appTextSecondary)
+                            .padding(.horizontal, 6)
+                            .padding(.bottom, 4)
+
+                        ForEach(catalogMatches) { match in
+                            Button {
+                                HapticFeedback.impact()
+                                onAddCatalogItem(match)
+                            } label: {
+                                HStack(spacing: 10) {
+                                    Text(match.name)
+                                        .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                                        .foregroundStyle(Color.appTextPrimary)
+                                        .lineLimit(1)
+                                    Spacer(minLength: 8)
+                                    Image(systemName: "plus.circle")
+                                        .font(.system(size: 20))
+                                        .foregroundStyle(Color.appTextSecondary)
+                                }
+                                .padding(.horizontal, 14)
+                                .frame(minHeight: Theme.minimumTouchTarget)
+                                .background(Color.appCardBackground)
+                                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel("Añadir \(match.name) del catálogo")
+                        }
+                    }
+                    .frame(maxWidth: 420)
+                    .padding(.top, 12)
+                }
             }
         }
         .frame(maxWidth: .infinity)

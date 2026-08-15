@@ -11,6 +11,22 @@ struct ShoppingListView: View {
     let onAddTapped: () -> Void
     var onArchivePurchased: (() -> Void)? = nil
     @Environment(\.modelContext) private var modelContext
+    @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
+
+    /// Coincidencias del catálogo para la búsqueda actual que aún no están en la lista.
+    private var catalogSearchMatches: [ProductCatalogItem] {
+        let query = viewModel.searchText
+        guard !query.trimmingCharacters(in: .whitespaces).isEmpty else { return [] }
+        let activeNames = Set(allItems.map { ProductNameNormalizer.normalize($0.name) })
+        return Array(
+            catalogItems
+                .filter {
+                    ProductNameNormalizer.contains($0.name, query: query)
+                        && !activeNames.contains(ProductNameNormalizer.normalize($0.name))
+                }
+                .prefix(5)
+        )
+    }
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var filterSpacing: CGFloat = 12
@@ -50,9 +66,31 @@ struct ShoppingListView: View {
             if viewModel.derivedGroups.isEmpty {
                 NoResultsView(
                     searchText: viewModel.searchText,
+                    catalogMatches: catalogSearchMatches,
+                    onQuickAddSearch: {
+                        viewModel.quickAddText = viewModel.searchText
+                        viewModel.addQuickItem(
+                            to: activeList,
+                            from: allItems,
+                            categories: categories,
+                            context: modelContext
+                        )
+                    },
                     onAddSearch: {
                         viewModel.quickAddText = viewModel.searchText
                         onAddTapped()
+                    },
+                    onAddCatalogItem: { catalogItem in
+                        do {
+                            try CatalogService.addToActiveList(
+                                catalogItem,
+                                activeList: activeList,
+                                activeItems: allItems,
+                                context: modelContext
+                            )
+                        } catch {
+                            viewModel.presentPersistenceError(error)
+                        }
                     }
                 )
                 .listRowInsets(.init(

@@ -1,4 +1,5 @@
 import SwiftUI
+import SwiftData
 
 /// Barra inferior para la inserción rápida de productos con autocompletado en chips.
 struct BottomAddBarView: View {
@@ -6,6 +7,7 @@ struct BottomAddBarView: View {
     let onAddQuick: () -> Void
     let onAddTapped: () -> Void
     @State private var suggestions: [String] = []
+    @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
 
     @ScaledMetric(relativeTo: .body) private var chipPaddingHorizontal: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var chipPaddingVertical: CGFloat = 6
@@ -117,7 +119,7 @@ struct BottomAddBarView: View {
         }
         .task(id: text) {
             try? await Task.sleep(for: .milliseconds(150))
-            suggestions = SuggestedProducts.suggestions(for: text)
+            suggestions = CatalogService.suggestions(for: text, in: catalogItems)
         }
     }
 }

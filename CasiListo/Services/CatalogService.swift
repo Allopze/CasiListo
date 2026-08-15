@@ -93,4 +93,25 @@ enum CatalogService {
         let categoryItems = items.filter { $0.category.name == category.name }
         return (categoryItems.map(\.sortOrder).max() ?? -1) + 1
     }
+
+    /// Sugerencias de autocompletado desde el catálogo, ordenadas por uso
+    /// (los productos que más agregas aparecen primero).
+    nonisolated static func suggestions(for text: String, in catalogItems: [ProductCatalogItem]) -> [String] {
+        guard !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return [] }
+        return catalogItems
+            .filter { ProductNameNormalizer.contains($0.name, query: text) }
+            .sorted {
+                if $0.timesAdded != $1.timesAdded { return $0.timesAdded > $1.timesAdded }
+                return $0.name.localizedCompare($1.name) == .orderedAscending
+            }
+            .map(\.name)
+    }
+
+    /// Entrada del catálogo cuyo nombre normalizado coincide exactamente.
+    static func match(named name: String, context: ModelContext) -> ProductCatalogItem? {
+        let normalized = ProductNameNormalizer.normalize(name)
+        guard !normalized.isEmpty else { return nil }
+        let items = (try? context.fetch(FetchDescriptor<ProductCatalogItem>())) ?? []
+        return items.first { ProductNameNormalizer.normalize($0.name) == normalized }
+    }
 }
