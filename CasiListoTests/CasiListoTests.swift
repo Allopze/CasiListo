@@ -178,6 +178,9 @@ final class CasiListoTests: XCTestCase {
     }
 
     func testCategoryCanBeCollapsedAndExpanded() {
+        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+        defer { UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames") }
+
         let viewModel = ShoppingListViewModel()
         let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
         let item = ShoppingItem(name: "Pan", category: category)
@@ -192,7 +195,10 @@ final class CasiListoTests: XCTestCase {
         XCTAssertTrue(viewModel.isCategoryCollapsed(category))
     }
 
-    func testAddingAnItemExpandsOnlyItsCategory() {
+    func testBulkUpdatesDoNotAutoExpandCategories() {
+        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+        defer { UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames") }
+
         let viewModel = ShoppingListViewModel()
         let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
         let existingItem = ShoppingItem(name: "Pan", category: category)
@@ -200,9 +206,13 @@ final class CasiListoTests: XCTestCase {
         viewModel.updateDerivedState(items: [existingItem], categories: [category])
         XCTAssertTrue(viewModel.isCategoryCollapsed(category))
 
+        // Las cargas masivas (plantillas, importador, boleta) no expanden nada:
+        // la expansión es explícita vía revealCategory en los adds individuales.
         let newItem = ShoppingItem(name: "Leche", category: category)
         viewModel.updateDerivedState(items: [existingItem, newItem], categories: [category])
+        XCTAssertTrue(viewModel.isCategoryCollapsed(category))
 
+        viewModel.revealCategory(category)
         XCTAssertFalse(viewModel.isCategoryCollapsed(category))
     }
 
@@ -250,6 +260,92 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(CasiListoSchemaV1.versionIdentifier, Schema.Version(1, 0, 0))
         XCTAssertEqual(CasiListoMigrationPlan.schemas.count, 1)
         XCTAssertTrue(CasiListoSchemaV1.models.contains { $0 == ShoppingItem.self })
+    }
+
+    // MARK: - Ventana de gracia al ocultar comprados
+
+    func testGracePeriodKeepsJustPurchasedItemVisibleThenHides() async throws {
+        let vm = ShoppingListViewModel()
+        vm.graceDuration = .milliseconds(80)
+        vm.showPurchased = false
+
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let item = ShoppingItem(name: "Cerveza", category: category)
+        vm.updateDerivedState(items: [item], categories: [category])
+
+        vm.togglePurchased(item)
+
+        // Recién marcado: visible durante la ventana de gracia.
+        XCTAssertTrue(vm.derivedGroups.contains { group in
+            group.items.contains { $0.id == item.id }
+        })
+
+        try await Task.sleep(for: .milliseconds(400))
+
+        // Expirada la ventana: oculto.
+        XCTAssertFalse(vm.derivedGroups.contains { group in
+            group.items.contains { $0.id == item.id }
+        })
+    }
+
+    func testGracePeriodCancelsWhenUnmarkedDuringWindow() async throws {
+        let vm = ShoppingListViewModel()
+        vm.graceDuration = .milliseconds(80)
+        vm.showPurchased = false
+
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let item = ShoppingItem(name: "Cerveza", category: category)
+        vm.updateDerivedState(items: [item], categories: [category])
+
+        vm.togglePurchased(item)
+        vm.togglePurchased(item)
+
+        try await Task.sleep(for: .milliseconds(400))
+
+        // Se desmarcó dentro de la ventana: sigue visible como pendiente.
+        XCTAssertEqual(item.status, .pending)
+        XCTAssertTrue(vm.derivedGroups.contains { group in
+            group.items.contains { $0.id == item.id }
+        })
+    }
+
+    // MARK: - Persistencia del colapso de categorías
+
+    func testCollapseStatePersistsAcrossViewModelInstances() {
+        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+        defer { UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames") }
+
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let item = ShoppingItem(name: "Cerveza", category: category)
+
+        let first = ShoppingListViewModel()
+        first.updateDerivedState(items: [item], categories: [category])
+        XCTAssertTrue(first.isCategoryCollapsed(category), "Primera vez: todo colapsado")
+
+        first.toggleCategoryCollapse(category)
+        XCTAssertFalse(first.isCategoryCollapsed(category))
+
+        let second = ShoppingListViewModel()
+        second.updateDerivedState(items: [item], categories: [category])
+        XCTAssertFalse(second.isCategoryCollapsed(category), "El estado expandido sobrevive al relanzamiento")
+    }
+
+    func testRevealCategoryExpandsAndPersists() {
+        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+        defer { UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames") }
+
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let item = ShoppingItem(name: "Cerveza", category: category)
+
+        let vm = ShoppingListViewModel()
+        vm.updateDerivedState(items: [item], categories: [category])
+        XCTAssertTrue(vm.isCategoryCollapsed(category))
+
+        vm.revealCategory(category)
+
+        XCTAssertFalse(vm.isCategoryCollapsed(category))
+        let stored = UserDefaults.standard.stringArray(forKey: "collapsedCategoryNames") ?? []
+        XCTAssertFalse(stored.contains("Bebidas"))
     }
 
     // MARK: - Archivado y ciclo de vida de lista

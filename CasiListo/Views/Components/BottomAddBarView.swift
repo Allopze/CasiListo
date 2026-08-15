@@ -56,7 +56,7 @@ struct BottomAddBarView: View {
                             .foregroundStyle(Color.appTextSecondary)
                             .padding(.leading, cartIconLeadingPadding)
 
-                        TextField("Añadir rápido...", text: $text)
+                        TextField("Añade “2kg arroz” o “pan x3”…", text: $text)
                             .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
                             .textFieldStyle(.plain)
                             .autocorrectionDisabled()

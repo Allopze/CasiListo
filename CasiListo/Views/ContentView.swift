@@ -243,7 +243,8 @@ struct ContentView: View {
                 initialQuantity: draft?.quantity ?? "",
                 onQuickAddConsumed: { viewModel.quickAddText = "" },
                 nextSortOrder: { viewModel.nextSortOrder(for: $0, in: activeItems) },
-                checkDuplicate: { viewModel.duplicateItem(named: $0, store: $1, in: activeItems, excluding: $2) }
+                checkDuplicate: { viewModel.duplicateItem(named: $0, store: $1, in: activeItems, excluding: $2) },
+                onItemAdded: { viewModel.revealCategory($0.category, itemID: $0.id) }
             )
         case .editItem(let item):
             AddEditItemSheet(

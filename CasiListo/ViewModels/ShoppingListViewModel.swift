@@ -40,7 +40,13 @@ final class ShoppingListViewModel {
     // MARK: - Estado de UI
 
     var searchText: String = ""
-    var showPurchased: Bool = true
+    var showPurchased: Bool = true {
+        didSet {
+            if showPurchased != oldValue {
+                cancelAllGracePeriods()
+            }
+        }
+    }
     var selectedStore: Store? = nil
     var presentedSheet: ShoppingListSheetDestination?
     var quickAddText: String = ""
@@ -48,11 +54,21 @@ final class ShoppingListViewModel {
     var persistenceErrorMessage: String?
     @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, category: Category, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)? = nil
     @ObservationIgnored private var undoTimerTask: Task<Void, Never>? = nil
-    /// Categorías que la persona usuaria ha contraído en esta sesión.
+    /// Categorías que la persona usuaria ha contraído. Se persiste entre
+    /// lanzamientos para respetar el contexto del usuario.
     /// Debe permanecer observable: la vista consulta este estado para decidir
     /// si muestra los productos de cada tarjeta.
     private var collapsedCategories: Set<String> = []
     @ObservationIgnored private var hasInitializedCategoryCollapseState = false
+    @ObservationIgnored private static let collapsedCategoriesKey = "collapsedCategoryNames"
+
+    /// Ítems recién marcados como comprados que permanecen visibles durante una
+    /// ventana de gracia aunque "ocultar comprados" esté activo, dando feedback
+    /// visual y margen para deshacer un toque accidental.
+    private(set) var graceItemIDs: Set<UUID> = []
+    @ObservationIgnored private var graceTasks: [UUID: Task<Void, Never>] = [:]
+    /// Inyectable para acelerar los tests.
+    @ObservationIgnored var graceDuration: Duration = .seconds(2)
 
     // MARK: - Snapshot derivado
 
@@ -67,17 +83,17 @@ final class ShoppingListViewModel {
 
     func updateDerivedState(items: [ShoppingItem], categories: [Category]) {
         PerformanceSignpost.measure("Recalcular lista") {
-            let previousItemIDs = Set(latestItems.map(\.id))
             latestItems = items
             latestCategories = categories
 
-            if hasInitializedCategoryCollapseState {
-                let newCategories = items
-                    .filter { !previousItemIDs.contains($0.id) }
-                    .map { $0.category.name }
-                collapsedCategories.subtract(newCategories)
-            } else if !items.isEmpty && !categories.isEmpty {
-                collapsedCategories = Set(categories.map(\.name))
+            if !hasInitializedCategoryCollapseState && !items.isEmpty && !categories.isEmpty {
+                if let stored = UserDefaults.standard.stringArray(forKey: Self.collapsedCategoriesKey) {
+                    collapsedCategories = Set(stored)
+                } else {
+                    // Primera vez: todo colapsado para no abrumar con la lista completa.
+                    collapsedCategories = Set(categories.map(\.name))
+                    persistCollapsedCategories()
+                }
                 hasInitializedCategoryCollapseState = true
             }
 
@@ -106,8 +122,8 @@ final class ShoppingListViewModel {
             if let selectedStore = selectedStore, item.store != selectedStore {
                 return false
             }
-            // Filtro de comprado
-            if item.status == .purchased && !showPurchased {
+            // Filtro de comprado (con ventana de gracia para recién marcados)
+            if item.status == .purchased && !showPurchased && !graceItemIDs.contains(item.id) {
                 return false
             }
             // Filtro de búsqueda
@@ -220,6 +236,7 @@ final class ShoppingListViewModel {
     func togglePurchased(_ item: ShoppingItem, context: ModelContext? = nil) {
         let previousStatus = item.status
         item.status = item.status == .purchased ? .pending : .purchased
+        updateGracePeriod(for: item)
         defer {
             // Mutar una propiedad no cambia la identidad del array de @Query,
             // así que onChange(of: allItems) no dispara: recalcular aquí.
@@ -231,6 +248,7 @@ final class ShoppingListViewModel {
             HapticFeedback.success()
         } catch {
             item.status = previousStatus
+            updateGracePeriod(for: item)
             presentPersistenceError(error)
         }
     }
@@ -238,6 +256,7 @@ final class ShoppingListViewModel {
     func markItem(_ item: ShoppingItem, as status: ShoppingItemStatus, context: ModelContext? = nil) {
         let previousStatus = item.status
         item.status = status
+        updateGracePeriod(for: item)
         defer {
             rederiveFilters()
         }
@@ -247,8 +266,53 @@ final class ShoppingListViewModel {
             HapticFeedback.success()
         } catch {
             item.status = previousStatus
+            updateGracePeriod(for: item)
             presentPersistenceError(error)
         }
+    }
+
+    // MARK: - Ventana de gracia
+
+    /// Arranca o cancela la ventana según el estado actual del ítem.
+    private func updateGracePeriod(for item: ShoppingItem) {
+        if item.status == .purchased && !showPurchased {
+            beginGracePeriod(for: item.id)
+        } else {
+            cancelGracePeriod(for: item.id)
+        }
+    }
+
+    private func beginGracePeriod(for id: UUID) {
+        graceTasks[id]?.cancel()
+        graceItemIDs.insert(id)
+        graceTasks[id] = Task { [weak self, duration = graceDuration] in
+            try? await Task.sleep(for: duration)
+            guard !Task.isCancelled else { return }
+            self?.endGracePeriod(for: id)
+        }
+    }
+
+    private func endGracePeriod(for id: UUID) {
+        graceTasks[id] = nil
+        guard graceItemIDs.contains(id) else { return }
+        graceItemIDs.remove(id)
+        withAnimation(Theme.defaultAnimation) {
+            rederiveFilters()
+        }
+    }
+
+    func cancelGracePeriod(for id: UUID) {
+        graceTasks[id]?.cancel()
+        graceTasks[id] = nil
+        graceItemIDs.remove(id)
+    }
+
+    func cancelAllGracePeriods() {
+        for task in graceTasks.values {
+            task.cancel()
+        }
+        graceTasks.removeAll()
+        graceItemIDs.removeAll()
     }
 
     func presentAddItem() {
@@ -289,16 +353,44 @@ final class ShoppingListViewModel {
         } else {
             collapsedCategories.insert(category.name)
         }
+        persistCollapsedCategories()
+    }
+
+    /// Ítem al que la lista debe desplazarse (recién añadido).
+    private(set) var scrollTargetItemID: UUID?
+
+    /// Expande la categoría de un ítem recién añadido individualmente y pide
+    /// a la lista desplazarse hasta él, para que la persona vea dónde quedó.
+    /// Los caminos masivos (plantillas, importador, boleta) no expanden nada.
+    func revealCategory(_ category: Category, itemID: UUID? = nil) {
+        if collapsedCategories.contains(category.name) {
+            collapsedCategories.remove(category.name)
+            persistCollapsedCategories()
+        }
+        scrollTargetItemID = itemID
+    }
+
+    func clearScrollTarget() {
+        scrollTargetItemID = nil
     }
 
     func resetCategoryCollapseState() {
         collapsedCategories.removeAll()
         hasInitializedCategoryCollapseState = false
+        UserDefaults.standard.removeObject(forKey: Self.collapsedCategoriesKey)
+    }
+
+    private func persistCollapsedCategories() {
+        UserDefaults.standard.set(
+            Array(collapsedCategories).sorted(),
+            forKey: Self.collapsedCategoriesKey
+        )
     }
 
     /// Elimina un ítem con soporte de Deshacer (Undo).
     func deleteItem(_ item: ShoppingItem, context: ModelContext) {
         finalizePendingUndo()
+        cancelGracePeriod(for: item.id)
         let buffer = (
             name: item.name,
             quantity: item.quantity,
@@ -391,6 +483,7 @@ final class ShoppingListViewModel {
             do {
                 try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
                 quickAddText = ""
+                revealCategory(duplicate.category, itemID: duplicate.id)
                 HapticFeedback.success()
             } catch {
                 presentPersistenceError(error)
@@ -417,6 +510,7 @@ final class ShoppingListViewModel {
         do {
             try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: allItems + [newItem])
             quickAddText = ""
+            revealCategory(category, itemID: newItem.id)
             HapticFeedback.success()
         } catch {
             presentPersistenceError(error)

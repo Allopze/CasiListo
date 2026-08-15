@@ -33,6 +33,7 @@ struct CategorySectionView: View {
     var body: some View {
         Section {
             sectionHeader
+                .id("category-header-\(category.name)")
                 .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 0))
                 .listRowSeparator(.hidden)
                 .listRowBackground(Color.clear)
@@ -58,6 +59,7 @@ struct CategorySectionView: View {
                             onMarkStatus(item, status)
                         }
                     )
+                    .id("item-row-\(item.id)")
                     .listRowInsets(.init(
                         top: listRowInsetVertical,
                         leading: cardPadding * 2,

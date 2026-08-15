@@ -28,6 +28,9 @@ struct AddEditItemSheet: View {
     let onQuickAddConsumed: () -> Void
     let nextSortOrder: (Category) -> Int
     let checkDuplicate: (String, Store, UUID?) -> ShoppingItem?
+    /// Notifica un ítem recién creado para que la lista expanda su categoría
+    /// y se desplace hasta él.
+    var onItemAdded: ((ShoppingItem) -> Void)? = nil
 
     @Query(sort: \Category.sortIndex) private var categories: [Category]
 
@@ -283,6 +286,7 @@ struct AddEditItemSheet: View {
                     ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
                 }
                 try ShoppingPersistenceCoordinator(context: modelContext).saveItem(newItem, allActiveItems: allItems + [newItem])
+                onItemAdded?(newItem)
 
             case .edit(let item):
                 let oldFilename = item.voiceNoteFilename

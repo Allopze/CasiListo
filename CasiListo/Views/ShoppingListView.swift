@@ -19,6 +19,12 @@ struct ShoppingListView: View {
     @ScaledMetric(relativeTo: .body) private var noResultsVerticalPadding: CGFloat = 60
 
     var body: some View {
+        ScrollViewReader { scrollProxy in
+            listContent(scrollProxy: scrollProxy)
+        }
+    }
+
+    private func listContent(scrollProxy: ScrollViewProxy) -> some View {
         List {
             Section {
                 VStack(alignment: .leading, spacing: filterSpacing) {
@@ -90,10 +96,6 @@ struct ShoppingListView: View {
         .scrollContentBackground(.hidden)
         .environment(\.defaultMinListRowHeight, 1)
         .background(Color.appBackground)
-        .refreshable {
-            HapticFeedback.selection()
-            viewModel.updateDerivedState(items: allItems, categories: categories)
-        }
         .safeAreaInset(edge: .bottom, spacing: 0) {
             VStack(spacing: 8) {
                 if viewModel.showUndoToast, let buffer = viewModel.deletedItemUndoBuffer {
@@ -126,6 +128,18 @@ struct ShoppingListView: View {
         }
         .onChange(of: allItems) { _, _ in
             viewModel.updateDerivedState(items: allItems, categories: categories)
+        }
+        .onChange(of: viewModel.scrollTargetItemID) { _, target in
+            guard let target else { return }
+            // Pequeña espera para que la expansión de la categoría materialice
+            // las filas antes de desplazar.
+            Task { @MainActor in
+                try? await Task.sleep(for: .milliseconds(80))
+                withAnimation(Theme.defaultAnimation) {
+                    scrollProxy.scrollTo("item-row-\(target)", anchor: .center)
+                }
+                viewModel.clearScrollTarget()
+            }
         }
         .onChange(of: categories) { _, _ in
             viewModel.updateDerivedState(items: allItems, categories: categories)
