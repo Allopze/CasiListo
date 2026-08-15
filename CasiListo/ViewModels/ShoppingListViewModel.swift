@@ -6,8 +6,6 @@ import SwiftData
 enum ShoppingListSheetDestination: Identifiable {
     case addItem
     case editItem(ShoppingItem)
-    case settings
-    case history
     case receipt(closesPurchase: Bool)
     case textImporter
     case templates
@@ -18,10 +16,6 @@ enum ShoppingListSheetDestination: Identifiable {
             return "add-item"
         case .editItem(let item):
             return "edit-\(item.id.uuidString)"
-        case .settings:
-            return "settings"
-        case .history:
-            return "history"
         case .receipt(let closesPurchase):
             return closesPurchase ? "receipt-closing" : "receipt"
         case .textImporter:
@@ -321,14 +315,6 @@ final class ShoppingListViewModel {
 
     func presentEditItem(_ item: ShoppingItem) {
         presentedSheet = .editItem(item)
-    }
-
-    func presentSettings() {
-        presentedSheet = .settings
-    }
-
-    func presentHistory() {
-        presentedSheet = .history
     }
 
     func presentReceipt(closesPurchase: Bool = false) {

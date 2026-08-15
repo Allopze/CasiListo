@@ -1,8 +1,11 @@
 import SwiftUI
 import SwiftData
 
-/// Vista principal de la app.
+/// Raíz de la pestaña Compra: la lista activa.
 struct ContentView: View {
+    /// Cambia a la pestaña de Historial (inyectado por MainTabView).
+    var onShowHistory: () -> Void = {}
+
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
@@ -35,7 +38,7 @@ struct ContentView: View {
                             EmptyStateView(
                                 onAddTapped: { presentAddItem() },
                                 hasHistory: !completedLists.isEmpty,
-                                onShowHistory: { viewModel.presentHistory() },
+                                onShowHistory: onShowHistory,
                                 onQuickAdd: { name in
                                     viewModel.quickAddText = name
                                     viewModel.addQuickItem(
@@ -194,24 +197,10 @@ struct ContentView: View {
             }
 
             Button {
-                HapticFeedback.selection()
-                viewModel.presentHistory()
-            } label: {
-                Label("Historial", systemImage: "clock.arrow.circlepath")
-            }
-
-            Button {
                 HapticFeedback.impact()
                 viewModel.presentReceipt()
             } label: {
                 Label("Registrar boleta", systemImage: "doc.text.viewfinder")
-            }
-
-            Button {
-                HapticFeedback.selection()
-                viewModel.presentSettings()
-            } label: {
-                Label("Ajustes", systemImage: "gearshape")
             }
 
             if viewModel.itemCounts(from: activeItems).purchased > 0 {
@@ -256,10 +245,6 @@ struct ContentView: View {
                 nextSortOrder: { viewModel.nextSortOrder(for: $0, in: activeItems) },
                 checkDuplicate: { viewModel.duplicateItem(named: $0, store: $1, in: activeItems, excluding: $2) }
             )
-        case .settings:
-            SettingsSheet()
-        case .history:
-            ShoppingHistoryView(completedLists: completedLists, allItems: allItems)
         case .receipt(let closesPurchase):
             ReceiptCaptureSheet(
                 activeList: activeList,
@@ -268,7 +253,10 @@ struct ContentView: View {
                 completedLists: completedLists,
                 categories: categories,
                 closesPurchase: closesPurchase,
-                onShowHistory: { viewModel.presentHistory() }
+                onShowHistory: {
+                    viewModel.presentedSheet = nil
+                    onShowHistory()
+                }
             )
         case .textImporter:
             TextImporterSheet(

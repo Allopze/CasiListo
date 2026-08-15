@@ -33,8 +33,7 @@ final class CasiListoUITests: XCTestCase {
         app.buttons["Archivar comprados"].tap()
         app.buttons.containing(NSPredicate(format: "label CONTAINS 'Archivar'")).firstMatch.tap()
 
-        app.buttons["toolbar-options-menu"].tap()
-        app.buttons["Historial"].tap()
+        app.tabBars.buttons["Historial"].tap()
 
         XCTAssertTrue(app.navigationBars["Historial"].waitForExistence(timeout: 5))
     }

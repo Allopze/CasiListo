@@ -9,14 +9,9 @@ struct CasiListoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            MainTabView()
                 .environment(voiceNoteService)
                 .environment(appSettings)
-                .onOpenURL { url in
-                    // La lista es la raíz de la app; las rutas desconocidas no
-                    // modifican el estado ni presentan contenido inesperado.
-                    guard let route = AppRoute(url: url), route == .list else { return }
-                }
         }
         .modelContainer(CasiListoModelContainer.make())
     }

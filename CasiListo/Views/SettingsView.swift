@@ -1,9 +1,8 @@
 import SwiftUI
 import SwiftData
 
-/// Hoja de Ajustes de la aplicación.
-struct SettingsSheet: View {
-    @Environment(\.dismiss) private var dismiss
+/// Pestaña de Ajustes de la aplicación.
+struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(AppSettings.self) private var appSettings
     @State private var mockItemPurchased = false
@@ -38,17 +37,6 @@ struct SettingsSheet: View {
             }
             .background(Color.appBackground)
             .navigationTitle("Ajustes")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") {
-                        HapticFeedback.selection()
-                        dismiss()
-                    }
-                    .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(Theme.accentYellow)
-                }
-            }
             .confirmationDialog(
                 "¿Borrar todos tus datos guardados?",
                 isPresented: $showsResetConfirmation,
@@ -71,8 +59,6 @@ struct SettingsSheet: View {
                 Text(resetErrorMessage ?? "Inténtalo nuevamente.")
             }
         }
-        .presentationDetents([.large])
-        .presentationDragIndicator(.visible)
     }
 
     private var privacyAndSupportSection: some View {

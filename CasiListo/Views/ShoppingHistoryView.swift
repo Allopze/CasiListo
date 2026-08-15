@@ -1,9 +1,16 @@
 import SwiftUI
+import SwiftData
 
+/// Pestaña de historial de compras completadas.
 struct ShoppingHistoryView: View {
-    let completedLists: [ShoppingList]
-    let allItems: [ShoppingItem]
-    @Environment(\.dismiss) private var dismiss
+    @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
+    @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
+
+    private var completedLists: [ShoppingList] {
+        allLists
+            .filter { $0.status == .completed }
+            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
+    }
 
     var body: some View {
         NavigationStack {
@@ -12,7 +19,7 @@ struct ShoppingHistoryView: View {
                     ContentUnavailableView(
                         "Sin historial",
                         systemImage: "clock.arrow.circlepath",
-                        description: Text("Cuando limpies productos comprados, CasiListo guardara un resumen aqui.")
+                        description: Text("Cuando archives productos comprados, CasiListo guardará un resumen aquí.")
                     )
                     .listRowBackground(Color.clear)
                 } else {
@@ -22,29 +29,24 @@ struct ShoppingHistoryView: View {
                         } label: {
                             historyRow(for: list)
                         }
+                        .listRowBackground(Color.appCardBackground)
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground)
             .navigationTitle("Historial")
-            .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(Color.appBackground, for: .navigationBar)
             .toolbar {
                 if !completedLists.isEmpty {
-                    ToolbarItem(placement: .topBarLeading) {
+                    ToolbarItem(placement: .topBarTrailing) {
                         ShareLink(item: exportCSVText(), preview: SharePreview("Historial CasiListo.csv", image: Image(systemName: "tablecells"))) {
                             Label("Exportar CSV", systemImage: "square.and.arrow.up")
                         }
                     }
                 }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Listo") {
-                        dismiss()
-                    }
-                }
             }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 
     private func historyRow(for list: ShoppingList) -> some View {
