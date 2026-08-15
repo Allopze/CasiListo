@@ -566,10 +566,6 @@ struct ReceiptCaptureSheet: View {
                 categories: categories,
                 archivingPurchased: closesPurchase
             )
-            var stats = UserStats.load()
-            stats.recordPurchase(
-                productsCount: summary.receiptProductCount + summary.mergedPurchasedCount + summary.otherStoreArchivedCount
-            )
             HapticFeedback.success()
             isSaving = false
             withAnimation(Theme.defaultAnimation) {

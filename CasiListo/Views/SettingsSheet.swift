@@ -30,7 +30,6 @@ struct SettingsSheet: View {
                     SettingsAccessibilitySection(settings: appSettings, scaleLevelLabel: scaleLevelLabel)
                     SettingsGestureGuideSection(accessibilityTextSizeScale: accessibilityTextSizeScale)
                     SettingsCategoriesSection(accessibilityTextSizeScale: accessibilityTextSizeScale)
-                    SettingsAchievementsSection(accessibilityTextSizeScale: accessibilityTextSizeScale)
                     privacyAndSupportSection
                     dataSection
                     dedicationFooter

@@ -25,7 +25,6 @@
 | **Accesibilidad** | Labels, hints y acciones accesibles en todos los elementos interactivos |
 | **Filtro por Supermercado** | Asignación de cada producto a un supermercado (Jumbo o Líder) con filtro rápido en la cabecera. |
 | **Notas de Voz por Producto 🎤** | Grabación inline de audios de hasta 30 segundos para añadir indicaciones de marcas o pasillos. |
-| **Mis Logros y Rachas 🏆** | Sistema de medallas y racha semanal para incentivar el hábito de compra. |
 
 ---
 
@@ -43,7 +42,6 @@ CasiListo/
 │   ├── Store.swift             # Supermercados (Jumbo / Líder)
 │   ├── ProductCatalogItem.swift # Productos frecuentes catalogados
 │   ├── SuggestedProducts.swift # Base de datos de ~290 sugerencias
-│   └── UserStats.swift         # Estadísticas y gamificación
 ├── ViewModels/
 │   └── ShoppingListViewModel.swift  # Lógica de filtrado, agrupación y acciones
 ├── Services/
@@ -56,7 +54,6 @@ CasiListo/
 │   ├── ContentView.swift       # Vista principal con NavigationStack
 │   ├── ShoppingListView.swift  # Lista activa agrupada por categoría
 │   ├── AddEditItemSheet.swift  # Modal para crear/editar productos
-│   ├── AchievementsView.swift  # Vista de medallas y rachas
 │   └── SettingsSheet.swift     # Hojas de ajustes y accesibilidad
 └── Theme/
     └── Theme.swift             # Sistema de diseño (colores, fuentes, animaciones, glass effects)

@@ -85,14 +85,11 @@ struct ContentView: View {
                             let count = viewModel.itemCounts(from: activeItems).purchased
                             return count == 1 ? "Archivar 1 comprado" : "Archivar \(count) comprados"
                         }(), role: .destructive) {
-                            let purchasedCount = viewModel.itemCounts(from: activeItems).purchased
                             do {
                                 try ShoppingPersistenceCoordinator(context: modelContext).archivePurchased(
                                     from: activeItems,
                                     activeList: activeList
                                 )
-                                var stats = UserStats.load()
-                                stats.recordPurchase(productsCount: purchasedCount)
                                 HapticFeedback.success()
                             } catch {
                                 viewModel.presentPersistenceError(error)
@@ -122,8 +119,9 @@ struct ContentView: View {
             
             let persistence = ShoppingPersistenceCoordinator(context: modelContext)
             do {
-                // Limpieza única de la preferencia heredada de geofencing.
+                // Limpieza única de preferencias heredadas (geofencing, logros).
                 UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
+                UserDefaults.standard.removeObject(forKey: "user_stats")
                 try CategoryBootstrapService.bootstrap(context: modelContext)
                 let list = try ShoppingListLifecycleService.bootstrap(context: modelContext)
                 try SuggestedProducts.seedCatalogItems(in: modelContext)
