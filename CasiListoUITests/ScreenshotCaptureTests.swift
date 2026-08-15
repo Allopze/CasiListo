@@ -108,6 +108,71 @@ final class ScreenshotCaptureTests: XCTestCase {
         save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/capture-catalog.png")
     }
 
+    @MainActor
+    func testCaptureDarkModeSecondaryScreens() throws {
+        continueAfterFailure = false
+        XCUIDevice.shared.orientation = .portrait
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing-reset", "-ui-testing-dark"]
+        app.launch()
+
+        let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] ?? "/tmp"
+
+        // Genera una compra en el historial: marca un producto y archívalo.
+        let categoryCard = app.buttons["category-section-Aseo personal"]
+        XCTAssertTrue(categoryCard.waitForExistence(timeout: 10))
+        if (categoryCard.value as? String) == "Colapsada" {
+            categoryCard.tap()
+        }
+        let firstToggle = app.buttons.matching(
+            NSPredicate(format: "identifier BEGINSWITH 'item-toggle-'")
+        ).firstMatch
+        XCTAssertTrue(firstToggle.waitForExistence(timeout: 5))
+        firstToggle.tap()
+        sleep(1)
+        app.buttons.matching(NSPredicate(format: "label BEGINSWITH 'Archivar'")).firstMatch.tap()
+        let archiveConfirm = app.buttons["Archivar 1 comprado"]
+        XCTAssertTrue(archiveConfirm.waitForExistence(timeout: 5))
+        archiveConfirm.tap()
+        sleep(1)
+
+        // Historial y su detalle.
+        app.tabBars.buttons["Historial"].tap()
+        XCTAssertTrue(app.navigationBars["Historial"].waitForExistence(timeout: 5))
+        sleep(1)
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/dark-historial.png")
+
+        let historyRow = app.cells.firstMatch
+        if historyRow.waitForExistence(timeout: 3) {
+            historyRow.tap()
+            sleep(1)
+            save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/dark-historial-detalle.png")
+        }
+
+        // Ajustes.
+        app.tabBars.buttons["Ajustes"].tap()
+        XCTAssertTrue(app.navigationBars["Ajustes"].waitForExistence(timeout: 5))
+        sleep(1)
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/dark-ajustes.png")
+
+        // Plantillas e importador, desde el menú de la lista.
+        app.tabBars.buttons["Compra"].tap()
+        app.buttons["toolbar-options-menu"].tap()
+        let templatesOption = app.buttons["Usar plantilla"]
+        XCTAssertTrue(templatesOption.waitForExistence(timeout: 5))
+        templatesOption.tap()
+        sleep(1)
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/dark-plantillas.png")
+        app.buttons["Cerrar"].tap()
+
+        app.buttons["toolbar-options-menu"].tap()
+        let importerOption = app.buttons["Importar desde texto"]
+        XCTAssertTrue(importerOption.waitForExistence(timeout: 5))
+        importerOption.tap()
+        sleep(1)
+        save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/dark-importador.png")
+    }
+
     private func save(screenshot: XCUIScreenshot, to path: String) {
         try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
     }

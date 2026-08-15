@@ -7,38 +7,35 @@ struct SettingsGestureGuideSection: View {
     @ScaledMetric(relativeTo: .body) private var rowSpacing: CGFloat = 14
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("GUÍA DE USO")
-                .font(Theme.captionDynamic)
-                .foregroundStyle(Color.appTextSecondary)
-                .padding(.leading, 6)
-                .bold()
+        SettingsSection(title: "GUÍA DE USO") {
+            SettingsCard {
+                VStack(alignment: .leading, spacing: rowSpacing) {
+                    gestoInfoRow(
+                        icon: "checkmark.circle.fill",
+                        title: "Marcar productos",
+                        description: "Toca el círculo a la izquierda del producto para marcarlo como comprado o volverlo a pendiente."
+                    )
 
-            VStack(alignment: .leading, spacing: rowSpacing) {
-                gestoInfoRow(
-                    icon: "hand.tap.fill",
-                    title: "Marcar productos",
-                    description: "Toca cualquier parte de la tarjeta del producto (nombre, nota, checkbox) para marcarlo o desmarcarlo al instante."
-                )
+                    gestoInfoRow(
+                        icon: "hand.tap.fill",
+                        title: "Editar detalles",
+                        description: "Toca el nombre del producto para cambiar su cantidad, precio, tienda o notas. También puedes deslizar la fila."
+                    )
 
-                gestoInfoRow(
-                    icon: "pencil.circle.fill",
-                    title: "Editar detalles",
-                    description: "Toca el botón circular del lápiz situado a la derecha del producto para modificar su nombre, cantidad o notas."
-                )
+                    gestoInfoRow(
+                        icon: "hand.point.up.left.and.text.fill",
+                        title: "Más acciones",
+                        description: "Mantén presionado un producto para posponerlo, marcarlo como no encontrado, reordenarlo o eliminarlo."
+                    )
 
-                gestoInfoRow(
-                    icon: "arrow.up.and.down.square.fill",
-                    title: "Organizar categorías",
-                    description: "Toca cualquier cabecera de categoría para colapsar o expandir su contenido de productos."
-                )
+                    gestoInfoRow(
+                        icon: "books.vertical.fill",
+                        title: "Añadir desde el catálogo",
+                        description: "En la pestaña Catálogo, toca el + de cualquier producto habitual para enviarlo a tu compra."
+                    )
+                }
             }
-            .padding(Theme.cardPadding)
-            .background(Color.appCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
-            .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
         }
-        .padding(.horizontal, Theme.cardPadding)
     }
 
     private func gestoInfoRow(icon: String, title: String, description: String) -> some View {

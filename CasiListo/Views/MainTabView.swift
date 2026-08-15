@@ -36,6 +36,10 @@ struct MainTabView: View {
                 .tag(AppTab.ajustes)
         }
         .tint(tabTint)
+        // Solo para verificación visual automatizada.
+        .preferredColorScheme(
+            ProcessInfo.processInfo.arguments.contains("-ui-testing-dark") ? .dark : nil
+        )
         .onOpenURL { url in
             // La lista es el único destino público; rutas desconocidas no
             // modifican el estado ni presentan contenido inesperado.
