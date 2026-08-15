@@ -15,7 +15,7 @@ struct SuggestionsListView: View {
                             onSelect(suggestion)
                         } label: {
                             Text(suggestion)
-                                .font(Theme.chipFont)
+                                .font(Theme.chipDynamic)
                                 .foregroundStyle(Color.appTextPrimary)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 7)

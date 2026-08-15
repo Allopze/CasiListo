@@ -49,7 +49,6 @@ struct AddEditItemSheet: View {
     @State private var saveErrorMessage: String?
 
     @FocusState private var isNameFocused: Bool
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     private var isEditing: Bool {
         if case .edit = mode { return true }

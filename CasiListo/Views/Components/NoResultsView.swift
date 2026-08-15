@@ -12,26 +12,25 @@ struct NoResultsView: View {
     var onAddSearch: (() -> Void)? = nil
     var onAddCatalogItem: ((ProductCatalogItem) -> Void)? = nil
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
     var body: some View {
-        VStack(spacing: 12 * CGFloat(accessibilityTextSizeScale)) {
+        VStack(spacing: 12) {
             Image(systemName: isSearching ? "magnifyingglass" : "line.3.horizontal.decrease.circle")
-                .font(.system(size: 40 * CGFloat(accessibilityTextSizeScale)))
+                .font(.system(size: 40))
                 .foregroundStyle(Color.appTextPurchased)
 
             Text(isSearching ? "No está en tu compra" : "Nada con estos filtros")
-                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyBoldDynamic)
                 .foregroundStyle(Color.appTextSecondary)
 
             Text(isSearching
                  ? "\"\(searchText)\" no aparece en la lista actual."
                  : "Prueba mostrar los comprados o cambiar de supermercado.")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextPurchased)
                 .multilineTextAlignment(.center)
 
@@ -42,7 +41,7 @@ struct NoResultsView: View {
                         onQuickAddSearch()
                     } label: {
                         Label("Añadir \"\(searchText)\"", systemImage: "plus")
-                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyBoldDynamic)
                             .foregroundStyle(Color(hex: "1A1A1A"))
                             .frame(minHeight: Theme.minimumTouchTarget)
                             .padding(.horizontal, 16)
@@ -60,7 +59,7 @@ struct NoResultsView: View {
                         onAddSearch()
                     } label: {
                         Text("Añadir con detalles…")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                            .font(Theme.captionDynamic.weight(.semibold))
                             .foregroundStyle(Color.appTextSecondary)
                             .frame(minHeight: Theme.minimumTouchTarget)
                     }
@@ -71,7 +70,7 @@ struct NoResultsView: View {
                 if !catalogMatches.isEmpty, let onAddCatalogItem {
                     VStack(alignment: .leading, spacing: 4) {
                         Text("DE TU CATÁLOGO")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                            .font(Theme.captionDynamic.weight(.semibold))
                             .foregroundStyle(Color.appTextSecondary)
                             .padding(.horizontal, 6)
                             .padding(.bottom, 4)
@@ -83,7 +82,7 @@ struct NoResultsView: View {
                             } label: {
                                 HStack(spacing: 10) {
                                     Text(match.name)
-                                        .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                                        .font(Theme.bodyDynamic)
                                         .foregroundStyle(Color.appTextPrimary)
                                         .lineLimit(1)
                                     Spacer(minLength: 8)

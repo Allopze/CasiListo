@@ -3,7 +3,6 @@ import SwiftUI
 /// Barra de filtro horizontal por supermercado para la lista de compras.
 struct StoreFilterBar: View {
     @Binding var selectedStore: Store?
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
@@ -32,9 +31,9 @@ struct StoreFilterBar: View {
         } label: {
             HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.chipDynamic)
                 Text(title)
-                    .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.chipDynamic)
                     .bold()
             }
             .padding(.horizontal, 14)

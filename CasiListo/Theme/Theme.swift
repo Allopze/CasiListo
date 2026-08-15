@@ -22,105 +22,17 @@ enum Theme {
     static let sectionSpacing: CGFloat = 24
     static let minimumTouchTarget: CGFloat = 44
 
-    // MARK: - Fuentes Estáticas (Compatibilidad)
-
-    static let titleFont = Font.system(size: 34, weight: .bold, design: .rounded)
-    static let sectionHeaderFont = Font.system(size: 20, weight: .bold, design: .rounded)
-    static let bodyFont = Font.system(size: 17, weight: .regular, design: .rounded)
-    static let bodyBoldFont = Font.system(size: 17, weight: .semibold, design: .rounded)
-    static let captionFont = Font.system(size: 13, weight: .regular, design: .rounded)
-    static let chipFont = Font.system(size: 13, weight: .medium, design: .rounded)
-
     // MARK: - Dynamic Type (Nativo)
-    // Respetan automáticamente la configuración de accesibilidad del sistema.
+    // Respetan automáticamente la configuración de accesibilidad del sistema
+    // y conservan la identidad rounded de la app.
 
-    static let titleDynamic: Font = .largeTitle.weight(.bold).width(.standard)
-    static let headlineDynamic: Font = .headline.weight(.bold)
-    static let bodyDynamic: Font = .body
-    static let bodyBoldDynamic: Font = .body.weight(.semibold)
-    static let captionDynamic: Font = .caption
-    static let chipDynamic: Font = .caption.weight(.medium)
-    static let sectionHeaderDynamic: Font = .title3.weight(.bold)
-
-    // MARK: - Accesibilidad Dinámica (Combina Dynamic Type y Slider Manual)
-
-    static func titleFont(scale: Double) -> Font {
-        let systemSize = UIFont.preferredFont(forTextStyle: .largeTitle).pointSize
-        let size = systemSize * CGFloat(scale)
-        if let descriptor = UIFont.systemFont(ofSize: size, weight: .bold).fontDescriptor.withDesign(.rounded) {
-            return Font(UIFont(descriptor: descriptor, size: size))
-        }
-        return Font.system(size: 34 * CGFloat(scale), weight: .bold, design: .rounded)
-    }
-
-    static func sectionHeaderFont(scale: Double) -> Font {
-        let systemSize = UIFont.preferredFont(forTextStyle: .title3).pointSize
-        let size = systemSize * CGFloat(scale)
-        if let descriptor = UIFont.systemFont(ofSize: size, weight: .bold).fontDescriptor.withDesign(.rounded) {
-            return Font(UIFont(descriptor: descriptor, size: size))
-        }
-        return Font.system(size: 20 * CGFloat(scale), weight: .bold, design: .rounded)
-    }
-
-    static func bodyFont(scale: Double) -> Font {
-        let systemSize = UIFont.preferredFont(forTextStyle: .body).pointSize
-        let size = systemSize * CGFloat(scale)
-        if let descriptor = UIFont.systemFont(ofSize: size, weight: .regular).fontDescriptor.withDesign(.rounded) {
-            return Font(UIFont(descriptor: descriptor, size: size))
-        }
-        return Font.system(size: 17 * CGFloat(scale), weight: .regular, design: .rounded)
-    }
-
-    static func bodyBoldFont(scale: Double) -> Font {
-        let systemSize = UIFont.preferredFont(forTextStyle: .body).pointSize
-        let size = systemSize * CGFloat(scale)
-        if let descriptor = UIFont.systemFont(ofSize: size, weight: .semibold).fontDescriptor.withDesign(.rounded) {
-            return Font(UIFont(descriptor: descriptor, size: size))
-        }
-        return Font.system(size: 17 * CGFloat(scale), weight: .bold, design: .rounded)
-    }
-
-    static func captionFont(scale: Double) -> Font {
-        let systemSize = UIFont.preferredFont(forTextStyle: .caption1).pointSize
-        let size = systemSize * CGFloat(scale)
-        if let descriptor = UIFont.systemFont(ofSize: size, weight: .regular).fontDescriptor.withDesign(.rounded) {
-            return Font(UIFont(descriptor: descriptor, size: size))
-        }
-        return Font.system(size: 13 * CGFloat(scale), weight: .regular, design: .rounded)
-    }
-
-    static func chipFont(scale: Double) -> Font {
-        let systemSize = UIFont.preferredFont(forTextStyle: .caption1).pointSize
-        let size = systemSize * CGFloat(scale)
-        if let descriptor = UIFont.systemFont(ofSize: size, weight: .medium).fontDescriptor.withDesign(.rounded) {
-            return Font(UIFont(descriptor: descriptor, size: size))
-        }
-        return Font.system(size: 13 * CGFloat(scale), weight: .medium, design: .rounded)
-    }
-
-    static func cornerRadius(scale: Double) -> CGFloat {
-        20 * CGFloat(scale)
-    }
-
-    static func smallCornerRadius(scale: Double) -> CGFloat {
-        16 * CGFloat(scale)
-    }
-
-    static func controlCornerRadius(scale: Double) -> CGFloat {
-        999
-    }
-
-    static func cardPadding(scale: Double) -> CGFloat {
-        16 * CGFloat(scale)
-    }
-
-    static func itemSpacing(scale: Double) -> CGFloat {
-        12 * CGFloat(scale)
-    }
-
-    static func sectionSpacing(scale: Double) -> CGFloat {
-        24 * CGFloat(scale)
-    }
+    static let titleDynamic: Font = .system(.largeTitle, design: .rounded, weight: .bold)
+    static let headlineDynamic: Font = .system(.headline, design: .rounded, weight: .bold)
+    static let bodyDynamic: Font = .system(.body, design: .rounded)
+    static let bodyBoldDynamic: Font = .system(.body, design: .rounded, weight: .semibold)
+    static let captionDynamic: Font = .system(.caption, design: .rounded)
+    static let chipDynamic: Font = .system(.caption, design: .rounded, weight: .medium)
+    static let sectionHeaderDynamic: Font = .system(.title3, design: .rounded, weight: .bold)
 
     // MARK: - Logger
 
@@ -208,10 +120,8 @@ struct AdaptiveGlassEffectContainer<Content: View>: View {
 
 /// Estilo de botón glass adaptativo (fallback para iOS < 26).
 struct AdaptiveGlassButtonStyle: ButtonStyle {
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
-
     func makeBody(configuration: Configuration) -> some View {
-        let size = max(Theme.minimumTouchTarget, 40 * CGFloat(accessibilityTextSizeScale))
+        let size = Theme.minimumTouchTarget
         configuration.label
             .frame(width: size, height: size)
             .background(.ultraThinMaterial)

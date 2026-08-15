@@ -126,6 +126,7 @@ struct ContentView: View {
                 // Limpieza única de preferencias heredadas (geofencing, logros).
                 UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
                 UserDefaults.standard.removeObject(forKey: "user_stats")
+                UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
                 try CategoryBootstrapService.bootstrap(context: modelContext)
                 _ = try ShoppingListLifecycleService.bootstrap(context: modelContext)
                 try SuggestedProducts.seedCatalogItems(in: modelContext)

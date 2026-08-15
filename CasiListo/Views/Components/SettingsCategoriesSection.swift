@@ -1,12 +1,11 @@
 import SwiftUI
 
 struct SettingsCategoriesSection: View {
-    let accessibilityTextSizeScale: Double
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("CATEGORÍAS")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .padding(.leading, 6)
                 .bold()
@@ -24,10 +23,10 @@ struct SettingsCategoriesSection: View {
                     
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Administrar Categorías")
-                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyBoldDynamic)
                             .foregroundStyle(Color.appTextPrimary)
                         Text("Crea, edita, ordena o elimina las categorías de tus productos.")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.captionDynamic)
                             .foregroundStyle(Color.appTextSecondary)
                     }
                     
@@ -39,11 +38,11 @@ struct SettingsCategoriesSection: View {
                 }
             }
             .buttonStyle(.plain)
-            .padding(Theme.cardPadding(scale: accessibilityTextSizeScale))
+            .padding(Theme.cardPadding)
             .background(Color.appCardBackground)
-            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius(scale: accessibilityTextSizeScale), style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
             .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
         }
-        .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+        .padding(.horizontal, Theme.cardPadding)
     }
 }

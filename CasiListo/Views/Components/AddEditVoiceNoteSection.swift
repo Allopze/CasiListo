@@ -17,7 +17,6 @@ struct AddEditVoiceNoteSection: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AccessibilityFocusState private var shouldFocusRecordButton: Bool
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
         Section {
@@ -33,13 +32,13 @@ struct AddEditVoiceNoteSection: View {
                             .onDisappear { recordingPulse = false }
                         
                         Text("Grabando... \(recordingDuration)s")
-                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyBoldDynamic)
                             .foregroundStyle(.red)
                     }
                     Spacer()
                     Button { stopRecording() } label: {
                         Text("Detener")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.captionDynamic)
                             .bold()
                             .foregroundStyle(.white)
                             .frame(minWidth: Theme.minimumTouchTarget, minHeight: Theme.minimumTouchTarget)
@@ -55,7 +54,7 @@ struct AddEditVoiceNoteSection: View {
                         .font(.system(size: 16))
                         .foregroundStyle(Theme.accentYellow)
                     Text("Nota de voz")
-                        .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.bodyDynamic)
                         .foregroundStyle(Color.appTextPrimary)
                     Spacer()
                     VoiceNotePlayerButton(filename: filename)
@@ -78,7 +77,7 @@ struct AddEditVoiceNoteSection: View {
                         .font(.system(size: 16))
                         .foregroundStyle(Color.appTextSecondary)
                     Text("Grabar nota de voz")
-                        .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.bodyDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                     Spacer()
                     Button { startRecording() } label: {

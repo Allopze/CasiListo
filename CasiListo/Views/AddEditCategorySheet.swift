@@ -27,7 +27,6 @@ struct AddEditCategorySheet: View {
     @State private var errorMessage: String?
     
     @FocusState private var isNameFocused: Bool
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     @ScaledMetric(relativeTo: .body) private var iconSelectorSize: CGFloat = 36
     @ScaledMetric(relativeTo: .body) private var previewIconSize: CGFloat = 36

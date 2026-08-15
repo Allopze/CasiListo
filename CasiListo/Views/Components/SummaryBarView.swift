@@ -11,7 +11,6 @@ struct SummaryBarView: View {
     @ScaledMetric(relativeTo: .caption) private var scaledSpacing: CGFloat = 10
     @ScaledMetric(relativeTo: .caption) private var progressHeight: CGFloat = 5
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     private var totalCount: Int { pendingCount + purchasedCount }
 
@@ -24,7 +23,7 @@ struct SummaryBarView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: scaledSpacing) {
                 Text(pendingCount == 1 ? "1 pendiente" : "\(pendingCount) pendientes")
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.medium))
+                    .font(Theme.captionDynamic.weight(.medium))
                     .foregroundStyle(Color.appTextSecondary)
                     .monospacedDigit()
 
@@ -35,14 +34,14 @@ struct SummaryBarView: View {
                             archive()
                         } label: {
                             Label("Archivar \(purchasedCount)", systemImage: "archivebox")
-                                .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                                .font(Theme.captionDynamic.weight(.semibold))
                                 .foregroundStyle(Color.appTextSecondary)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Archivar \(purchasedCount) productos comprados")
                     } else {
                         Text(purchasedCount == 1 ? "1 comprado" : "\(purchasedCount) comprados")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.captionDynamic)
                             .foregroundStyle(Color.appTextSecondary)
                             .monospacedDigit()
                     }
@@ -60,7 +59,7 @@ struct SummaryBarView: View {
                         showPurchased ? "Ocultar comprados" : "Ver comprados",
                         systemImage: showPurchased ? "eye.slash" : "eye"
                     )
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.medium))
+                    .font(Theme.captionDynamic.weight(.medium))
                     .foregroundStyle(Color.appTextSecondary)
                     .lineLimit(1)
                     .padding(.horizontal, 10)

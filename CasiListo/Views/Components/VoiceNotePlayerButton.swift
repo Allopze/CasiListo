@@ -6,7 +6,6 @@ struct VoiceNotePlayerButton: View {
     
     @State private var waveAnimation = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     @Environment(VoiceNoteService.self) private var voiceNoteService
     @State private var errorMessage: String?
@@ -26,7 +25,7 @@ struct VoiceNotePlayerButton: View {
                 }
             }
         } label: {
-            HStack(spacing: 8 * CGFloat(accessibilityTextSizeScale)) {
+            HStack(spacing: 8) {
                 // Waveform animado si está reproduciendo, o ícono de play si no
                 if isPlaying {
                     HStack(spacing: 2) {
@@ -55,13 +54,13 @@ struct VoiceNotePlayerButton: View {
                     }
                 } else {
                     Image(systemName: "waveform")
-                        .font(.system(size: 14 * CGFloat(accessibilityTextSizeScale), weight: .bold))
+                        .font(.system(size: 14, weight: .bold))
                         .foregroundStyle(Theme.accentYellow)
                 }
             }
             .frame(
-                width: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale)),
-                height: max(Theme.minimumTouchTarget, 32 * CGFloat(accessibilityTextSizeScale))
+                width: max(Theme.minimumTouchTarget, 32),
+                height: max(Theme.minimumTouchTarget, 32)
             )
             .background(isPlaying ? Color.red.opacity(0.85) : Theme.accentYellow.opacity(0.12))
             .clipShape(Circle())

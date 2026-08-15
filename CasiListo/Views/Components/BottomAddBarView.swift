@@ -21,7 +21,6 @@ struct BottomAddBarView: View {
     @ScaledMetric(relativeTo: .body) private var actionButtonSize: CGFloat = Theme.minimumTouchTarget
     @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 8
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
         AdaptiveGlassEffectContainer(spacing: 8) {
@@ -36,7 +35,7 @@ struct BottomAddBarView: View {
                                     onAddQuick()
                                 } label: {
                                     Text(suggestion)
-                                        .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                                        .font(Theme.chipDynamic)
                                         .foregroundStyle(Color.appTextPrimary)
                                         .padding(.horizontal, chipPaddingHorizontal)
                                         .padding(.vertical, chipPaddingVertical)
@@ -54,12 +53,12 @@ struct BottomAddBarView: View {
                 HStack(spacing: hStackSpacing) {
                     HStack {
                         Image(systemName: "cart.badge.plus")
-                            .font(.system(size: cartIconSize * CGFloat(accessibilityTextSizeScale)))
+                            .font(.system(size: cartIconSize))
                             .foregroundStyle(Color.appTextSecondary)
                             .padding(.leading, cartIconLeadingPadding)
 
                         TextField("Añade “2kg arroz” o “pan x3”…", text: $text)
-                            .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyDynamic)
                             .textFieldStyle(.plain)
                             .autocorrectionDisabled()
                             .submitLabel(.done)
@@ -75,30 +74,30 @@ struct BottomAddBarView: View {
                     if !text.trimmingCharacters(in: .whitespaces).isEmpty {
                         Button { onAddQuick() } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: actionButtonSymbolSize * CGFloat(accessibilityTextSizeScale)))
+                                .font(.system(size: actionButtonSymbolSize))
                                 .symbolRenderingMode(.palette)
                                 .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
-                                .frame(width: actionButtonSize * CGFloat(accessibilityTextSizeScale), height: actionButtonSize * CGFloat(accessibilityTextSizeScale))
+                                .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir instantáneamente")
 
                         Button { onAddTapped() } label: {
                             Image(systemName: "ellipsis.circle.fill")
-                                .font(.system(size: actionButtonSymbolSize * CGFloat(accessibilityTextSizeScale)))
+                                .font(.system(size: actionButtonSymbolSize))
                                 .symbolRenderingMode(.palette)
                                 .foregroundStyle(Color.appCardBackground, Color.appTextSecondary)
-                                .frame(width: actionButtonSize * CGFloat(accessibilityTextSizeScale), height: actionButtonSize * CGFloat(accessibilityTextSizeScale))
+                                .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir con detalles")
                     } else {
                         Button { onAddTapped() } label: {
                             Image(systemName: "plus.circle.fill")
-                                .font(.system(size: actionButtonSymbolSize * CGFloat(accessibilityTextSizeScale)))
+                                .font(.system(size: actionButtonSymbolSize))
                                 .symbolRenderingMode(.palette)
                                 .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
-                                .frame(width: actionButtonSize * CGFloat(accessibilityTextSizeScale), height: actionButtonSize * CGFloat(accessibilityTextSizeScale))
+                                .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Añadir producto")

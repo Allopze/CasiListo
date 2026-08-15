@@ -4,31 +4,15 @@ import SwiftData
 /// Pestaña de Ajustes de la aplicación.
 struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Environment(AppSettings.self) private var appSettings
-    @State private var mockItemPurchased = false
     @State private var showsResetConfirmation = false
     @State private var resetErrorMessage: String?
-
-    private var accessibilityTextSizeScale: Double { appSettings.accessibilityTextSizeScale }
-
-    private var scaleLevelLabel: String {
-        let percent = Int(accessibilityTextSizeScale * 100)
-        switch accessibilityTextSizeScale {
-        case 1.0..<1.15: return "Normal (\(percent)%)"
-        case 1.15..<1.35: return "Mediano (\(percent)%)"
-        case 1.35..<1.55: return "Grande (\(percent)%)"
-        default: return "Extra Grande (\(percent)%)"
-        }
-    }
 
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(spacing: Theme.sectionSpacing(scale: accessibilityTextSizeScale)) {
-                    SettingsPreviewCard(mockItemPurchased: $mockItemPurchased, accessibilityTextSizeScale: accessibilityTextSizeScale)
-                    SettingsAccessibilitySection(settings: appSettings, scaleLevelLabel: scaleLevelLabel)
-                    SettingsGestureGuideSection(accessibilityTextSizeScale: accessibilityTextSizeScale)
-                    SettingsCategoriesSection(accessibilityTextSizeScale: accessibilityTextSizeScale)
+                VStack(spacing: Theme.sectionSpacing) {
+                    SettingsGestureGuideSection()
+                    SettingsCategoriesSection()
                     privacyAndSupportSection
                     dataSection
                     dedicationFooter
@@ -64,7 +48,7 @@ struct SettingsView: View {
     private var privacyAndSupportSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("PRIVACIDAD Y SOPORTE")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .padding(.leading, 6)
                 .bold()
@@ -79,13 +63,13 @@ struct SettingsView: View {
             }
             .accessibilityLabel("Abrir soporte de CasiListo")
         }
-        .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+        .padding(.horizontal, Theme.cardPadding)
     }
 
     private var dataSection: some View {
         VStack(alignment: .leading, spacing: 10) {
             Text("DATOS LOCALES")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .padding(.leading, 6)
                 .bold()
@@ -95,7 +79,7 @@ struct SettingsView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Borrar todos mis datos guardados")
         }
-        .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale))
+        .padding(.horizontal, Theme.cardPadding)
     }
 
     private func settingsLinkRow(title: String, detail: String, symbol: String, destructive: Bool = false) -> some View {
@@ -104,16 +88,16 @@ struct SettingsView: View {
                 .foregroundStyle(destructive ? Color.red : Theme.accentYellow)
                 .frame(width: 28)
             VStack(alignment: .leading, spacing: 3) {
-                Text(title).font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
-                Text(detail).font(Theme.captionFont(scale: accessibilityTextSizeScale)).foregroundStyle(Color.appTextSecondary)
+                Text(title).font(Theme.bodyBoldDynamic)
+                Text(detail).font(Theme.captionDynamic).foregroundStyle(Color.appTextSecondary)
             }
             Spacer()
             Image(systemName: "chevron.right").font(.caption.bold()).foregroundStyle(Color.appTextSecondary)
         }
         .foregroundStyle(destructive ? Color.red : Color.appTextPrimary)
-        .padding(Theme.cardPadding(scale: accessibilityTextSizeScale))
+        .padding(Theme.cardPadding)
         .background(Color.appCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius(scale: accessibilityTextSizeScale), style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
     }
 
     private func resetAllData() {
@@ -127,11 +111,11 @@ struct SettingsView: View {
 
     private var dedicationFooter: some View {
         Text("Desarrollado por Alejandro López Zelaya para su querido padre, Casimiro López Díaz. Ojalá esta lista te acompañe por siempre.")
-            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+            .font(Theme.captionDynamic)
             .foregroundStyle(Color.appTextSecondary)
             .multilineTextAlignment(.center)
             .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, Theme.cardPadding(scale: accessibilityTextSizeScale) * 2)
+            .padding(.horizontal, Theme.cardPadding * 2)
             .padding(.top, 4)
             .padding(.bottom, 8)
     }

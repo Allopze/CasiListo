@@ -19,7 +19,6 @@ struct ItemRowView: View {
     @ScaledMetric(relativeTo: .caption) private var pillPaddingVertical: CGFloat = 2.5
     @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 12
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -121,7 +120,7 @@ struct ItemRowView: View {
     private var rowContent: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(highlighting: item.name, query: searchText)
-                .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyDynamic)
                 .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
                 .strikethrough(item.isPurchased, color: Color.appTextPurchased)
                 .lineLimit(2)
@@ -130,7 +129,7 @@ struct ItemRowView: View {
 
             if !item.note.isEmpty {
                 Text(item.note)
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
                     .lineLimit(1)
             }
@@ -155,7 +154,7 @@ struct ItemRowView: View {
 
                 if !item.quantity.isEmpty {
                     Text(item.quantity)
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextSecondary)
                         .padding(.horizontal, pillPaddingHorizontal)
                         .padding(.vertical, pillPaddingVertical)
@@ -166,7 +165,7 @@ struct ItemRowView: View {
 
                 if item.status == .skipped || item.status == .unavailable {
                     Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(
                             item.status == .skipped
                                 ? Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D"))

@@ -28,7 +28,6 @@ struct CategorySectionView: View {
     @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
     @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 56
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
         Section {
@@ -139,7 +138,7 @@ struct CategorySectionView: View {
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                 Text(category.displayName)
-                    .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.bodyBoldDynamic)
                     .foregroundStyle(Color.appTextPrimary)
 
                 Spacer()
@@ -191,7 +190,7 @@ struct CategorySectionView: View {
     private var categoryBadge: some View {
         if pendingCount == 0 {
             Label("\(purchasedCount)", systemImage: "checkmark")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                .font(Theme.captionDynamic.weight(.semibold))
                 .foregroundStyle(.white)
                 .monospacedDigit()
                 .padding(.horizontal, countPaddingHorizontal)
@@ -200,12 +199,12 @@ struct CategorySectionView: View {
                 .clipShape(Capsule())
         } else if purchasedCount > 0 {
             Text("\(purchasedCount) de \(items.count)")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .monospacedDigit()
         } else {
             Text("\(pendingCount)")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .monospacedDigit()
         }

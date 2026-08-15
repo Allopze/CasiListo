@@ -138,6 +138,9 @@ final class ShoppingPersistenceCoordinator {
             try fileStore.resetAllFiles()
             UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
             UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
+            UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
+            UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+            UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
             UserDefaults.standard.removeObject(forKey: "user_stats")
             UserDefaults(suiteName: WidgetDataBridge.appGroupID)?.removeObject(forKey: WidgetDataBridge.snapshotKey)
 

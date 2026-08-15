@@ -15,7 +15,6 @@ struct ShoppingHistoryDetailView: View {
     @ScaledMetric(relativeTo: .body) private var statusIconSize: CGFloat = 18
     @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 9
 
-    @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     
     private var listItems: [ShoppingItem] {
         allItems.filter { $0.listID == list.id }
@@ -74,11 +73,11 @@ struct ShoppingHistoryDetailView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("Resumen de Gasto")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                     
                     Text(list.totalSpent > 0 ? list.totalSpent.formattedPriceWithSymbol : "$0")
-                        .font(Theme.titleFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.titleDynamic)
                         .foregroundStyle(Theme.accentYellow)
                 }
                 
@@ -89,7 +88,7 @@ struct ShoppingHistoryDetailView: View {
                         Image(systemName: store.sfSymbol)
                         Text(store.displayName)
                     }
-                    .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.chipDynamic)
                     .foregroundStyle(.white)
                     .padding(.horizontal, 12)
                     .padding(.vertical, 6)
@@ -118,11 +117,11 @@ struct ShoppingHistoryDetailView: View {
                 
                 HStack {
                     Image(systemName: "calendar")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                     
                     Text("Finalizada el \(completedAt.formatted(date: .long, time: .shortened))")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -137,7 +136,7 @@ struct ShoppingHistoryDetailView: View {
     private func receiptCard(_ image: UIImage) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             Label("Boleta asociada", systemImage: "doc.text.viewfinder")
-                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyBoldDynamic)
 
             Image(uiImage: image)
                 .resizable()
@@ -160,7 +159,7 @@ struct ShoppingHistoryDetailView: View {
             Text(title)
                 .foregroundStyle(Color.appTextSecondary)
         }
-        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+        .font(Theme.captionDynamic)
     }
     
     private func categorySection(_ category: Category, items: [ShoppingItem]) -> some View {
@@ -176,7 +175,7 @@ struct ShoppingHistoryDetailView: View {
                     .font(.caption)
                     .foregroundStyle(Color.appTextSecondary)
             }
-            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+            .font(Theme.bodyBoldDynamic)
             .padding(.horizontal, 4)
             
             // Fila de Productos
@@ -198,14 +197,14 @@ struct ShoppingHistoryDetailView: View {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(item.name)
-                        .font(Theme.bodyFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.bodyDynamic)
                         .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : Color.appTextPrimary)
                         .strikethrough(item.status == .purchased, color: Color.appTextPurchased)
                         .lineLimit(1)
                     
                     if !item.quantity.isEmpty {
                         Text(item.quantity)
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.captionDynamic)
                             .foregroundStyle(Color.appTextSecondary)
                             .padding(.horizontal, 6)
                             .padding(.vertical, 2)
@@ -215,14 +214,14 @@ struct ShoppingHistoryDetailView: View {
                     
                     if let price = item.price {
                         Text(price.formattedPriceWithSymbol)
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.captionDynamic)
                             .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : .green)
                     }
                 }
                 
                 if !item.note.isEmpty {
                     Text(item.note)
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                         .lineLimit(1)
                 }

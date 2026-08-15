@@ -10,11 +10,6 @@ struct EmptyStateView: View {
     @ScaledMetric(relativeTo: .body) private var logoSize: CGFloat = 80
     @ScaledMetric(relativeTo: .body) private var mainSpacing: CGFloat = 20
 
-    @Environment(AppSettings.self) private var appSettings
-    private var accessibilityTextSizeScale: Double {
-        appSettings.accessibilityTextSizeScale
-    }
-
     private let quickStaples = ["Leche 🥛", "Pan 🍞", "Huevos 🥚", "Manzanas 🍎", "Café ☕️", "Mantequilla 🧈"]
 
     var body: some View {
@@ -25,11 +20,11 @@ struct EmptyStateView: View {
                 .padding(.bottom, 4)
 
             Text("Tu lista está vacía")
-                .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                .font(Theme.bodyBoldDynamic)
                 .foregroundStyle(Color.appTextPrimary)
 
             Text("Añade productos para tu próxima compra o selecciona uno de los básicos:")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .multilineTextAlignment(.center)
 
@@ -43,7 +38,7 @@ struct EmptyStateView: View {
                             onQuickAdd?(cleanName)
                         } label: {
                             Text(staple)
-                                .font(Theme.chipFont(scale: accessibilityTextSizeScale))
+                                .font(Theme.chipDynamic)
                                 .foregroundStyle(Color.appTextPrimary)
                                 .padding(.horizontal, 12)
                                 .padding(.vertical, 8)
@@ -64,7 +59,7 @@ struct EmptyStateView: View {
                     onAddTapped()
                 } label: {
                     Label("Añadir producto", systemImage: "plus")
-                        .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                        .font(Theme.bodyBoldDynamic)
                 }
                 .adaptiveGlassProminentButtonStyle()
 
@@ -74,7 +69,7 @@ struct EmptyStateView: View {
                         showTemplates()
                     } label: {
                         Label("Usar plantilla", systemImage: "square.grid.2x2")
-                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyBoldDynamic)
                     }
                     .adaptiveGlassButtonStyle()
                     .accessibilityIdentifier("empty-state-templates")
@@ -86,7 +81,7 @@ struct EmptyStateView: View {
                         showHistory()
                     } label: {
                         Label("Ver última compra", systemImage: "clock.arrow.circlepath")
-                            .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
+                            .font(Theme.bodyBoldDynamic)
                     }
                     .adaptiveGlassButtonStyle()
                 }
