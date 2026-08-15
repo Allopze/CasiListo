@@ -134,6 +134,26 @@ struct ContentView: View {
                 // La lista parte vacía: el catálogo completo vive en su pestaña
                 // y como plantilla. Se limpia el flag del seed legado.
                 UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
+
+                // Normalización única: fija sortOrder al orden alfabético actual
+                // para que activar el reordenamiento manual no cambie nada visible.
+                if !UserDefaults.standard.bool(forKey: "hasNormalizedSortOrderV1") {
+                    let allStoredItems = try modelContext.fetch(FetchDescriptor<ShoppingItem>())
+                    let groupsByListAndCategory = Dictionary(grouping: allStoredItems) {
+                        "\($0.listID?.uuidString ?? "none")|\($0.category.name)"
+                    }
+                    for (_, groupItems) in groupsByListAndCategory {
+                        let alphabetical = groupItems.sorted {
+                            $0.name.localizedCompare($1.name) == .orderedAscending
+                        }
+                        for (position, storedItem) in alphabetical.enumerated() {
+                            storedItem.sortOrder = position
+                        }
+                    }
+                    try modelContext.save()
+                    UserDefaults.standard.set(true, forKey: "hasNormalizedSortOrderV1")
+                }
+
                 try persistence.cleanUnreferencedFiles()
                 WidgetDataBridge.write(items: activeItems)
             } catch {

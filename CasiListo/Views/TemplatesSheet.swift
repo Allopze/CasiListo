@@ -185,7 +185,7 @@ struct TemplatesSheet: View {
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(Theme.accentYellow)
-                    .foregroundStyle(.black)
+                    .foregroundStyle(Theme.onAccent)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -193,7 +193,7 @@ struct TemplatesSheet: View {
         }
         .padding(16)
         .background(Color.appCardBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 

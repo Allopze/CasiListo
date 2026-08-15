@@ -60,6 +60,6 @@ struct StoreFilterBar: View {
     }
 
     private func selectedForeground(for store: Store?) -> Color {
-        store == nil ? Color.black : Color.white
+        store == nil ? Theme.onAccent : Color.white
     }
 }

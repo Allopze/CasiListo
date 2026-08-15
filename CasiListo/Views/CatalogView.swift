@@ -227,7 +227,7 @@ struct CatalogView: View {
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 24))
                     .symbolRenderingMode(.palette)
-                    .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
+                    .foregroundStyle(Theme.onAccent, Theme.accentYellow)
                     .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
             }
             .buttonStyle(.plain)

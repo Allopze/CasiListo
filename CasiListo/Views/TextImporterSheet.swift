@@ -87,7 +87,7 @@ struct TextImporterSheet: View {
             TextEditor(text: $rawText)
                 .padding(12)
                 .background(Color.appCardBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
                 .padding(.horizontal, 16)
                 .frame(maxHeight: .infinity)
 
@@ -101,8 +101,8 @@ struct TextImporterSheet: View {
                     .font(.subheadline.bold())
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
-                    .background(Theme.accentYellow.opacity(0.15))
-                    .foregroundStyle(Theme.accentYellow)
+                    .background(Theme.accentYellow)
+                    .foregroundStyle(Theme.onAccent)
                     .clipShape(Capsule())
             }
             .buttonStyle(.plain)
@@ -157,7 +157,7 @@ struct TextImporterSheet: View {
                                 if item.isDuplicate {
                                     Text("Ya existe en esta tienda")
                                         .font(.caption)
-                                        .foregroundStyle(.orange)
+                                        .foregroundStyle(Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D")))
                                 }
                             }
                         }
@@ -168,6 +168,8 @@ struct TextImporterSheet: View {
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .background(Color.appBackground)
         }
     }
 

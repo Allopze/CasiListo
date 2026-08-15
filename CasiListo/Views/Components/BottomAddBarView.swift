@@ -76,7 +76,7 @@ struct BottomAddBarView: View {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: actionButtonSymbolSize))
                                 .symbolRenderingMode(.palette)
-                                .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
+                                .foregroundStyle(Theme.onAccent, Theme.accentYellow)
                                 .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)
@@ -96,7 +96,7 @@ struct BottomAddBarView: View {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: actionButtonSymbolSize))
                                 .symbolRenderingMode(.palette)
-                                .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
+                                .foregroundStyle(Theme.onAccent, Theme.accentYellow)
                                 .frame(width: actionButtonSize, height: actionButtonSize)
                         }
                         .buttonStyle(.plain)

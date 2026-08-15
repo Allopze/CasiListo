@@ -124,7 +124,12 @@ struct ShoppingListView: View {
                         },
                         onMarkStatus: { item, status in
                             viewModel.markItem(item, as: status, context: modelContext)
-                        }
+                        },
+                        onMove: viewModel.allowsManualReorder
+                            ? { item, direction in
+                                viewModel.moveItem(item, direction: direction, context: modelContext)
+                            }
+                            : nil
                     )
                 }
             }

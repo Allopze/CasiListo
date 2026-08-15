@@ -14,6 +14,8 @@ struct CategorySectionView: View {
     let onEdit: (ShoppingItem) -> Void
     let onDelete: (ShoppingItem) -> Void
     let onMarkStatus: (ShoppingItem, ShoppingItemStatus) -> Void
+    /// Mueve el ítem dentro de la categoría (-1 sube, +1 baja); nil deshabilita.
+    var onMove: ((ShoppingItem, Int) -> Void)? = nil
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var headerPaddingVertical: CGFloat = 12
@@ -56,7 +58,11 @@ struct CategorySectionView: View {
                         },
                         onMarkStatus: { status in
                             onMarkStatus(item, status)
-                        }
+                        },
+                        onMoveUp: (onMove != nil && item.id != items.first?.id)
+                            ? { onMove?(item, -1) } : nil,
+                        onMoveDown: (onMove != nil && !isLast)
+                            ? { onMove?(item, 1) } : nil
                     )
                     .id("item-row-\(item.id)")
                     .listRowInsets(.init(

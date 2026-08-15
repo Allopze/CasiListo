@@ -11,6 +11,9 @@ enum Theme {
     /// Amarillo principal de la app — #F5C518.
     static let accentYellow = Color(red: 0.96, green: 0.77, blue: 0.09)
 
+    /// Tinta para texto e íconos sobre el amarillo de acento (10.7:1 en ambos modos).
+    static let onAccent = Color(hex: "1A1A1A")
+
     // MARK: - Medidas Estáticas (Compatibilidad)
 
     static let cornerRadius: CGFloat = 20

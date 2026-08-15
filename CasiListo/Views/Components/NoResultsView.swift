@@ -42,7 +42,7 @@ struct NoResultsView: View {
                     } label: {
                         Label("Añadir \"\(searchText)\"", systemImage: "plus")
                             .font(Theme.bodyBoldDynamic)
-                            .foregroundStyle(Color(hex: "1A1A1A"))
+                            .foregroundStyle(Theme.onAccent)
                             .frame(minHeight: Theme.minimumTouchTarget)
                             .padding(.horizontal, 16)
                             .background(Theme.accentYellow)

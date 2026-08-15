@@ -10,6 +10,8 @@ struct ItemRowView: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onMarkStatus: (ShoppingItemStatus) -> Void
+    var onMoveUp: (() -> Void)? = nil
+    var onMoveDown: (() -> Void)? = nil
 
     @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 26
     @ScaledMetric(relativeTo: .body) private var scaledPaddingVertical: CGFloat = 8
@@ -82,6 +84,26 @@ struct ItemRowView: View {
                 markStatus(.unavailable)
             } label: {
                 Label("No encontrado", systemImage: "exclamationmark.triangle")
+            }
+
+            if onMoveUp != nil || onMoveDown != nil {
+                Divider()
+
+                if let onMoveUp {
+                    Button {
+                        onMoveUp()
+                    } label: {
+                        Label("Subir", systemImage: "arrow.up")
+                    }
+                }
+
+                if let onMoveDown {
+                    Button {
+                        onMoveDown()
+                    } label: {
+                        Label("Bajar", systemImage: "arrow.down")
+                    }
+                }
             }
 
             Divider()
@@ -196,7 +218,7 @@ struct ItemRowView: View {
 
                 Image(systemName: "checkmark")
                     .font(.system(size: checkmarkSize, weight: .bold))
-                    .foregroundStyle(Color(hex: "1A1A1A"))
+                    .foregroundStyle(Theme.onAccent)
                     .transition(.scale.combined(with: .opacity))
             }
         }

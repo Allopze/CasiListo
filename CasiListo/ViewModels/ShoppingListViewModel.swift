@@ -132,14 +132,52 @@ final class ShoppingListViewModel {
         // Agrupar por categoría
         let grouped = Dictionary(grouping: filtered) { $0.category.name }
 
-        // Ordenar categorías e ítems alfabéticamente
+        // Categorías alfabéticas; ítems por sortOrder (reordenable) con
+        // desempate alfabético para datos heredados.
         return categories
             .compactMap { category in
                 guard let items = grouped[category.name], !items.isEmpty else { return nil }
-                let sorted = items.sorted { $0.name.localizedCompare($1.name) == .orderedAscending }
+                let sorted = items.sorted {
+                    if $0.sortOrder != $1.sortOrder { return $0.sortOrder < $1.sortOrder }
+                    return $0.name.localizedCompare($1.name) == .orderedAscending
+                }
                 return (category: category, items: sorted)
             }
             .sorted { $0.category.name.localizedCompare($1.category.name) == .orderedAscending }
+    }
+
+    /// Reordenamiento habilitado solo cuando la vista muestra la categoría
+    /// completa (sin búsqueda ni filtros que oculten vecinos).
+    var allowsManualReorder: Bool {
+        searchText.isEmpty && selectedStore == nil && showPurchased
+    }
+
+    /// Mueve un ítem una posición dentro de su categoría (direction: -1 sube, +1 baja).
+    func moveItem(_ item: ShoppingItem, direction: Int, context: ModelContext) {
+        guard allowsManualReorder,
+              let group = derivedGroups.first(where: { $0.items.contains { $0.id == item.id } }),
+              let index = group.items.firstIndex(where: { $0.id == item.id })
+        else { return }
+
+        let targetIndex = index + direction
+        guard group.items.indices.contains(targetIndex) else { return }
+
+        var reordered = group.items
+        reordered.remove(at: index)
+        reordered.insert(item, at: targetIndex)
+        for (position, categoryItem) in reordered.enumerated() {
+            categoryItem.sortOrder = position
+        }
+
+        do {
+            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+            HapticFeedback.selection()
+        } catch {
+            presentPersistenceError(error)
+        }
+        withAnimation(Theme.defaultAnimation) {
+            rederiveFilters()
+        }
     }
 
     /// Conteos de ítems en un solo pase.

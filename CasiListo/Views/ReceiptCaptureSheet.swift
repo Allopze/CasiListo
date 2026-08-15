@@ -394,7 +394,7 @@ struct ReceiptCaptureSheet: View {
         } label: {
             HStack(spacing: 8) {
                 if isSaving {
-                    ProgressView().tint(.black)
+                    ProgressView().tint(Theme.onAccent)
                 }
                 Text(isSaving ? "Guardando…" : (closesPurchase ? "Guardar y archivar compra" : "Guardar compra"))
                     .fontWeight(.semibold)
@@ -420,7 +420,7 @@ struct ReceiptCaptureSheet: View {
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: 56))
                 .symbolRenderingMode(.palette)
-                .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
+                .foregroundStyle(Theme.onAccent, Theme.accentYellow)
 
             VStack(spacing: 8) {
                 Text("Compra guardada")
