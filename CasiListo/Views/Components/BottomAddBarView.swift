@@ -74,7 +74,8 @@ struct BottomAddBarView: View {
                         Button { onAddQuick() } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: actionButtonSymbolSize * CGFloat(accessibilityTextSizeScale)))
-                                .foregroundStyle(Theme.accentYellow)
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
                                 .frame(width: actionButtonSize * CGFloat(accessibilityTextSizeScale), height: actionButtonSize * CGFloat(accessibilityTextSizeScale))
                         }
                         .buttonStyle(.plain)
@@ -83,7 +84,8 @@ struct BottomAddBarView: View {
                         Button { onAddTapped() } label: {
                             Image(systemName: "ellipsis.circle.fill")
                                 .font(.system(size: actionButtonSymbolSize * CGFloat(accessibilityTextSizeScale)))
-                                .foregroundStyle(Color.appTextSecondary)
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(Color.appCardBackground, Color.appTextSecondary)
                                 .frame(width: actionButtonSize * CGFloat(accessibilityTextSizeScale), height: actionButtonSize * CGFloat(accessibilityTextSizeScale))
                         }
                         .buttonStyle(.plain)
@@ -92,7 +94,8 @@ struct BottomAddBarView: View {
                         Button { onAddTapped() } label: {
                             Image(systemName: "plus.circle.fill")
                                 .font(.system(size: actionButtonSymbolSize * CGFloat(accessibilityTextSizeScale)))
-                                .foregroundStyle(Theme.accentYellow)
+                                .symbolRenderingMode(.palette)
+                                .foregroundStyle(Color(hex: "1A1A1A"), Theme.accentYellow)
                                 .frame(width: actionButtonSize * CGFloat(accessibilityTextSizeScale), height: actionButtonSize * CGFloat(accessibilityTextSizeScale))
                         }
                         .buttonStyle(.plain)

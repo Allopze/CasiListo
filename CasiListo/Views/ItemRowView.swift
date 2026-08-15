@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Fila individual para un ítem de compra.
-/// Muestra estado, contenido y acciones nativas de edición.
+/// El checkbox alterna el estado; tocar el resto de la fila abre la edición.
 struct ItemRowView: View {
     let item: ShoppingItem
     var searchText: String = ""
@@ -11,17 +11,13 @@ struct ItemRowView: View {
     let onDelete: () -> Void
     let onMarkStatus: (ShoppingItemStatus) -> Void
 
-    @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 28
-    @ScaledMetric(relativeTo: .body) private var scaledEditButtonSize: CGFloat = 44
+    @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 26
     @ScaledMetric(relativeTo: .body) private var scaledPaddingVertical: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var scaledSpacing: CGFloat = 14
-    @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 9
-    @ScaledMetric(relativeTo: .caption) private var storePaddingHorizontal: CGFloat = 6
-    @ScaledMetric(relativeTo: .caption) private var storePaddingVertical: CGFloat = 2
+    @ScaledMetric(relativeTo: .body) private var scaledSpacing: CGFloat = 12
+    @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 11
     @ScaledMetric(relativeTo: .caption) private var pillPaddingHorizontal: CGFloat = 8
-    @ScaledMetric(relativeTo: .caption) private var pillPaddingVertical: CGFloat = 3
+    @ScaledMetric(relativeTo: .caption) private var pillPaddingVertical: CGFloat = 2.5
     @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var editButtonSymbolSize: CGFloat = 13
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -40,18 +36,24 @@ struct ItemRowView: View {
             .accessibilityHint("Cambia el estado del producto")
             .accessibilityIdentifier("item-toggle-\(item.id.uuidString)")
 
-            rowContent
-                .accessibilityElement(children: .combine)
-                .accessibilityLabel(accessibilityLabel)
-
-            Spacer(minLength: 0)
+            Button {
+                HapticFeedback.selection()
+                onEdit()
+            } label: {
+                HStack(spacing: scaledSpacing) {
+                    rowContent
+                    Spacer(minLength: 0)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilityLabel)
+            .accessibilityHint("Toca para editar el producto")
 
             if let voiceNote = item.voiceNoteFilename {
                 VoiceNotePlayerButton(filename: voiceNote)
             }
-
-            // Lado derecho independiente que al tocar permite editar el producto.
-            editButton
         }
         .padding(.vertical, scaledPaddingVertical)
         .contextMenu {
@@ -138,37 +140,42 @@ struct ItemRowView: View {
     @ViewBuilder
     private var metaChips: some View {
         if showsStore || !item.quantity.isEmpty || item.status == .skipped || item.status == .unavailable {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 if showsStore {
                     Text(item.store.displayName)
-                    .font(.system(size: storeTextSize, weight: .bold))
-                    .foregroundStyle(.white)
-                    .padding(.horizontal, storePaddingHorizontal)
-                    .padding(.vertical, storePaddingVertical)
-                    .background(item.store.color.opacity(item.isPurchased ? 0.35 : 0.68))
-                    .clipShape(Capsule())
-                    .accessibilityLabel("Tienda: \(item.store.displayName)")
+                        .font(.system(size: storeTextSize, weight: .medium))
+                        .foregroundStyle(item.store.labelColor)
+                        .padding(.horizontal, pillPaddingHorizontal)
+                        .padding(.vertical, pillPaddingVertical)
+                        .background(item.store.color.opacity(0.13))
+                        .clipShape(Capsule())
+                        .opacity(item.isPurchased ? 0.55 : 1)
+                        .accessibilityLabel("Tienda: \(item.store.displayName)")
                 }
 
                 if !item.quantity.isEmpty {
                     Text(item.quantity)
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextSecondary)
-                    .padding(.horizontal, pillPaddingHorizontal)
-                    .padding(.vertical, pillPaddingVertical)
-                    .background(quantityBackground)
-                    .clipShape(Capsule())
-                    .accessibilityLabel("Cantidad \(item.quantity)")
-            }
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextSecondary)
+                        .padding(.horizontal, pillPaddingHorizontal)
+                        .padding(.vertical, pillPaddingVertical)
+                        .background(Color.appTextSecondary.opacity(0.08))
+                        .clipShape(Capsule())
+                        .accessibilityLabel("Cantidad \(item.quantity)")
+                }
 
                 if item.status == .skipped || item.status == .unavailable {
                     Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(item.status == .skipped ? Color.orange : Color.red)
-                    .labelStyle(.titleAndIcon)
-                    .padding(.horizontal, pillPaddingHorizontal)
-                    .padding(.vertical, pillPaddingVertical)
-                    .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.10))
+                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                        .foregroundStyle(
+                            item.status == .skipped
+                                ? Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D"))
+                                : Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078"))
+                        )
+                        .labelStyle(.titleAndIcon)
+                        .padding(.horizontal, pillPaddingHorizontal)
+                        .padding(.vertical, pillPaddingVertical)
+                        .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.10))
                         .clipShape(Capsule())
                 }
             }
@@ -179,8 +186,8 @@ struct ItemRowView: View {
         ZStack {
             Circle()
                 .strokeBorder(
-                    item.isPurchased ? Theme.accentYellow : Color.appTextPurchased,
-                    lineWidth: 2
+                    item.isPurchased ? Theme.accentYellow : Color.appTextSecondary.opacity(0.85),
+                    lineWidth: 1.8
                 )
 
             if item.isPurchased {
@@ -190,36 +197,11 @@ struct ItemRowView: View {
 
                 Image(systemName: "checkmark")
                     .font(.system(size: checkmarkSize, weight: .bold))
-                    .foregroundStyle(.white)
+                    .foregroundStyle(Color(hex: "1A1A1A"))
                     .transition(.scale.combined(with: .opacity))
             }
         }
         .frame(width: checkboxSize, height: checkboxSize)
-    }
-
-    private var editButton: some View {
-        Button {
-            HapticFeedback.selection()
-            onEdit()
-        } label: {
-            Image(systemName: "pencil")
-                .font(.system(size: editButtonSymbolSize, weight: .semibold))
-                .foregroundStyle(Color.appTextSecondary)
-                .frame(width: max(Theme.minimumTouchTarget, scaledEditButtonSize),
-                       height: max(Theme.minimumTouchTarget, scaledEditButtonSize))
-                .overlay {
-                    Circle()
-                        .stroke(Color.appSeparator.opacity(0.85), lineWidth: 1)
-                }
-        }
-        .buttonStyle(.plain)
-        .accessibilityLabel("Editar \(item.name)")
-    }
-
-    private var quantityBackground: some ShapeStyle {
-        item.isPurchased
-            ? Color.appTextPurchased.opacity(0.1)
-            : Color.appTextSecondary.opacity(0.1)
     }
 
     private var accessibilityLabel: String {

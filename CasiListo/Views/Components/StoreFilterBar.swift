@@ -8,7 +8,7 @@ struct StoreFilterBar: View {
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 8) {
-                filterChip(title: "Todos", store: nil, icon: "house.fill")
+                filterChip(title: "Todos", store: nil, icon: "square.grid.2x2.fill")
                 ForEach(Store.allCases) { store in
                     filterChip(title: store.displayName, store: store, icon: store.sfSymbol)
                 }
@@ -21,7 +21,8 @@ struct StoreFilterBar: View {
     @ViewBuilder
     private func filterChip(title: String, store: Store?, icon: String) -> some View {
         let isSelected = selectedStore == store
-        let activeColor = store?.color ?? Theme.accentYellow
+        // Relleno oscurecido para que el texto blanco cumpla 4.5:1 (WCAG AA).
+        let activeColor = store?.selectedFillColor ?? Theme.accentYellow
 
         Button {
             HapticFeedback.selection()

@@ -1,6 +1,7 @@
 import SwiftUI
 
-/// Barra que resume el recuento de productos y precios acumulados, y permite mostrar/ocultar comprados.
+/// Resumen de progreso de la compra: recuentos, barra de avance y control
+/// para mostrar u ocultar los productos comprados.
 struct SummaryBarView: View {
     let pendingCount: Int
     let purchasedCount: Int
@@ -8,61 +9,98 @@ struct SummaryBarView: View {
     var onArchivePurchased: (() -> Void)? = nil
 
     @ScaledMetric(relativeTo: .caption) private var scaledSpacing: CGFloat = 10
-    @ScaledMetric(relativeTo: .body) private var eyeIconSize: CGFloat = 15
-    @ScaledMetric(relativeTo: .body) private var eyeCornerRadius: CGFloat = Theme.chipCornerRadius
-    @ScaledMetric(relativeTo: .body) private var verticalPadding: CGFloat = 4
+    @ScaledMetric(relativeTo: .caption) private var progressHeight: CGFloat = 5
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
+    private var totalCount: Int { pendingCount + purchasedCount }
+
+    private var progress: Double {
+        guard totalCount > 0 else { return 0 }
+        return Double(purchasedCount) / Double(totalCount)
+    }
+
     var body: some View {
-        let pendingLabel = "\(pendingCount) pendientes"
-        let purchasedLabel = "\(purchasedCount) comprados"
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: scaledSpacing) {
+                Text(pendingCount == 1 ? "1 pendiente" : "\(pendingCount) pendientes")
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.medium))
+                    .foregroundStyle(Color.appTextSecondary)
+                    .monospacedDigit()
 
-        return HStack(spacing: scaledSpacing) {
-            Label(pendingLabel, systemImage: "checklist.unchecked")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(Color.appTextSecondary)
-
-            if purchasedCount > 0 {
-                if let archive = onArchivePurchased {
-                    Button {
-                        HapticFeedback.selection()
-                        archive()
-                    } label: {
-                        Label("Archivar \(purchasedCount)", systemImage: "archivebox")
-                            .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                if purchasedCount > 0 {
+                    if let archive = onArchivePurchased {
+                        Button {
+                            HapticFeedback.selection()
+                            archive()
+                        } label: {
+                            Label("Archivar \(purchasedCount)", systemImage: "archivebox")
+                                .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
+                                .foregroundStyle(Color.appTextSecondary)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Archivar \(purchasedCount) productos comprados")
+                    } else {
+                        Text(purchasedCount == 1 ? "1 comprado" : "\(purchasedCount) comprados")
+                            .font(Theme.captionFont(scale: accessibilityTextSizeScale))
                             .foregroundStyle(Color.appTextSecondary)
+                            .monospacedDigit()
                     }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Archivar \(purchasedCount) productos comprados")
-                } else {
-                    Label(purchasedLabel, systemImage: "checkmark.circle.fill")
-                        .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                        .foregroundStyle(Color.appTextSecondary)
                 }
+
+                Spacer(minLength: 8)
+
+                Button {
+                    HapticFeedback.selection()
+                    withAnimation(Theme.defaultAnimation) {
+                        showPurchased.toggle()
+                    }
+                } label: {
+                    Label(
+                        showPurchased ? "Ocultar comprados" : "Ver comprados",
+                        systemImage: showPurchased ? "eye.slash" : "eye"
+                    )
+                    .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.medium))
+                    .foregroundStyle(Color.appTextSecondary)
+                    .lineLimit(1)
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background {
+                        Capsule()
+                            .fill(Color.appCardBackground)
+                            .overlay {
+                                Capsule()
+                                    .strokeBorder(Color.appSeparator, lineWidth: 1)
+                            }
+                    }
+                    .frame(minHeight: Theme.minimumTouchTarget)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .layoutPriority(1)
+                .accessibilityLabel(showPurchased ? "Ocultar comprados" : "Mostrar comprados")
             }
 
-            Spacer(minLength: 8)
+            if totalCount > 0 {
+                GeometryReader { proxy in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(Color.appSeparator)
 
-            Button {
-                HapticFeedback.selection()
-                withAnimation(Theme.defaultAnimation) {
-                    showPurchased.toggle()
+                        if progress > 0 {
+                            Capsule()
+                                .fill(Theme.accentYellow)
+                                .frame(width: max(progressHeight, proxy.size.width * progress))
+                        }
+                    }
                 }
-            } label: {
-                Label(
-                    showPurchased ? "Ocultar comprados" : "Ver comprados",
-                    systemImage: showPurchased ? "eye.slash" : "eye"
-                )
-                .font(.system(size: eyeIconSize, weight: .semibold))
-                .padding(.horizontal, 10)
-                .frame(minHeight: Theme.minimumTouchTarget)
+                .frame(height: progressHeight)
+                .animation(Theme.defaultAnimation, value: progress)
+                .accessibilityElement()
+                .accessibilityLabel("Progreso de la compra")
+                .accessibilityValue("\(purchasedCount) de \(totalCount) productos comprados")
             }
-            .buttonStyle(.plain)
-            .glassFilterSurface(cornerRadius: eyeCornerRadius, interactive: true)
-            .accessibilityLabel(showPurchased ? "Ocultar comprados" : "Mostrar comprados")
         }
-        .padding(.vertical, verticalPadding)
         .accessibilityElement(children: .contain)
     }
 }

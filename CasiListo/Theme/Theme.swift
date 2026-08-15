@@ -13,8 +13,8 @@ enum Theme {
 
     // MARK: - Medidas Estáticas (Compatibilidad)
 
-    static let cornerRadius: CGFloat = 34
-    static let smallCornerRadius: CGFloat = 26
+    static let cornerRadius: CGFloat = 20
+    static let smallCornerRadius: CGFloat = 16
     static let controlCornerRadius: CGFloat = 999
     static let chipCornerRadius: CGFloat = 999
     static let cardPadding: CGFloat = 16
@@ -99,11 +99,11 @@ enum Theme {
     }
 
     static func cornerRadius(scale: Double) -> CGFloat {
-        34 * CGFloat(scale)
+        20 * CGFloat(scale)
     }
 
     static func smallCornerRadius(scale: Double) -> CGFloat {
-        26 * CGFloat(scale)
+        16 * CGFloat(scale)
     }
 
     static func controlCornerRadius(scale: Double) -> CGFloat {
@@ -326,8 +326,9 @@ extension UIColor {
 
 extension Color {
 
-    /// Fondo principal adaptativo.
-    static let appBackground = Color(light: UIColor(hex: "FAF8F5"), dark: UIColor(hex: "1C1B1A"))
+    /// Fondo principal adaptativo. Crema cálido con profundidad suficiente
+    /// para que las tarjetas blancas se lean como superficies.
+    static let appBackground = Color(light: UIColor(hex: "F5F1EB"), dark: UIColor(hex: "1C1B1A"))
 
     /// Fondo de tarjeta adaptativo.
     static let appCardBackground = Color(light: UIColor.white, dark: UIColor(hex: "2A2928"))
@@ -335,14 +336,14 @@ extension Color {
     /// Texto primario adaptativo.
     static let appTextPrimary = Color(light: UIColor(hex: "1A1A1A"), dark: UIColor(hex: "F5F5F5"))
 
-    /// Texto secundario adaptativo.
-    static let appTextSecondary = Color(light: UIColor(hex: "8A8A8A"), dark: UIColor(hex: "A0A0A0"))
+    /// Texto secundario adaptativo. 6E6E6E da 4.8:1 sobre el fondo crema (WCAG AA).
+    static let appTextSecondary = Color(light: UIColor(hex: "6E6E6E"), dark: UIColor(hex: "A0A0A0"))
 
     /// Texto para ítems comprados.
-    static let appTextPurchased = Color(light: UIColor(hex: "6F6F6F"), dark: UIColor(hex: "A8A8A8"))
+    static let appTextPurchased = Color(light: UIColor(hex: "8A8680"), dark: UIColor(hex: "A8A8A8"))
 
-    /// Separador sutil.
-    static let appSeparator = Color(light: UIColor(hex: "ECECEC"), dark: UIColor(hex: "3A3938"))
+    /// Separador sutil (cálido, en armonía con el fondo crema).
+    static let appSeparator = Color(light: UIColor(hex: "EAE5DD"), dark: UIColor(hex: "3A3938"))
 
     // MARK: - Helpers
 

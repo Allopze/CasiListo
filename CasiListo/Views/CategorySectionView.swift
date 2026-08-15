@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// Sección de la lista agrupada por categoría.
-/// La cabecera funciona como una tarjeta principal y permite expandir o contraer
-/// los ítems de la categoría.
+/// La cabecera y sus ítems forman una única tarjeta continua: la cabecera
+/// redondea las esquinas superiores y la última fila las inferiores.
 struct CategorySectionView: View {
     let category: Category
     let items: [ShoppingItem]
@@ -17,24 +17,30 @@ struct CategorySectionView: View {
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var headerPaddingVertical: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 2
+    @ScaledMetric(relativeTo: .body) private var listRowInsetVertical: CGFloat = 2
+    @ScaledMetric(relativeTo: .body) private var lastRowBottomInset: CGFloat = 8
     @ScaledMetric(relativeTo: .body) private var hStackSpacing: CGFloat = 12
-    @ScaledMetric(relativeTo: .body) private var sfSymbolSize: CGFloat = 19
-    @ScaledMetric(relativeTo: .body) private var imageWidth: CGFloat = 32
-    @ScaledMetric(relativeTo: .caption) private var countPaddingHorizontal: CGFloat = 10
-    @ScaledMetric(relativeTo: .caption) private var countPaddingVertical: CGFloat = 4
-    @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 14
+    @ScaledMetric(relativeTo: .body) private var sfSymbolSize: CGFloat = 15
+    @ScaledMetric(relativeTo: .body) private var imageWidth: CGFloat = 30
+    @ScaledMetric(relativeTo: .caption) private var countPaddingHorizontal: CGFloat = 9
+    @ScaledMetric(relativeTo: .caption) private var countPaddingVertical: CGFloat = 3
+    @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 13
     @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
-    @ScaledMetric(relativeTo: .body) private var topPadding: CGFloat = 8
-    @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 0
-    @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 64
+    @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 56
 
     @AppStorage("accessibilityTextSizeScale") private var accessibilityTextSizeScale = 1.0
 
     var body: some View {
         Section {
+            sectionHeader
+                .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 0))
+                .listRowSeparator(.hidden)
+                .listRowBackground(Color.clear)
+
             if !isCollapsed {
                 ForEach(items, id: \.id) { item in
+                    let isLast = item.id == items.last?.id
+
                     ItemRowView(
                         item: item,
                         searchText: searchText,
@@ -53,14 +59,14 @@ struct CategorySectionView: View {
                         }
                     )
                     .listRowInsets(.init(
-                        top: listRowInsetTop,
-                        leading: cardPadding,
-                        bottom: listRowInsetTop,
-                        trailing: cardPadding
+                        top: listRowInsetVertical,
+                        leading: cardPadding * 2,
+                        bottom: isLast ? lastRowBottomInset : listRowInsetVertical,
+                        trailing: cardPadding * 2
                     ))
-                    .listRowSeparator(.visible, edges: .bottom)
-                    .listRowSeparatorTint(Color.appSeparator.opacity(0.85))
-                    .listRowBackground(Color.clear)
+                    .listRowSeparator(isLast ? .hidden : .visible, edges: .bottom)
+                    .listRowSeparatorTint(Color.appSeparator)
+                    .listRowBackground(rowBackground(isLast: isLast))
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             HapticFeedback.impact()
@@ -77,7 +83,7 @@ struct CategorySectionView: View {
                         } label: {
                             Label("Editar", systemImage: "pencil")
                         }
-                        .tint(Theme.accentYellow)
+                        .tint(Color(hex: "B8860B"))
                     }
                     .swipeActions(edge: .leading) {
                         Button {
@@ -99,9 +105,20 @@ struct CategorySectionView: View {
                     ))
                 }
             }
-        } header: {
-            sectionHeader
         }
+    }
+
+    /// Fondo blanco de fila que continúa la tarjeta de la cabecera.
+    private func rowBackground(isLast: Bool) -> some View {
+        UnevenRoundedRectangle(
+            topLeadingRadius: 0,
+            bottomLeadingRadius: isLast ? cornerRadius : 0,
+            bottomTrailingRadius: isLast ? cornerRadius : 0,
+            topTrailingRadius: 0,
+            style: .continuous
+        )
+        .fill(Color.appCardBackground)
+        .padding(.horizontal, cardPadding)
     }
 
     private var sectionHeader: some View {
@@ -113,25 +130,23 @@ struct CategorySectionView: View {
         } label: {
             HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
-                    .font(.system(size: sfSymbolSize, weight: .bold))
+                    .font(.system(size: sfSymbolSize, weight: .semibold))
                     .foregroundStyle(categoryAccent)
                     .frame(width: imageWidth, height: imageWidth)
-                    .background(categoryAccent.opacity(0.16))
-                    .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                    .background(categoryAccent.opacity(0.14))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                 Text(category.displayName)
-                    .font(Theme.sectionHeaderFont(scale: accessibilityTextSizeScale))
+                    .font(Theme.bodyBoldFont(scale: accessibilityTextSizeScale))
                     .foregroundStyle(Color.appTextPrimary)
-                    .bold()
 
                 Spacer()
 
                 categoryBadge
-                
+
                 Image(systemName: "chevron.down")
-                    .font(.system(size: chevronSize, weight: .bold))
+                    .font(.system(size: chevronSize, weight: .semibold))
                     .foregroundStyle(Color.appTextSecondary)
-                    .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                     .rotationEffect(.degrees(isCollapsed ? 0 : 180))
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
             }
@@ -140,17 +155,16 @@ struct CategorySectionView: View {
             .padding(.horizontal, cardPadding)
             .frame(maxWidth: .infinity, minHeight: headerMinimumHeight, alignment: .leading)
             .background {
-                RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                    .fill(Color.appCardBackground)
-                    .overlay {
-                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                            .stroke(Color.appSeparator.opacity(0.8), lineWidth: 1)
-                    }
+                UnevenRoundedRectangle(
+                    topLeadingRadius: cornerRadius,
+                    bottomLeadingRadius: isCollapsed ? cornerRadius : 0,
+                    bottomTrailingRadius: isCollapsed ? cornerRadius : 0,
+                    topTrailingRadius: cornerRadius,
+                    style: .continuous
+                )
+                .fill(Color.appCardBackground)
             }
-            .shadow(color: .black.opacity(0.025), radius: 4, x: 0, y: 2)
             .padding(.horizontal, cardPadding)
-            .padding(.top, topPadding)
-            .padding(.bottom, bottomPadding)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -169,49 +183,29 @@ struct CategorySectionView: View {
     private var purchasedCount: Int { items.filter { $0.isPurchased }.count }
     private var categoryAccent: Color { Category.accentColor(forName: category.name) }
 
+    /// Recuento discreto: texto secundario para pendientes; verde solo cuando
+    /// la categoría está completa (estado con significado real).
     @ViewBuilder
     private var categoryBadge: some View {
         if pendingCount == 0 {
             Label("\(purchasedCount)", systemImage: "checkmark")
-                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .font(Theme.captionFont(scale: accessibilityTextSizeScale).weight(.semibold))
                 .foregroundStyle(.white)
-                .bold()
                 .monospacedDigit()
                 .padding(.horizontal, countPaddingHorizontal)
                 .padding(.vertical, countPaddingVertical)
-                .background(Color.green.opacity(0.85))
+                .background(Color(hex: "2E7D42"))
                 .clipShape(Capsule())
         } else if purchasedCount > 0 {
-            HStack(spacing: 4) {
-                Text("\(pendingCount)")
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(categoryAccent)
-                    .bold()
-                    .monospacedDigit()
-                    .padding(.horizontal, countPaddingHorizontal)
-                    .padding(.vertical, countPaddingVertical)
-                    .background(categoryAccent.opacity(0.16))
-                    .clipShape(Capsule())
-                Label("\(purchasedCount)", systemImage: "checkmark")
-                    .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                    .foregroundStyle(.white)
-                    .bold()
-                    .monospacedDigit()
-                    .padding(.horizontal, countPaddingHorizontal)
-                    .padding(.vertical, countPaddingVertical)
-                    .background(Color.green.opacity(0.85))
-                    .clipShape(Capsule())
-            }
+            Text("\(purchasedCount) de \(items.count)")
+                .font(Theme.captionFont(scale: accessibilityTextSizeScale))
+                .foregroundStyle(Color.appTextSecondary)
+                .monospacedDigit()
         } else {
             Text("\(pendingCount)")
                 .font(Theme.captionFont(scale: accessibilityTextSizeScale))
-                .foregroundStyle(categoryAccent)
-                .bold()
+                .foregroundStyle(Color.appTextSecondary)
                 .monospacedDigit()
-                .padding(.horizontal, countPaddingHorizontal)
-                .padding(.vertical, countPaddingVertical)
-                .background(categoryAccent.opacity(0.16))
-                .clipShape(Capsule())
         }
     }
 }
