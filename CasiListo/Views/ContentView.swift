@@ -78,7 +78,13 @@ struct ContentView: View {
                         isPresented: $showsClearPurchasedDialog,
                         titleVisibility: .visible
                     ) {
-                        Button("Archivar \(viewModel.itemCounts(from: activeItems).purchased) comprados", role: .destructive) {
+                        Button("Añadir boleta y archivar") {
+                            viewModel.presentReceipt(closesPurchase: true)
+                        }
+                        Button({
+                            let count = viewModel.itemCounts(from: activeItems).purchased
+                            return count == 1 ? "Archivar 1 comprado" : "Archivar \(count) comprados"
+                        }(), role: .destructive) {
                             let purchasedCount = viewModel.itemCounts(from: activeItems).purchased
                             do {
                                 try ShoppingPersistenceCoordinator(context: modelContext).archivePurchased(
@@ -94,7 +100,7 @@ struct ContentView: View {
                         }
                         Button("Cancelar", role: .cancel) {}
                     } message: {
-                        Text("Esta acción mueve los productos comprados al historial y los quita de la lista actual.")
+                        Text("Mueve los comprados al historial. Con la boleta, CasiListo además registra los precios que pagaste.")
                     }
         }
         .tint(Theme.accentYellow)
@@ -255,13 +261,15 @@ struct ContentView: View {
             SettingsSheet()
         case .history:
             ShoppingHistoryView(completedLists: completedLists, allItems: allItems)
-        case .receipt:
+        case .receipt(let closesPurchase):
             ReceiptCaptureSheet(
                 activeList: activeList,
                 activeItems: activeItems,
                 allItems: allItems,
                 completedLists: completedLists,
-                categories: categories
+                categories: categories,
+                closesPurchase: closesPurchase,
+                onShowHistory: { viewModel.presentHistory() }
             )
         case .textImporter:
             TextImporterSheet(

@@ -95,14 +95,16 @@ final class ShoppingPersistenceCoordinator {
         try commit(itemsForWidget: allActiveItems)
     }
 
+    @discardableResult
     func registerReceipt(
         entries: [ReceiptPurchaseEntry],
         receiptImage: UIImage,
         store: Store,
         activeList: ShoppingList?,
         allItems: [ShoppingItem],
-        categories: [Category]
-    ) throws -> ShoppingList {
+        categories: [Category],
+        archivingPurchased: Bool = false
+    ) throws -> ReceiptRegistrationSummary {
         try ReceiptPurchaseService.register(
             entries: entries,
             receiptImage: receiptImage,
@@ -110,7 +112,8 @@ final class ShoppingPersistenceCoordinator {
             activeList: activeList,
             allItems: allItems,
             categories: categories,
-            context: context
+            context: context,
+            archivingPurchased: archivingPurchased
         )
     }
 

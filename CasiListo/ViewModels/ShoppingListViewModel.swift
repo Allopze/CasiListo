@@ -8,7 +8,7 @@ enum ShoppingListSheetDestination: Identifiable {
     case editItem(ShoppingItem)
     case settings
     case history
-    case receipt
+    case receipt(closesPurchase: Bool)
     case textImporter
     case templates
 
@@ -22,8 +22,8 @@ enum ShoppingListSheetDestination: Identifiable {
             return "settings"
         case .history:
             return "history"
-        case .receipt:
-            return "receipt"
+        case .receipt(let closesPurchase):
+            return closesPurchase ? "receipt-closing" : "receipt"
         case .textImporter:
             return "text-importer"
         case .templates:
@@ -220,6 +220,11 @@ final class ShoppingListViewModel {
     func togglePurchased(_ item: ShoppingItem, context: ModelContext? = nil) {
         let previousStatus = item.status
         item.status = item.status == .purchased ? .pending : .purchased
+        defer {
+            // Mutar una propiedad no cambia la identidad del array de @Query,
+            // así que onChange(of: allItems) no dispara: recalcular aquí.
+            rederiveFilters()
+        }
         guard let context else { return }
         do {
             try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
@@ -233,6 +238,9 @@ final class ShoppingListViewModel {
     func markItem(_ item: ShoppingItem, as status: ShoppingItemStatus, context: ModelContext? = nil) {
         let previousStatus = item.status
         item.status = status
+        defer {
+            rederiveFilters()
+        }
         guard let context else { return }
         do {
             try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
@@ -259,8 +267,8 @@ final class ShoppingListViewModel {
         presentedSheet = .history
     }
 
-    func presentReceipt() {
-        presentedSheet = .receipt
+    func presentReceipt(closesPurchase: Bool = false) {
+        presentedSheet = .receipt(closesPurchase: closesPurchase)
     }
 
     func presentTextImporter() {
