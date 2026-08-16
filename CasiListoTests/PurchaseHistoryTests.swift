@@ -17,6 +17,28 @@ final class PurchaseHistoryTests: XCTestCase {
         )
     }
 
+    /// Las boletas chilenas encabezan con la razón social y el RUT, no con el
+    /// nombre de fantasía: buscar solo la marca dejaba la tienda sin detectar.
+    func testStoreDetectorRecognizesLegalNameAndTaxID() {
+        XCTAssertEqual(
+            ReceiptStoreDetector.detectStoreRawValue(in: ["CENCOSUD RETAIL S.A.", "BOLETA ELECTRONICA"]),
+            Store.jumbo.rawValue
+        )
+        XCTAssertEqual(
+            ReceiptStoreDetector.detectStoreRawValue(in: ["WALMART CHILE COMERCIAL", "BOLETA ELECTRONICA"]),
+            Store.lider.rawValue
+        )
+        XCTAssertEqual(
+            ReceiptStoreDetector.detectStoreRawValue(in: ["SUPERMERCADO", "R.U.T. 81.201.000-K"]),
+            Store.jumbo.rawValue
+        )
+    }
+
+    /// «LIDERAZGO» contiene «lider»: la marca se busca como palabra completa.
+    func testStoreDetectorDoesNotMatchPartialWords() {
+        XCTAssertNil(ReceiptStoreDetector.detectStoreRawValue(in: ["CURSO DE LIDERAZGO", "BOLETA"]))
+    }
+
     func testStoreDetectorDoesNotInferStoreFromProductLines() {
         let lines = Array(repeating: "Producto sin tienda", count: 12) + ["Oferta JUMBO 2.000"]
         XCTAssertNil(ReceiptStoreDetector.detectStoreRawValue(in: lines))
@@ -185,6 +207,46 @@ final class PurchaseHistoryTests: XCTestCase {
         XCTAssertEqual(comparison?.percentage ?? -1, 12.5, accuracy: 0.001)
     }
 
+    // MARK: - Reconstrucción de filas
+
+    /// Vision devuelve el nombre y el precio de una fila como observaciones
+    /// distintas, y ordenadas por altura se intercalan las dos columnas. Este es
+    /// el caso que el parser tiene que resolver antes que ningún otro.
+    func testAssemblerRebuildsRowsFromSeparateColumnObservations() {
+        let lines = ReceiptLineAssembler.assemble([
+            observation("990", row: 1, minX: 0.84, maxX: 0.95),
+            observation("PAN MARRAQUETA", row: 0, minX: 0.05, maxX: 0.45),
+            observation("LCH DESLC COLUN 1L", row: 1, minX: 0.05, maxX: 0.50),
+            observation("1.250", row: 0, minX: 0.80, maxX: 0.95)
+        ])
+
+        XCTAssertEqual(lines.map(\.text), ["PAN MARRAQUETA 1.250", "LCH DESLC COLUN 1L 990"])
+        XCTAssertEqual(lines.first?.columns?.left, "PAN MARRAQUETA")
+        XCTAssertEqual(lines.first?.columns?.right, "1.250")
+    }
+
+    func testAssemblerOrderIsStableRegardlessOfObservationOrder() {
+        let observations = [
+            observation("PAN", row: 0, minX: 0.05, maxX: 0.30),
+            observation("1.250", row: 0, minX: 0.80, maxX: 0.95),
+            observation("LECHE", row: 1, minX: 0.05, maxX: 0.30),
+            observation("990", row: 1, minX: 0.84, maxX: 0.95)
+        ]
+        let expected = ReceiptLineAssembler.assemble(observations).map(\.text)
+
+        XCTAssertEqual(ReceiptLineAssembler.assemble(observations.reversed()).map(\.text), expected)
+        XCTAssertEqual(ReceiptLineAssembler.assemble(observations.shuffled()).map(\.text), expected)
+    }
+
+    func testAssemblerDropsLowConfidenceObservations() {
+        let lines = ReceiptLineAssembler.assemble([
+            observation("PAN MARRAQUETA", row: 0, minX: 0.05, maxX: 0.45),
+            observation("|||", row: 0, minX: 0.50, maxX: 0.60, confidence: 0.1)
+        ])
+
+        XCTAssertEqual(lines.map(\.text), ["PAN MARRAQUETA"])
+    }
+
     // MARK: - Parser de líneas de boleta
 
     func testParserReadsSameLineAndTwoLineFormats() {
@@ -205,38 +267,142 @@ final class PurchaseHistoryTests: XCTestCase {
         XCTAssertEqual(parsed.count, 3)
 
         XCTAssertEqual(parsed[0].name, "PAN MARRAQUETA")
-        XCTAssertEqual(parsed[0].price, 1_250)
+        XCTAssertEqual(parsed[0].lineTotal, 1_250)
         XCTAssertEqual(parsed[0].quantity, 1)
 
         XCTAssertEqual(parsed[1].name, "COCA COLA ZERO 3L")
-        XCTAssertEqual(parsed[1].price, 1_990)
+        XCTAssertEqual(parsed[1].lineTotal, 3_980)
         XCTAssertEqual(parsed[1].quantity, 2)
+        XCTAssertEqual(parsed[1].unitPrice, 1_990)
 
+        // «AHORRO SOCIO» es el resumen de la compra, no una rebaja de la leche.
         XCTAssertEqual(parsed[2].name, "LECHE COLUN 1L")
-        XCTAssertEqual(parsed[2].price, 990)
+        XCTAssertEqual(parsed[2].lineTotal, 990)
         XCTAssertEqual(parsed[2].quantity, 1)
     }
 
-    func testParserPrefersPrintedTotalWhenUnitDoesNotMatch() {
-        let parsed = ReceiptLineParser.parse(["YOGURT GRIEGO", "3 x $1.000 $2.700"])
+    /// Vision normaliza la `x` mecanografiada al signo `×` (U+00D7): con la clase
+    /// de caracteres anterior toda la lógica de cantidades quedaba muerta.
+    func testParserReadsUnicodeMultiplicationSign() {
+        let parsed = ReceiptLineParser.parse(["BOLETA ELECTRONICA", "COCA COLA ZERO 3L", "2 \u{00D7} $1.990 $3.980"])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].quantity, 2)
+        XCTAssertEqual(parsed[0].lineTotal, 3_980)
+    }
+
+    func testParserReadsQuantityPrintedBeforeTheName() {
+        let parsed = ReceiptLineParser.parse(["BOLETA ELECTRONICA", "2 UN \u{00D7} $1.990 $3.980", "COCA COLA ZERO 3L"])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].name, "COCA COLA ZERO 3L")
+        XCTAssertEqual(parsed[0].quantity, 2)
+    }
+
+    /// Productos al peso: la boleta cobra el total de la pesada, no unidades.
+    func testParserReadsWeightedItemsAsASingleLine() {
+        let parsed = ReceiptLineParser.parse(["BOLETA ELECTRONICA", "PALTA HASS", "0,860 KG X $6.990/KG $6.011"])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].name, "PALTA HASS")
+        XCTAssertEqual(parsed[0].quantity, 1)
+        XCTAssertEqual(parsed[0].lineTotal, 6_011)
+    }
+
+    func testParserKeepsPrintedLineTotalWhenUnitDoesNotDivideEvenly() {
+        let parsed = ReceiptLineParser.parse(["BOLETA ELECTRONICA", "YOGURT GRIEGO", "3 x $1.000 $2.750"])
 
         XCTAssertEqual(parsed.count, 1)
         XCTAssertEqual(parsed[0].quantity, 3)
-        XCTAssertEqual(parsed[0].price, 900)
+        // Antes se guardaba el unitario redondeado y la línea pasaba a valer
+        // $2.751: el total impreso deja de cuadrar con la boleta.
+        XCTAssertEqual(parsed[0].lineTotal, 2_750)
+    }
+
+    /// «OLIVA» contiene «iva» y «FRUTILLA» contiene «rut»: buscar los términos
+    /// excluidos como subcadena borraba productos perfectamente válidos.
+    func testParserKeepsProductsThatContainExcludedTermsAsSubstrings() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "ACEITE DE OLIVA 500ML", "$5.990",
+            "YOGURT FRUTILLA", "$690",
+            "FRUTOS SECOS MIX 2.490",
+            "TOTAL 9.170"
+        ])
+
+        XCTAssertEqual(parsed.map(\.name), ["ACEITE DE OLIVA 500ML", "YOGURT FRUTILLA", "FRUTOS SECOS MIX"])
+    }
+
+    /// El gramaje del envase queda al final del nombre y se leía como precio,
+    /// consumiendo la fila y descartando el precio real de la línea siguiente.
+    func testParserDoesNotMistakePackageSizeForPrice() {
+        let parsed = ReceiptLineParser.parse(["BOLETA ELECTRONICA", "LECHE DESCREMADA 1000", "$990"])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].name, "LECHE DESCREMADA 1000")
+        XCTAssertEqual(parsed[0].lineTotal, 990)
+    }
+
+    /// Dos unidades pasadas por separado son dos líneas: colapsarlas por tener
+    /// el mismo nombre y precio dejaba la compra por debajo de lo pagado.
+    func testParserKeepsRepeatedIdenticalLines() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA", "PAN MARRAQUETA 1.250", "PAN MARRAQUETA 1.250", "TOTAL 2.500"
+        ])
+
+        XCTAssertEqual(parsed.count, 2)
+        XCTAssertEqual(parsed.map(\.lineTotal).reduce(0, +), 2_500)
+    }
+
+    func testParserSubtractsPerLineDiscounts() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA", "DETERGENTE OMO 3L", "$8.990", "DCTO SOCIO 1.000", "TOTAL 7.990"
+        ])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].lineTotal, 7_990)
+        XCTAssertTrue(parsed[0].hasDiscount)
+    }
+
+    func testParserIgnoresAddressesPhonesAndIdentifiers() {
+        let parsed = ReceiptLineParser.parse([
+            "JUMBO KENNEDY", "AV PROVIDENCIA 1234", "FONO 226001234", "RUT 81.201.000-K",
+            "PAN HALLULLA 1.250", "TOTAL 1.250"
+        ])
+
+        XCTAssertEqual(parsed.map(\.name), ["PAN HALLULLA"])
     }
 
     func testParserStripsLeadingBarcodeFromName() {
-        let parsed = ReceiptLineParser.parse(["7801610001234 ACEITE MARAVILLA 2.590"])
+        let parsed = ReceiptLineParser.parse(["BOLETA ELECTRONICA", "7801610001234 ACEITE MARAVILLA 2.590"])
 
         XCTAssertEqual(parsed.count, 1)
         XCTAssertEqual(parsed[0].name, "ACEITE MARAVILLA")
-        XCTAssertEqual(parsed[0].price, 2_590)
+        XCTAssertEqual(parsed[0].lineTotal, 2_590)
     }
 
     func testParserIgnoresOrphanQuantityAndDiscountLines() {
         let parsed = ReceiptLineParser.parse(["2 x $1.990 $3.980", "$5.000", "DESCUENTO 900"])
 
         XCTAssertTrue(parsed.isEmpty)
+    }
+
+    func testParserReportsPrintedTotalForReconciliation() {
+        let result = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA", "PAN 1.250", "LECHE 990", "SUBTOTAL 2.240", "TOTAL 2.240"
+        ].map { ReceiptTextLine(text: $0) })
+
+        XCTAssertEqual(result.printedTotal, 2_240)
+        XCTAssertEqual(result.products.map(\.lineTotal).reduce(0, +), 2_240)
+    }
+
+    func testParserReadsAmountsInChileanFormat() {
+        XCTAssertEqual(ReceiptAmount.value("$1.290"), 1_290)
+        XCTAssertEqual(ReceiptAmount.value("12.500"), 12_500)
+        XCTAssertEqual(ReceiptAmount.value("1 290"), 1_290)
+        XCTAssertEqual(ReceiptAmount.value("990"), 990)
+        XCTAssertEqual(ReceiptAmount.value("1290,50"), 1_290.5)
+        XCTAssertNil(ReceiptAmount.value("KG"))
     }
 
     // MARK: - Matching contra la lista
@@ -257,6 +423,74 @@ final class PurchaseHistoryTests: XCTestCase {
         let match = ProductNameMatcher.bestMatch(for: "COCA COLA", in: [pending, purchased])
 
         XCTAssertEqual(match?.id, pending.id)
+    }
+
+    /// Sin exclusividad, dos líneas parecidas apuntan al mismo producto y la
+    /// segunda termina duplicándolo al guardar.
+    func testMatcherAssignsEachListItemToAtMostOneReceiptLine() {
+        let cocaCola = ShoppingItem(name: "Coca Cola", status: .purchased, store: .jumbo)
+        let lines = [
+            RecognizedReceiptLine(name: "COCA COLA", lineTotal: 1_990),
+            RecognizedReceiptLine(name: "COCA COLA ZERO", lineTotal: 2_190)
+        ]
+
+        let assignments = ProductNameMatcher.assign(lines: lines, to: [cocaCola])
+
+        XCTAssertEqual(assignments.count, 1)
+        XCTAssertEqual(assignments[lines[0].id], cocaCola.id)
+        XCTAssertNil(assignments[lines[1].id])
+    }
+
+    func testMatcherRecoversFromSingleCharacterOCRErrors() {
+        let item = ShoppingItem(name: "Detergente", status: .purchased, store: .jumbo)
+
+        XCTAssertEqual(ProductNameMatcher.bestMatch(for: "DETERGEMTE", in: [item])?.id, item.id)
+        XCTAssertNil(ProductNameMatcher.bestMatch(for: "MANTEQUILLA", in: [item]))
+    }
+
+    /// Contención por palabras completas: «té» dentro de «leche» no es una
+    /// coincidencia, aunque la subcadena exista.
+    func testMatcherDoesNotMatchShortSubstrings() {
+        let leche = ShoppingItem(name: "Leche", status: .purchased, store: .jumbo)
+
+        XCTAssertNil(ProductNameMatcher.bestMatch(for: "TE", in: [leche]))
+    }
+
+    // MARK: - Presentación de nombres
+
+    func testNameFormatterSoftensAllCapsButKeepsFormats() {
+        XCTAssertEqual(ReceiptNameFormatter.presentable("PAN MARRAQUETA"), "Pan Marraqueta")
+        XCTAssertEqual(ReceiptNameFormatter.presentable("COCA COLA ZERO 3L"), "Coca Cola Zero 3L")
+        XCTAssertEqual(ReceiptNameFormatter.presentable("Leche descremada"), "Leche descremada")
+    }
+
+    func testNameCorrectorUsesTheUserVocabularyOnlyForClearMisreads() {
+        let vocabulary = ["Detergente Omo", "Leche descremada"]
+
+        XCTAssertEqual(ReceiptNameCorrector.correct("DETERGENTE OMO", vocabulary: vocabulary), "Detergente Omo")
+        XCTAssertEqual(ReceiptNameCorrector.correct("PAN MARRAQUETA", vocabulary: vocabulary), "Pan Marraqueta")
+    }
+
+    // MARK: - Línea revisada
+
+    /// El total impreso manda mientras nadie toque la línea; al editarla vuelve
+    /// a derivarse del precio y la cantidad, que es lo que la persona espera.
+    func testEntryKeepsPrintedTotalUntilItIsEdited() {
+        var entry = ReceiptPurchaseEntry(
+            recognized: RecognizedReceiptLine(name: "Yogurt", lineTotal: 2_750, quantity: 3)
+        )
+        XCTAssertEqual(entry.lineTotal, 2_750)
+
+        entry.price = 1_000
+        XCTAssertEqual(entry.lineTotal, 3_000)
+    }
+
+    func testEntryClampsQuantityToTheEditableRange() {
+        var entry = ReceiptPurchaseEntry(name: "Pan", price: 500)
+        entry.quantity = 0
+        XCTAssertEqual(entry.quantity, 1)
+        entry.quantity = 500
+        XCTAssertEqual(entry.quantity, 99)
     }
 
     // MARK: - Cierre de compra con boleta
@@ -341,10 +575,143 @@ final class PurchaseHistoryTests: XCTestCase {
         XCTAssertEqual(purchasedItem.listID, activeList.id)
     }
 
+    /// Antes esto era un `precondition`: una entrada inválida mataba la app en
+    /// el punto donde la foto ya se había escrito a disco.
+    func testRegisterThrowsInsteadOfCrashingWithoutValidEntries() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let filename = try ReceiptImageStore.save(receiptImage())
+
+        XCTAssertThrowsError(
+            try ReceiptPurchaseService.register(
+                entries: [ReceiptPurchaseEntry(name: "  ", price: 0)],
+                receiptFilename: filename,
+                store: .jumbo,
+                activeList: nil,
+                allItems: [],
+                categories: [],
+                context: context
+            )
+        )
+        // La foto huérfana se limpia al rechazar la compra.
+        XCTAssertNil(ReceiptImageStore.image(named: filename))
+    }
+
+    /// El precio guardado es unitario: sumarlo sin la cantidad subestimaba el
+    /// total de los productos archivados junto a la boleta.
+    func testArchivedItemsContributeTheirFullLineTotal() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let activeList = ShoppingList(title: "Compra actual")
+        let mergedItem = ShoppingItem(
+            name: "Pan",
+            listID: activeList.id,
+            quantity: "3",
+            status: .purchased,
+            price: 1_200,
+            store: .jumbo
+        )
+        context.insert(activeList)
+        context.insert(mergedItem)
+
+        let summary = try ReceiptPurchaseService.register(
+            entries: [ReceiptPurchaseEntry(name: "Leche", price: 1_490)],
+            receiptImage: receiptImage(),
+            store: .jumbo,
+            activeList: activeList,
+            allItems: [mergedItem],
+            categories: [],
+            context: context,
+            archivingPurchased: true
+        )
+        defer {
+            if let filename = summary.list.receiptImageFilename {
+                ReceiptImageStore.delete(named: filename)
+            }
+        }
+
+        XCTAssertEqual(summary.totalSpent, 1_490 + 3_600)
+    }
+
+    /// Sin lista activa, filtrar por `listID == nil` arrastraba productos
+    /// huérfanos que no pertenecen a esta compra.
+    func testClosingWithoutActiveListDoesNotArchiveOrphanItems() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let orphan = ShoppingItem(name: "Queso", status: .purchased, price: 3_500, store: .jumbo)
+        context.insert(orphan)
+
+        let summary = try ReceiptPurchaseService.register(
+            entries: [ReceiptPurchaseEntry(name: "Leche", price: 1_490)],
+            receiptImage: receiptImage(),
+            store: .jumbo,
+            activeList: nil,
+            allItems: [orphan],
+            categories: [],
+            context: context,
+            archivingPurchased: true
+        )
+        defer {
+            if let filename = summary.list.receiptImageFilename {
+                ReceiptImageStore.delete(named: filename)
+            }
+        }
+
+        XCTAssertEqual(summary.mergedPurchasedCount, 0)
+        XCTAssertNil(orphan.listID)
+    }
+
+    /// Si la boleta trae una unidad, dejar el "2" viejo describe mal la compra.
+    func testAssociatedItemQuantityIsResetWhenTheReceiptSaysOne() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let activeList = ShoppingList(title: "Compra actual")
+        let item = ShoppingItem(name: "Leche", listID: activeList.id, quantity: "2", status: .purchased, store: .jumbo)
+        context.insert(activeList)
+        context.insert(item)
+
+        let summary = try ReceiptPurchaseService.register(
+            entries: [ReceiptPurchaseEntry(name: "Leche", price: 1_490, associatedItemID: item.id)],
+            receiptImage: receiptImage(),
+            store: .jumbo,
+            activeList: activeList,
+            allItems: [item],
+            categories: [],
+            context: context
+        )
+        defer {
+            if let filename = summary.list.receiptImageFilename {
+                ReceiptImageStore.delete(named: filename)
+            }
+        }
+
+        XCTAssertEqual(item.quantity, "")
+    }
+
     private func makeInMemoryContainer() throws -> ModelContainer {
         try ModelContainer(
             for: ShoppingItem.self, ShoppingList.self, ProductCatalogItem.self, Category.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+    }
+
+    /// Observación sintética con la geometría normalizada de Vision (origen
+    /// abajo-izquierda), para ejercitar la reconstrucción de filas.
+    private func observation(
+        _ text: String,
+        row: Int,
+        minX: Double,
+        maxX: Double,
+        confidence: Double = 0.9
+    ) -> ReceiptLineAssembler.Observation {
+        let top = 1.0 - Double(row) * 0.05
+        return ReceiptLineAssembler.Observation(
+            text: text,
+            minX: minX,
+            maxX: maxX,
+            minY: top - 0.018,
+            maxY: top,
+            confidence: confidence
         )
     }
 

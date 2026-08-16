@@ -1,55 +1,105 @@
+import CoreGraphics
 import Foundation
+import ImageIO
 import SwiftData
 import UIKit
 import Vision
 
-/// Una línea de producto detectada en una boleta antes de que el usuario la confirme.
-/// `price` es el precio unitario; `quantity` la cantidad detectada (1 si no se indica).
-struct RecognizedReceiptLine: Identifiable, Sendable {
-    let id: UUID
-    let name: String
-    let price: Double
-    let quantity: Int
-
-    nonisolated init(id: UUID = UUID(), name: String, price: Double, quantity: Int = 1) {
-        self.id = id
-        self.name = name
-        self.price = price
-        self.quantity = quantity
-    }
-}
-
-/// Resultado completo de leer una boleta: productos y la tienda reconocida
-/// desde su encabezado cuando Vision logra identificarla.
-struct ReceiptRecognitionResult: Sendable {
+/// Resultado completo de leer una boleta: productos, la tienda reconocida desde
+/// su encabezado y el TOTAL impreso, que sirve para avisar si falta alguna línea.
+nonisolated struct ReceiptRecognitionResult: Sendable {
     let products: [RecognizedReceiptLine]
     let detectedStoreRawValue: String?
+    let printedTotal: Double?
+    /// Filas de texto que Vision alcanzó a reconstruir (diagnóstico).
+    let recognizedLineCount: Int
 
-    nonisolated init(products: [RecognizedReceiptLine], detectedStoreRawValue: String?) {
+    init(
+        products: [RecognizedReceiptLine],
+        detectedStoreRawValue: String?,
+        printedTotal: Double? = nil,
+        recognizedLineCount: Int = 0
+    ) {
         self.products = products
         self.detectedStoreRawValue = detectedStoreRawValue
+        self.printedTotal = printedTotal
+        self.recognizedLineCount = recognizedLineCount
     }
+
+    var detectedTotal: Double { products.map(\.lineTotal).reduce(0, +) }
 }
 
 /// Entrada ya revisada por la persona. Un producto sin asociación se crea en el historial.
-/// `price` es el precio unitario; el total de la línea es `price * quantity`.
+///
+/// `lineTotal` es lo que cobró la boleta y manda mientras el usuario no toque la
+/// línea: así `3 × $916,67 = $2.750` sigue cuadrando con el papel en vez de
+/// convertirse en $2.751 por redondear el unitario. Al editar precio o cantidad
+/// el total vuelve a derivarse de ellos, que es lo que la persona espera.
 struct ReceiptPurchaseEntry: Identifiable {
     let id: UUID
     var name: String
-    var price: Double
-    var quantity: Int
     var associatedItemID: UUID?
+    /// Confianza del reconocimiento (0…1); 1 en las líneas añadidas a mano.
+    var confidence: Double
+    /// La línea traía un descuento aplicado en la boleta.
+    var hasDiscount: Bool
 
-    init(id: UUID = UUID(), name: String, price: Double, quantity: Int = 1, associatedItemID: UUID? = nil) {
-        self.id = id
-        self.name = name
-        self.price = price
-        self.quantity = max(1, quantity)
-        self.associatedItemID = associatedItemID
+    private var storedPrice: Double
+    private var storedQuantity: Int
+    private var printedLineTotal: Double?
+
+    var price: Double {
+        get { storedPrice }
+        set {
+            storedPrice = max(0, newValue)
+            printedLineTotal = nil
+        }
     }
 
-    var lineTotal: Double { price * Double(quantity) }
+    var quantity: Int {
+        get { storedQuantity }
+        set {
+            storedQuantity = min(99, max(1, newValue))
+            printedLineTotal = nil
+        }
+    }
+
+    var lineTotal: Double { printedLineTotal ?? storedPrice * Double(storedQuantity) }
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        price: Double,
+        quantity: Int = 1,
+        associatedItemID: UUID? = nil,
+        confidence: Double = 1,
+        hasDiscount: Bool = false,
+        printedLineTotal: Double? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.storedPrice = max(0, price)
+        self.storedQuantity = min(99, max(1, quantity))
+        self.associatedItemID = associatedItemID
+        self.confidence = confidence
+        self.hasDiscount = hasDiscount
+        self.printedLineTotal = printedLineTotal
+    }
+
+    init(recognized line: RecognizedReceiptLine, associatedItemID: UUID? = nil) {
+        self.init(
+            name: line.name,
+            price: line.unitPrice,
+            quantity: line.quantity,
+            associatedItemID: associatedItemID,
+            confidence: line.confidence,
+            hasDiscount: line.hasDiscount,
+            printedLineTotal: line.lineTotal
+        )
+    }
 }
+
+// MARK: - Almacenamiento de la foto
 
 enum ReceiptImageStore {
     enum StorageError: LocalizedError {
@@ -63,11 +113,27 @@ enum ReceiptImageStore {
         }
     }
 
-    static func save(_ image: UIImage) throws -> String {
-        guard let data = image.jpegData(compressionQuality: 0.82) else {
+    /// Calidad de archivo para la foto que queda junto a la compra.
+    nonisolated static let archiveQuality: CGFloat = 0.82
+    /// Calidad para las páginas que se conservan por si hay que releerlas: más
+    /// alta, porque de ahí sale el reconocimiento del reintento.
+    nonisolated static let rereadQuality: CGFloat = 0.92
+
+    /// Codificar una boleta larga es lo caro del guardado (la escritura en disco
+    /// son milisegundos); es la parte que conviene sacar del hilo principal.
+    nonisolated static func encode(_ image: UIImage, quality: CGFloat = archiveQuality) throws -> Data {
+        guard let data = image.jpegData(compressionQuality: quality) else {
             throw StorageError.couldNotEncodeImage
         }
-        return try LocalFileStore.shared.saveReceiptData(data)
+        return data
+    }
+
+    static func save(_ data: Data) throws -> String {
+        try LocalFileStore.shared.saveReceiptData(data)
+    }
+
+    static func save(_ image: UIImage) throws -> String {
+        try save(try encode(image))
     }
 
     static func image(named filename: String) -> UIImage? {
@@ -80,8 +146,18 @@ enum ReceiptImageStore {
     }
 }
 
-/// Reconoce texto localmente con Vision. La interpretación de precios se mantiene
-/// deliberadamente conservadora: las líneas dudosas se dejan fuera para revisión manual.
+/// `UIImage` y `CGImage` son inmutables una vez creados y su lectura es segura
+/// entre hilos; el envoltorio es solo para cruzar el límite de concurrencia.
+nonisolated struct SendableImage: @unchecked Sendable {
+    let image: UIImage
+    init(_ image: UIImage) { self.image = image }
+}
+
+// MARK: - Reconocimiento
+
+/// Reconoce texto localmente con Vision. Conserva la geometría de cada
+/// observación para poder reconstruir las filas de la boleta: sin ella el
+/// nombre y el precio, que Vision devuelve por separado, quedan desordenados.
 enum ReceiptTextRecognitionService {
     enum RecognitionError: LocalizedError {
         case unsupportedImage
@@ -94,213 +170,232 @@ enum ReceiptTextRecognitionService {
         }
     }
 
+    /// Página lista para Vision, ya con su orientación resuelta.
+    private struct Page: @unchecked Sendable {
+        let image: CGImage
+        let orientation: CGImagePropertyOrientation
+        let index: Int
+    }
+
     static func recognizeReceipt(in image: UIImage) async throws -> ReceiptRecognitionResult {
         try await recognizeReceipt(in: [image])
     }
 
     /// Reconoce una boleta capturada en una o varias páginas (boletas largas).
-    /// Las líneas se concatenan en orden de página antes de interpretarlas.
+    /// Las filas se concatenan en orden de página antes de interpretarlas.
     static func recognizeReceipt(in images: [UIImage]) async throws -> ReceiptRecognitionResult {
-        let imagesData = images.compactMap { $0.jpegData(compressionQuality: 0.96) }
-        guard !imagesData.isEmpty else {
+        let pages: [Page] = images.enumerated().compactMap { index, image in
+            guard let cgImage = image.cgImage else { return nil }
+            return Page(image: cgImage, orientation: cgOrientation(image.imageOrientation), index: index)
+        }
+        // Descartar páginas en silencio deja la foto guardada y los datos
+        // desalineados: si alguna no se puede leer, se avisa.
+        guard !pages.isEmpty, pages.count == images.count else {
             throw RecognitionError.unsupportedImage
         }
 
         return try await Task.detached(priority: .userInitiated) {
-            var recognizedText: [String] = []
+            try PerformanceSignpost.measureOffMain("Leer boleta") {
+            var lines: [ReceiptTextLine] = []
 
-            for imageData in imagesData {
-                guard let pageImage = UIImage(data: imageData), let cgImage = pageImage.cgImage else {
-                    throw RecognitionError.unsupportedImage
-                }
+            for page in pages {
+                try Task.checkCancellation()
 
-                let request = VNRecognizeTextRequest()
-                request.recognitionLevel = .accurate
-                request.usesLanguageCorrection = true
-                request.recognitionLanguages = ["es-CL", "es"]
-
-                let handler = VNImageRequestHandler(cgImage: cgImage)
+                let request = makeRequest()
+                let handler = VNImageRequestHandler(cgImage: page.image, orientation: page.orientation, options: [:])
                 try handler.perform([request])
 
-                recognizedText += (request.results ?? [])
-                    .sorted { $0.boundingBox.midY > $1.boundingBox.midY }
-                    .compactMap { $0.topCandidates(1).first?.string }
+                let observations = (request.results ?? []).compactMap { observation -> ReceiptLineAssembler.Observation? in
+                    guard let candidate = observation.topCandidates(1).first else { return nil }
+                    let box = observation.boundingBox
+                    return ReceiptLineAssembler.Observation(
+                        text: candidate.string,
+                        minX: box.minX,
+                        maxX: box.maxX,
+                        minY: box.minY,
+                        maxY: box.maxY,
+                        confidence: Double(candidate.confidence)
+                    )
+                }
+
+                lines += ReceiptLineAssembler.assemble(observations, pageIndex: page.index)
             }
 
+            try Task.checkCancellation()
+            let parsed = ReceiptLineParser.parse(lines)
+
             return ReceiptRecognitionResult(
-                products: ReceiptLineParser.parse(recognizedText),
-                detectedStoreRawValue: ReceiptStoreDetector.detectStoreRawValue(in: recognizedText)
+                products: parsed.products,
+                detectedStoreRawValue: ReceiptStoreDetector.detectStoreRawValue(in: lines.map(\.text)),
+                printedTotal: parsed.printedTotal,
+                recognizedLineCount: lines.count
             )
+            }
         }.value
+    }
+
+    private nonisolated static func makeRequest() -> VNRecognizeTextRequest {
+        let request = VNRecognizeTextRequest()
+        // Fijar la revisión evita que el comportamiento del OCR cambie bajo los
+        // pies del parser al actualizar el sistema.
+        if VNRecognizeTextRequest.supportedRevisions.contains(VNRecognizeTextRequestRevision3) {
+            request.revision = VNRecognizeTextRequestRevision3
+        }
+        request.recognitionLevel = .accurate
+        // Las boletas van en abreviaturas («LCH DESLC», «YOG BAT», «DET LIQ»):
+        // la corrección de lenguaje las reescribe hacia palabras que no
+        // corresponden y también toca los montos.
+        request.usesLanguageCorrection = false
+        request.recognitionLanguages = supportedLanguages(for: request)
+        return request
+    }
+
+    /// Vision solo acepta códigos de su lista; `es-CL` no está y pedirlo hacía
+    /// que se ignorara toda la configuración de idioma.
+    private nonisolated static func supportedLanguages(for request: VNRecognizeTextRequest) -> [String] {
+        let preferred = ["es-ES", "en-US"]
+        guard let supported = try? request.supportedRecognitionLanguages(), !supported.isEmpty else {
+            return ["en-US"]
+        }
+        let available = preferred.filter(supported.contains)
+        return available.isEmpty ? [supported[0]] : available
+    }
+
+    /// Las fotos de cámara y biblioteca llegan rotadas por metadatos; sin pasar
+    /// la orientación, Vision lee el búfer de lado y el orden de las filas se
+    /// desarma.
+    private nonisolated static func cgOrientation(_ orientation: UIImage.Orientation) -> CGImagePropertyOrientation {
+        switch orientation {
+        case .up: .up
+        case .upMirrored: .upMirrored
+        case .down: .down
+        case .downMirrored: .downMirrored
+        case .left: .left
+        case .leftMirrored: .leftMirrored
+        case .right: .right
+        case .rightMirrored: .rightMirrored
+        @unknown default: .up
+        }
     }
 }
 
-/// Busca el supermercado solo en las primeras líneas de la boleta, donde se
-/// encuentra el encabezado. Así se evita tomar un nombre de tienda que aparezca
-/// incidentalmente entre productos o promociones.
+// MARK: - Detección de tienda
+
+/// Busca el supermercado solo en el encabezado de la boleta. Además de la marca
+/// se reconoce la razón social y el RUT, porque las boletas chilenas encabezan
+/// con «CENCOSUD RETAIL S.A.» o «WALMART CHILE» antes que con el nombre de fantasía.
 nonisolated enum ReceiptStoreDetector {
     private static let headerLineLimit = 12
 
+    private static let jumboMarks = ["jumbo", "cencosud", "812010000", "81201000"]
+    private static let liderMarks = ["lider", "walmart", "ekono", "867219007", "86721900"]
+
     static func detectStoreRawValue(in recognizedLines: [String]) -> String? {
-        let header = recognizedLines
-            .prefix(headerLineLimit)
-            .map(ProductNameNormalizer.normalize)
+        let header = recognizedLines.prefix(headerLineLimit)
+        let words = Set(
+            header
+                .flatMap { ProductNameNormalizer.normalize($0).split(separator: " ") }
+                .map(String.init)
+        )
+        // El RUT se compara sin puntos ni guion, sobre los dígitos concatenados.
+        let digits = header
+            .map { $0.filter(\.isNumber) }
             .joined(separator: " ")
 
-        if header.contains("jumbo") {
-            return Store.jumbo.rawValue
-        }
-        if header.contains("lider") {
-            return Store.lider.rawValue
-        }
+        if matches(jumboMarks, words: words, digits: digits) { return Store.jumbo.rawValue }
+        if matches(liderMarks, words: words, digits: digits) { return Store.lider.rawValue }
         return nil
     }
-}
 
-nonisolated enum ReceiptLineParser {
-    private static let excludedTerms = [
-        "total", "subtotal", "iva", "cambio", "efectivo", "debito", "credito",
-        "tarjeta", "vuelto", "boleta", "rut", "cajero", "autorizacion", "folio",
-        "fecha", "hora", "articulos", "unidades", "gracias", "ahorro", "descuento",
-        "dcto", "puntos", "propina"
-    ]
-
-    /// "PRODUCTO ... $1.290" — nombre y precio en la misma línea.
-    private static let priceAtEndExpression = try! NSRegularExpression(
-        pattern: "^(.*?)(?:\\s+|\\t)\\$?\\s*([0-9]{1,3}(?:[\\.\\s,][0-9]{3})+|[0-9]{3,7})\\s*$",
-        options: []
-    )
-
-    /// "2 x $1.290 $2.580" — línea de cantidad bajo el nombre (formato Jumbo/Líder).
-    /// Grupo 1: cantidad; grupo 2: precio unitario; grupo 3 (opcional): total.
-    private static let quantityLineExpression = try! NSRegularExpression(
-        pattern: "^\\s*([0-9]{1,2})\\s*[xX]\\s*\\$?\\s*([0-9]{1,3}(?:[\\.\\s,][0-9]{3})+|[0-9]{1,7})(?:\\s+\\$?\\s*([0-9]{1,3}(?:[\\.\\s,][0-9]{3})+|[0-9]{3,7}))?\\s*$",
-        options: []
-    )
-
-    /// "$1.290" — solo un precio, bajo la línea del nombre.
-    private static let priceOnlyExpression = try! NSRegularExpression(
-        pattern: "^\\s*\\$?\\s*([0-9]{1,3}(?:[\\.\\s,][0-9]{3})+|[0-9]{3,7})\\s*$",
-        options: []
-    )
-
-    /// Código de barras u otro identificador numérico largo al inicio del nombre.
-    private static let leadingCodeExpression = try! NSRegularExpression(
-        pattern: "^[0-9]{7,}\\s+",
-        options: []
-    )
-
-    static func parse(_ lines: [String]) -> [RecognizedReceiptLine] {
-        var parsed: [RecognizedReceiptLine] = []
-        var seen = Set<String>()
-        var index = 0
-
-        func appendIfNew(name: String, price: Double, quantity: Int) {
-            guard name.count > 2, name.rangeOfCharacter(from: .letters) != nil,
-                  price > 0, price < 1_000_000, quantity >= 1, quantity < 100
-            else { return }
-            let key = "\(ProductNameNormalizer.normalize(name))|\(price)|\(quantity)"
-            guard seen.insert(key).inserted else { return }
-            parsed.append(RecognizedReceiptLine(name: name, price: price, quantity: quantity))
+    private static func matches(_ marks: [String], words: Set<String>, digits: String) -> Bool {
+        marks.contains { mark in
+            mark.allSatisfy(\.isNumber) ? digits.contains(mark) : words.contains(mark)
         }
-
-        while index < lines.count {
-            let candidate = lines[index].trimmingCharacters(in: .whitespacesAndNewlines)
-            let lowered = candidate.folding(options: [.diacriticInsensitive, .caseInsensitive], locale: .current).lowercased()
-            let fullRange = NSRange(candidate.startIndex..., in: candidate)
-
-            guard candidate.count > 2, !excludedTerms.contains(where: { lowered.contains($0) }) else {
-                index += 1
-                continue
-            }
-
-            // Las líneas de cantidad o precio sin nombre previo no son productos.
-            if quantityLineExpression.firstMatch(in: candidate, options: [], range: fullRange) != nil
-                || priceOnlyExpression.firstMatch(in: candidate, options: [], range: fullRange) != nil {
-                index += 1
-                continue
-            }
-
-            // Caso 1: nombre y precio en la misma línea.
-            if candidate.count > 4,
-               let match = priceAtEndExpression.firstMatch(in: candidate, options: [], range: fullRange),
-               let nameRange = Range(match.range(at: 1), in: candidate),
-               let priceRange = Range(match.range(at: 2), in: candidate) {
-                let name = cleanName(String(candidate[nameRange]))
-                if let price = parseAmount(String(candidate[priceRange])) {
-                    appendIfNew(name: name, price: price, quantity: 1)
-                }
-                index += 1
-                continue
-            }
-
-            // Caso 2: línea de nombre seguida de una línea de cantidad o precio.
-            let isNameLike = candidate.rangeOfCharacter(from: .letters) != nil
-                && priceOnlyExpression.firstMatch(in: candidate, options: [], range: fullRange) == nil
-                && quantityLineExpression.firstMatch(in: candidate, options: [], range: fullRange) == nil
-
-            if isNameLike, index + 1 < lines.count {
-                let next = lines[index + 1].trimmingCharacters(in: .whitespacesAndNewlines)
-                let nextRange = NSRange(next.startIndex..., in: next)
-                let name = cleanName(candidate)
-
-                if let match = quantityLineExpression.firstMatch(in: next, options: [], range: nextRange),
-                   let quantityRange = Range(match.range(at: 1), in: next),
-                   let unitRange = Range(match.range(at: 2), in: next) {
-                    let quantity = Int(next[quantityRange]) ?? 1
-                    var unitPrice = parseAmount(String(next[unitRange]))
-                    // Si el total impreso no calza con unitario × cantidad, el total manda.
-                    if let totalRange = Range(match.range(at: 3), in: next),
-                       let total = parseAmount(String(next[totalRange])),
-                       quantity > 0 {
-                        let impliedUnit = total / Double(quantity)
-                        if unitPrice == nil || abs((unitPrice! * Double(quantity)) - total) > 1 {
-                            unitPrice = impliedUnit.rounded()
-                        }
-                    }
-                    if let unitPrice {
-                        appendIfNew(name: name, price: unitPrice, quantity: quantity)
-                        index += 2
-                        continue
-                    }
-                }
-
-                if let match = priceOnlyExpression.firstMatch(in: next, options: [], range: nextRange),
-                   let priceRange = Range(match.range(at: 1), in: next),
-                   let price = parseAmount(String(next[priceRange])) {
-                    appendIfNew(name: name, price: price, quantity: 1)
-                    index += 2
-                    continue
-                }
-            }
-
-            index += 1
-        }
-
-        return parsed
-    }
-
-    private static func cleanName(_ raw: String) -> String {
-        var name = raw.trimmingCharacters(in: .whitespacesAndNewlines.union(.punctuationCharacters))
-        let range = NSRange(name.startIndex..., in: name)
-        if let match = leadingCodeExpression.firstMatch(in: name, options: [], range: range),
-           let matchRange = Range(match.range, in: name) {
-            name.removeSubrange(matchRange)
-        }
-        return name.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
-    private static func parseAmount(_ text: String) -> Double? {
-        let digits = text.filter(\.isNumber)
-        guard let value = Double(digits), value > 0, value < 1_000_000 else { return nil }
-        return value
     }
 }
+
+// MARK: - Nombres
+
+/// Los nombres de boleta vienen en mayúsculas y abreviados. Presentarlos tal
+/// cual grita en pantalla y no calza con cómo la persona escribe sus productos.
+nonisolated enum ReceiptNameFormatter {
+    /// Sufijos de formato que se mantienen en mayúscula: «3L», «500ML», «1KG».
+    private static let unitPattern = ReceiptAmount.regex("^[0-9]+(ML|MG|GR|G|KG|KL|LT|L|CC|UN|PACK|X[0-9]+)$")
+
+    static func presentable(_ raw: String) -> String {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return trimmed }
+        // Solo se reescribe lo que viene todo en mayúsculas: si el texto ya trae
+        // minúsculas, es que alguien lo escribió y se respeta.
+        guard trimmed == trimmed.uppercased() else { return trimmed }
+
+        return trimmed
+            .split(separator: " ")
+            .map { word -> String in
+                let text = String(word)
+                if unitPattern.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil {
+                    return text
+                }
+                guard text.count > 1, text.contains(where: \.isLetter) else { return text }
+                return text.prefix(1) + text.dropFirst().lowercased()
+            }
+            .joined(separator: " ")
+    }
+}
+
+// MARK: - Emparejamiento con la lista
 
 nonisolated enum ProductNameMatcher {
-    /// Los productos que la persona marcó como comprados en esta visita son los
-    /// candidatos obvios de una boleta: se buscan primero, y solo si ninguno
-    /// calza se considera el resto de la lista.
+    /// Bajo este puntaje la coincidencia es más ruido que ayuda.
+    static let minimumScore = 0.55
+
+    /// Asigna cada línea de la boleta a lo sumo un producto de la lista, y cada
+    /// producto a lo sumo una línea. Sin esta exclusividad dos líneas parecidas
+    /// («Coca Cola 3L» y «Coca Cola 1,5L») apuntan al mismo ítem y la segunda
+    /// termina duplicando el producto al guardar.
+    static func assign(
+        lines: [RecognizedReceiptLine],
+        to items: [ShoppingItem]
+    ) -> [UUID: UUID] {
+        struct Pair {
+            let lineID: UUID
+            let itemID: UUID
+            let score: Double
+        }
+
+        let normalizedItems = items.map {
+            (id: $0.id, name: ProductNameNormalizer.normalize($0.name), purchased: $0.status == .purchased)
+        }
+
+        var pairs: [Pair] = []
+        for line in lines {
+            let scanned = ProductNameNormalizer.normalize(line.name)
+            guard !scanned.isEmpty else { continue }
+            for item in normalizedItems where !item.name.isEmpty {
+                let score = similarity(scanned, item.name)
+                guard score >= minimumScore else { continue }
+                // Lo que la persona ya marcó como comprado es el candidato obvio
+                // de una boleta: gana los empates sin excluir al resto.
+                pairs.append(Pair(lineID: line.id, itemID: item.id, score: item.purchased ? score + 0.15 : score))
+            }
+        }
+
+        pairs.sort {
+            if $0.score != $1.score { return $0.score > $1.score }
+            return $0.lineID.uuidString < $1.lineID.uuidString
+        }
+
+        var assignments: [UUID: UUID] = [:]
+        var usedItems = Set<UUID>()
+        for pair in pairs where assignments[pair.lineID] == nil && !usedItems.contains(pair.itemID) {
+            assignments[pair.lineID] = pair.itemID
+            usedItems.insert(pair.itemID)
+        }
+        return assignments
+    }
+
+    /// Los productos marcados como comprados son los candidatos obvios: se
+    /// buscan primero y solo si ninguno calza se considera el resto de la lista.
     static func bestMatch(for scannedName: String, in items: [ShoppingItem]) -> ShoppingItem? {
         let purchased = items.filter { $0.status == .purchased }
         if let match = bestMatch(for: scannedName, among: purchased) {
@@ -313,31 +408,94 @@ nonisolated enum ProductNameMatcher {
         let scanned = ProductNameNormalizer.normalize(scannedName)
         guard !scanned.isEmpty else { return nil }
 
-        if let exact = items.first(where: { ProductNameNormalizer.normalize($0.name) == scanned }) {
-            return exact
-        }
-
-        let scannedTokens = Set(scanned.split(separator: " ").map(String.init))
         var best: (item: ShoppingItem, score: Double)?
-
         for item in items {
-            let product = ProductNameNormalizer.normalize(item.name)
-            let productTokens = Set(product.split(separator: " ").map(String.init))
-            guard !productTokens.isEmpty else { continue }
-
-            let overlap = Double(scannedTokens.intersection(productTokens).count)
-            let tokenScore = overlap / Double(max(scannedTokens.count, productTokens.count))
-            let containsScore = scanned.contains(product) || product.contains(scanned) ? 0.9 : 0
-            let score = max(tokenScore, containsScore)
-
-            if score >= 0.5, score > (best?.score ?? 0) {
+            let score = similarity(scanned, ProductNameNormalizer.normalize(item.name))
+            if score >= minimumScore, score > (best?.score ?? 0) {
                 best = (item, score)
             }
         }
-
         return best?.item
     }
+
+    /// Combina tres señales: palabras en común, contención por palabras
+    /// completas y distancia de edición. Esta última es la que rescata los
+    /// errores típicos del OCR («LECFE COLUN» → «Leche Colún»).
+    static func similarity(_ scanned: String, _ candidate: String) -> Double {
+        guard !scanned.isEmpty, !candidate.isEmpty else { return 0 }
+        if scanned == candidate { return 1 }
+
+        let scannedTokens = Set(scanned.split(separator: " ").map(String.init))
+        let candidateTokens = Set(candidate.split(separator: " ").map(String.init))
+        guard !scannedTokens.isEmpty, !candidateTokens.isEmpty else { return 0 }
+
+        let overlap = Double(scannedTokens.intersection(candidateTokens).count)
+        let tokenScore = overlap / Double(max(scannedTokens.count, candidateTokens.count))
+
+        // Contención por palabras completas: «te» dentro de «leche» no cuenta.
+        let paddedScanned = " \(scanned) "
+        let paddedCandidate = " \(candidate) "
+        let contained = min(scanned.count, candidate.count) >= 4
+            && (paddedScanned.contains(paddedCandidate) || paddedCandidate.contains(paddedScanned))
+        let containmentScore = contained ? 0.9 : 0
+
+        let distance = editDistance(scanned, candidate)
+        let editScore = 1 - Double(distance) / Double(max(scanned.count, candidate.count))
+
+        return max(tokenScore, containmentScore, editScore >= 0.78 ? editScore : 0)
+    }
+
+    static func editDistance(_ lhs: String, _ rhs: String) -> Int {
+        let source = Array(lhs)
+        let target = Array(rhs)
+        if source.isEmpty { return target.count }
+        if target.isEmpty { return source.count }
+
+        var previous = Array(0...target.count)
+        var current = [Int](repeating: 0, count: target.count + 1)
+
+        for i in 1...source.count {
+            current[0] = i
+            for j in 1...target.count {
+                let substitution = previous[j - 1] + (source[i - 1] == target[j - 1] ? 0 : 1)
+                current[j] = min(previous[j] + 1, current[j - 1] + 1, substitution)
+            }
+            swap(&previous, &current)
+        }
+        return previous[target.count]
+    }
 }
+
+/// Corrige el nombre leído contra el vocabulario del usuario (su lista, su
+/// historial y las sugerencias de la app) cuando la diferencia es claramente
+/// un error de lectura y no otro producto.
+nonisolated enum ReceiptNameCorrector {
+    /// Umbral alto a propósito: preferimos dejar el nombre de la boleta antes
+    /// que cambiarlo por un producto distinto.
+    private static let minimumScore = 0.8
+
+    static func correct(_ scanned: String, vocabulary: [String]) -> String {
+        let normalizedScanned = ProductNameNormalizer.normalize(scanned)
+        guard !normalizedScanned.isEmpty, !vocabulary.isEmpty else {
+            return ReceiptNameFormatter.presentable(scanned)
+        }
+
+        var best: (name: String, score: Double)?
+        for candidate in vocabulary {
+            let score = ProductNameMatcher.similarity(
+                normalizedScanned,
+                ProductNameNormalizer.normalize(candidate)
+            )
+            if score >= minimumScore, score > (best?.score ?? 0) {
+                best = (candidate, score)
+            }
+        }
+
+        return best?.name ?? ReceiptNameFormatter.presentable(scanned)
+    }
+}
+
+// MARK: - Comparación de precios
 
 struct ReceiptPriceComparison {
     let previousPrice: Double
@@ -350,6 +508,47 @@ struct ReceiptPriceComparison {
     }
 }
 
+/// Índice de precios por producto y tienda. Construirlo una vez por pantalla
+/// evita recorrer todo el historial en cada tecleo de la revisión.
+struct ReceiptPriceIndex {
+    private let latestByKey: [String: (price: Double, date: Date)]
+
+    init(allItems: [ShoppingItem], completedLists: [ShoppingList]) {
+        let completedByID = Dictionary(
+            completedLists.map { ($0.id, $0) },
+            // Los identificadores no son únicos por esquema: quedarse con el
+            // primero es preferible a caer con `uniqueKeysWithValues`.
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        var index: [String: (price: Double, date: Date)] = [:]
+        for item in allItems {
+            guard let price = item.price,
+                  let listID = item.listID,
+                  let list = completedByID[listID]
+            else { continue }
+            let name = ProductNameNormalizer.normalize(item.name)
+            guard !name.isEmpty else { continue }
+
+            let key = "\(name)|\(item.store.rawValue)"
+            let date = list.completedAt ?? list.createdAt
+            if let existing = index[key], existing.date >= date { continue }
+            index[key] = (price, date)
+        }
+        latestByKey = index
+    }
+
+    func comparison(productName: String, newPrice: Double, store: Store) -> ReceiptPriceComparison? {
+        let name = ProductNameNormalizer.normalize(productName)
+        guard !name.isEmpty, let previous = latestByKey["\(name)|\(store.rawValue)"] else { return nil }
+        return ReceiptPriceComparison(
+            previousPrice: previous.price,
+            purchaseDate: previous.date,
+            difference: newPrice - previous.price
+        )
+    }
+}
+
 enum ReceiptPriceHistory {
     static func latestComparison(
         productName: String,
@@ -358,30 +557,12 @@ enum ReceiptPriceHistory {
         allItems: [ShoppingItem],
         completedLists: [ShoppingList]
     ) -> ReceiptPriceComparison? {
-        let normalizedName = ProductNameNormalizer.normalize(productName)
-        guard !normalizedName.isEmpty else { return nil }
-
-        let completedByID = Dictionary(uniqueKeysWithValues: completedLists.map { ($0.id, $0) })
-        let candidate = allItems
-            .compactMap { item -> (price: Double, date: Date)? in
-                guard item.store == store,
-                      ProductNameNormalizer.normalize(item.name) == normalizedName,
-                      let price = item.price,
-                      let listID = item.listID,
-                      let list = completedByID[listID]
-                else { return nil }
-                return (price, list.completedAt ?? list.createdAt)
-            }
-            .max { $0.date < $1.date }
-
-        guard let candidate else { return nil }
-        return ReceiptPriceComparison(
-            previousPrice: candidate.price,
-            purchaseDate: candidate.date,
-            difference: newPrice - candidate.price
-        )
+        ReceiptPriceIndex(allItems: allItems, completedLists: completedLists)
+            .comparison(productName: productName, newPrice: newPrice, store: store)
     }
 }
+
+// MARK: - Registro de la compra
 
 /// Resultado de registrar una boleta, para informar a la persona qué ocurrió.
 struct ReceiptRegistrationSummary {
@@ -397,6 +578,17 @@ struct ReceiptRegistrationSummary {
 
 @MainActor
 enum ReceiptPurchaseService {
+    enum RegistrationError: LocalizedError {
+        case noValidEntries
+
+        var errorDescription: String? {
+            switch self {
+            case .noValidEntries:
+                return "Una compra con boleta necesita al menos un producto con nombre y precio."
+            }
+        }
+    }
+
     /// Crea una compra histórica y conserva la foto junto a ella. Los productos
     /// asociados se mueven desde la lista activa; los demás se crean directamente
     /// en el historial para que ninguna línea de la boleta se pierda.
@@ -416,12 +608,39 @@ enum ReceiptPurchaseService {
         context: ModelContext,
         archivingPurchased: Bool = false
     ) throws -> ReceiptRegistrationSummary {
+        try register(
+            entries: entries,
+            receiptFilename: try ReceiptImageStore.save(receiptImage),
+            store: store,
+            activeList: activeList,
+            allItems: allItems,
+            categories: categories,
+            context: context,
+            archivingPurchased: archivingPurchased
+        )
+    }
+
+    @discardableResult
+    static func register(
+        entries: [ReceiptPurchaseEntry],
+        receiptFilename: String,
+        store: Store,
+        activeList: ShoppingList?,
+        allItems: [ShoppingItem],
+        categories: [Category],
+        context: ModelContext,
+        archivingPurchased: Bool = false
+    ) throws -> ReceiptRegistrationSummary {
         let validEntries = entries.filter {
             !$0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && $0.price > 0
         }
-        precondition(!validEntries.isEmpty, "Una compra con boleta necesita al menos un producto válido.")
+        // La vista ya lo impide, pero un servicio no debe matar la app por una
+        // entrada inválida: se informa y se limpia la foto ya guardada.
+        guard !validEntries.isEmpty else {
+            ReceiptImageStore.delete(named: receiptFilename)
+            throw RegistrationError.noValidEntries
+        }
 
-        let receiptFilename = try ReceiptImageStore.save(receiptImage)
         let now = Date()
         let completedList = ShoppingList(
             title: "Compra \(store.displayName) - \(now.formatted(date: .abbreviated, time: .omitted))",
@@ -438,21 +657,23 @@ enum ReceiptPurchaseService {
         )
         context.insert(completedList)
 
+        let itemsByID = Dictionary(allItems.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
         var usedItemIDs = Set<UUID>()
         var purchaseItems: [ShoppingItem] = []
+        var sortOrderByCategory: [String: Int] = [:]
 
         for entry in validEntries {
             let trimmedName = entry.name.trimmingCharacters(in: .whitespacesAndNewlines)
             if let itemID = entry.associatedItemID,
-               let existingItem = allItems.first(where: { $0.id == itemID }),
+               let existingItem = itemsByID[itemID],
                usedItemIDs.insert(itemID).inserted {
                 existingItem.price = entry.price
                 existingItem.store = store
                 existingItem.status = .purchased
                 existingItem.listID = completedList.id
-                if entry.quantity > 1 {
-                    existingItem.quantity = "\(entry.quantity)"
-                }
+                // Se asigna siempre: si antes decía "2" y la boleta trae una
+                // unidad, dejar el valor viejo describe mal la compra.
+                existingItem.quantity = entry.quantity > 1 ? "\(entry.quantity)" : ""
                 purchaseItems.append(existingItem)
                 continue
             }
@@ -461,6 +682,9 @@ enum ReceiptPurchaseService {
                 ?? categories.first(where: { $0.name == "Varios" })
                 ?? categories.first
                 ?? Category.resolvedFallback(in: context)
+            let nextOrder = sortOrderByCategory[category.name, default: 0]
+            sortOrderByCategory[category.name] = nextOrder + 1
+
             let item = ShoppingItem(
                 name: trimmedName,
                 listID: completedList.id,
@@ -468,7 +692,7 @@ enum ReceiptPurchaseService {
                 category: category,
                 isPurchased: true,
                 status: .purchased,
-                sortOrder: purchaseItems.filter { $0.category.name == category.name }.count,
+                sortOrder: nextOrder,
                 price: entry.price,
                 store: store
             )
@@ -480,9 +704,11 @@ enum ReceiptPurchaseService {
         var mergedPurchased: [ShoppingItem] = []
         var otherStoreArchivedCount = 0
 
-        if archivingPurchased {
+        // Sin lista activa no hay nada que cerrar: filtrar por `listID == nil`
+        // arrastraría productos huérfanos que no son de esta compra.
+        if archivingPurchased, let activeListID = activeList?.id {
             let remainingPurchased = allItems.filter {
-                $0.listID == activeList?.id && $0.status == .purchased && !usedItemIDs.contains($0.id)
+                $0.listID == activeListID && $0.status == .purchased && !usedItemIDs.contains($0.id)
             }
 
             for item in remainingPurchased where item.store == store {
@@ -492,7 +718,7 @@ enum ReceiptPurchaseService {
 
             let otherStoreItems = remainingPurchased.filter { $0.store != store }
             let groupedByStore = Dictionary(grouping: otherStoreItems, by: \.store)
-            for (otherStore, storeItems) in groupedByStore {
+            for (otherStore, storeItems) in groupedByStore.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
                 let storeList = ShoppingList(
                     title: "Compra \(otherStore.displayName) - \(now.formatted(date: .abbreviated, time: .omitted))",
                     completedAt: now,
@@ -502,7 +728,7 @@ enum ReceiptPurchaseService {
                     pendingCount: 0,
                     skippedCount: 0,
                     unavailableCount: 0,
-                    totalSpent: storeItems.compactMap(\.price).reduce(0, +)
+                    totalSpent: storeItems.map(lineTotal).reduce(0, +)
                 )
                 context.insert(storeList)
                 for item in storeItems {
@@ -514,7 +740,7 @@ enum ReceiptPurchaseService {
 
         do {
             let entriesTotal = validEntries.map(\.lineTotal).reduce(0, +)
-            let mergedTotal = mergedPurchased.compactMap(\.price).reduce(0, +)
+            let mergedTotal = mergedPurchased.map(lineTotal).reduce(0, +)
             completedList.purchasedCount = purchaseItems.count + mergedPurchased.count
             completedList.totalSpent = entriesTotal + mergedTotal
 
@@ -537,5 +763,13 @@ enum ReceiptPurchaseService {
             ReceiptImageStore.delete(named: receiptFilename)
             throw error
         }
+    }
+
+    /// Total de un producto ya archivado: el precio guardado es unitario, así
+    /// que sumarlo sin la cantidad subestima la compra.
+    private static func lineTotal(of item: ShoppingItem) -> Double {
+        guard let price = item.price else { return 0 }
+        let units = Int(item.quantity.trimmingCharacters(in: .whitespaces)) ?? 1
+        return price * Double(max(1, units))
     }
 }

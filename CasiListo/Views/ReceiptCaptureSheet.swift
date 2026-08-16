@@ -21,15 +21,19 @@ struct ReceiptCaptureSheet: View {
     @State private var selectedStore: Store
     @State private var detectedStore: Store?
     @State private var receiptImage: UIImage?
+    @State private var scannedPageData: [Data] = []
     @State private var entries: [ReceiptPurchaseEntry] = []
     @State private var expandedEntryID: UUID?
     @State private var pickerSource: ReceiptImageSource?
     @State private var showsSourceDialog = false
     @State private var isRecognizing = false
     @State private var isSaving = false
-    @State private var errorMessage: String?
-    @State private var scanToken = UUID()
+    @State private var alert: ReceiptAlert?
+    @State private var recognitionTask: Task<Void, Never>?
     @State private var savedSummary: ReceiptRegistrationSummary?
+    @State private var printedTotal: Double?
+    @State private var recognizedLineCount = 0
+    @State private var hasStoreOverride = false
 
     init(
         activeList: ShoppingList?,
@@ -58,6 +62,27 @@ struct ReceiptCaptureSheet: View {
 
     private var purchasedActiveItems: [ShoppingItem] {
         activeItems.filter { $0.status == .purchased }
+    }
+
+    /// Índice de precios anteriores: se arma una vez por pantalla en lugar de
+    /// recorrer todo el historial en cada redibujo de cada fila.
+    private var priceIndex: ReceiptPriceIndex {
+        ReceiptPriceIndex(allItems: allItems, completedLists: completedLists)
+    }
+
+    /// Vocabulario propio de la persona para corregir lo que leyó el OCR.
+    private var vocabulary: [String] {
+        var names = Set(allItems.map(\.name))
+        names.formUnion(SuggestedProducts.byCategory.values.flatMap { $0 })
+        return Array(names)
+    }
+
+    /// Diferencia entre lo que suman las líneas revisadas y el TOTAL impreso.
+    private var totalMismatch: Double? {
+        guard let printedTotal, printedTotal > 0 else { return nil }
+        let difference = entriesTotal - printedTotal
+        // Un peso de diferencia es redondeo, no una línea perdida.
+        return abs(difference) > 1 ? difference : nil
     }
 
     /// Comprados que no tienen línea asociada en la boleta: en modo cierre
@@ -122,15 +147,16 @@ struct ReceiptCaptureSheet: View {
                 Text("Procura que se lean claramente los nombres y precios.")
             }
             .alert(
-                "No se pudo registrar la boleta",
+                alert?.title ?? "",
                 isPresented: Binding(
-                    get: { errorMessage != nil },
-                    set: { if !$0 { errorMessage = nil } }
-                )
-            ) {
+                    get: { alert != nil },
+                    set: { if !$0 { alert = nil } }
+                ),
+                presenting: alert
+            ) { _ in
                 Button("Entendido", role: .cancel) {}
-            } message: {
-                Text(errorMessage ?? "Intenta nuevamente con una foto más nítida.")
+            } message: { alert in
+                Text(alert.message)
             }
             .sheet(item: $pickerSource) { source in
                 switch source {
@@ -150,6 +176,7 @@ struct ReceiptCaptureSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(isSaving)
+        .onDisappear { recognitionTask?.cancel() }
     }
 
     // MARK: - Captura
@@ -248,6 +275,7 @@ struct ReceiptCaptureSheet: View {
                     .padding(16)
                     .background(Color.appCardBackground, in: RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
                 } else {
+                    totalCheckBanner
                     productReviewSection
 
                     if closesPurchase && unmatchedPurchasedCount > 0 {
@@ -291,14 +319,59 @@ struct ReceiptCaptureSheet: View {
 
             Spacer(minLength: 0)
 
-            Button("Cambiar") {
-                showsSourceDialog = true
+            VStack(alignment: .trailing, spacing: 8) {
+                Button("Cambiar") {
+                    showsSourceDialog = true
+                }
+                .font(Theme.captionDynamic.weight(.semibold))
+                .accessibilityLabel("Cambiar foto de la boleta")
+
+                if !isRecognizing && !scannedPageData.isEmpty {
+                    Button("Reintentar lectura") {
+                        retryRecognition()
+                    }
+                    .font(Theme.captionDynamic.weight(.semibold))
+                    .accessibilityHint("Vuelve a leer los productos de esta misma foto")
+                }
             }
-            .font(Theme.captionDynamic.weight(.semibold))
-            .accessibilityLabel("Cambiar foto de la boleta")
         }
         .padding(12)
         .background(Color.appCardBackground, in: RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
+    }
+
+    /// Cuadratura contra el TOTAL impreso: es la mejor señal disponible de que
+    /// quedó alguna línea sin leer, y hasta ahora se descartaba.
+    @ViewBuilder
+    private var totalCheckBanner: some View {
+        if let printedTotal, printedTotal > 0 {
+            let mismatch = totalMismatch
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: mismatch == nil ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                    .foregroundStyle(mismatch == nil ? Theme.accentYellow : Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078")))
+                    .accessibilityHidden(true)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(mismatch == nil ? "La suma cuadra con la boleta" : "La suma no cuadra con la boleta")
+                        .font(Theme.bodyBoldDynamic)
+                    Text(mismatch == nil
+                         ? "Total impreso \(printedTotal.formattedPriceWithSymbol)."
+                         : "Van \(entriesTotal.formattedPriceWithSymbol) de \(printedTotal.formattedPriceWithSymbol): \(mismatchDescription(mismatch ?? 0)).")
+                        .font(Theme.captionDynamic)
+                        .foregroundStyle(Color.appTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(14)
+            .background(Color.appCardBackground, in: RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
+            .accessibilityElement(children: .combine)
+        }
+    }
+
+    private func mismatchDescription(_ difference: Double) -> String {
+        difference < 0
+            ? "faltan \(abs(difference).formattedPriceWithSymbol), revisa si quedó alguna línea sin leer"
+            : "sobran \(difference.formattedPriceWithSymbol), revisa si alguna línea se leyó dos veces"
     }
 
     private var storePicker: some View {
@@ -306,7 +379,13 @@ struct ReceiptCaptureSheet: View {
             Label("Supermercado", systemImage: "storefront")
                 .font(Theme.bodyBoldDynamic)
 
-            Picker("Supermercado de esta boleta", selection: $selectedStore) {
+            Picker("Supermercado de esta boleta", selection: Binding(
+                get: { selectedStore },
+                set: { newValue in
+                    hasStoreOverride = true
+                    selectedStore = newValue
+                }
+            )) {
                 ForEach(Store.allCases) { store in
                     Text(store.displayName).tag(store)
                 }
@@ -354,22 +433,31 @@ struct ReceiptCaptureSheet: View {
             }
 
             if entries.isEmpty {
+                // Distinguir «no se leyó nada» de «se leyó texto pero ninguna
+                // línea parecía un producto» cambia por completo el consejo útil.
                 ContentUnavailableView(
                     "Sin productos detectados",
                     systemImage: "text.badge.xmark",
-                    description: Text("Puedes añadirlos manualmente o probar con una foto mejor iluminada."))
+                    description: Text(
+                        recognizedLineCount == 0
+                        ? "No pudimos leer texto en esta foto. Prueba con más luz, la boleta plana y sin sombras."
+                        : "Leímos \(recognizedLineCount) líneas, pero ninguna tenía forma de producto con precio. Puedes añadirlos a mano."
+                    ))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 22)
                     .background(Color.appCardBackground, in: RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
             } else {
+                let index = priceIndex
+                let purchased = purchasedActiveItems
+                let pending = activeItems.filter { $0.status != .purchased }
                 VStack(spacing: 8) {
                     ForEach($entries) { $entry in
                         ReceiptEntryRow(
                             entry: $entry,
                             isExpanded: expandedEntryID == entry.id,
-                            purchasedItems: purchasedActiveItems,
-                            pendingItems: activeItems.filter { $0.status != .purchased },
-                            comparison: comparison(for: entry),
+                            purchasedItems: purchased,
+                            pendingItems: pending,
+                            comparison: comparison(for: entry, using: index),
                             onToggleExpanded: {
                                 withAnimation(Theme.quickAnimation) {
                                     expandedEntryID = expandedEntryID == entry.id ? nil : entry.id
@@ -487,50 +575,93 @@ struct ReceiptCaptureSheet: View {
             return
         }
         guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
-            errorMessage = "La cámara no está disponible en este dispositivo. Puedes elegir una foto de tu biblioteca."
+            alert = ReceiptAlert(
+                title: "Cámara no disponible",
+                message: "La cámara no está disponible en este dispositivo. Puedes elegir una foto de tu biblioteca."
+            )
             return
         }
         pickerSource = .camera
     }
 
     private func applyScannedPages(_ pages: [UIImage]) {
-        guard let combined = ReceiptImageComposer.stitchVertically(pages) else { return }
+        guard let combined = ReceiptImageComposer.stitchVertically(pages) else {
+            alert = ReceiptAlert(
+                title: "No se pudo usar esta foto",
+                message: "Vuelve a escanear la boleta o elige otra imagen."
+            )
+            return
+        }
         receiptImage = combined
+        printedTotal = nil
+        hasStoreOverride = false
+        scannedPageData = []
+
+        // Para poder releer la boleta hay que conservar las páginas, pero
+        // guardarlas como bitmaps son decenas de megas por página: se retienen
+        // comprimidas y se decodifican solo si hace falta reintentar.
+        let boxed = pages.map(SendableImage.init)
+        Task {
+            scannedPageData = await Task.detached(priority: .utility) {
+                boxed.compactMap { try? ReceiptImageStore.encode($0.image, quality: ReceiptImageStore.rereadQuality) }
+            }.value
+        }
+
+        scanReceipt(pages: pages)
+    }
+
+    private func retryRecognition() {
+        let pages = scannedPageData.compactMap { UIImage(data: $0) }
+        guard !pages.isEmpty else { return }
         scanReceipt(pages: pages)
     }
 
     private func scanReceipt(pages: [UIImage]) {
+        guard !pages.isEmpty else { return }
+
+        // Cancelar de verdad: antes el resultado viejo se descartaba, pero el
+        // reconocimiento seguía consumiendo CPU hasta terminar.
+        recognitionTask?.cancel()
         isRecognizing = true
         entries = []
         expandedEntryID = nil
         detectedStore = nil
-        let token = UUID()
-        scanToken = token
+        printedTotal = nil
+        recognizedLineCount = 0
 
-        Task {
+        let userVocabulary = vocabulary
+        let items = activeItems
+
+        recognitionTask = Task {
             do {
                 let recognition = try await ReceiptTextRecognitionService.recognizeReceipt(in: pages)
-                guard scanToken == token else { return }
+                try Task.checkCancellation()
+
                 if let rawValue = recognition.detectedStoreRawValue,
                    let store = Store(rawValue: rawValue) {
-                    selectedStore = store
                     detectedStore = store
+                    // Una detección posterior no debe pisar lo que la persona eligió.
+                    if !hasStoreOverride { selectedStore = store }
                 }
+
+                let assignments = ProductNameMatcher.assign(lines: recognition.products, to: items)
                 entries = recognition.products.map { line in
-                    ReceiptPurchaseEntry(
-                        name: line.name,
-                        price: line.price,
-                        quantity: line.quantity,
-                        associatedItemID: ProductNameMatcher.bestMatch(for: line.name, in: activeItems)?.id
-                    )
+                    var entry = ReceiptPurchaseEntry(recognized: line, associatedItemID: assignments[line.id])
+                    entry.name = ReceiptNameCorrector.correct(line.name, vocabulary: userVocabulary)
+                    return entry
                 }
+                printedTotal = recognition.printedTotal
+                recognizedLineCount = recognition.recognizedLineCount
+            } catch is CancellationError {
+                return
             } catch {
-                guard scanToken == token else { return }
-                errorMessage = error.localizedDescription
+                guard !Task.isCancelled else { return }
+                alert = ReceiptAlert(
+                    title: "No se pudo leer la boleta",
+                    message: error.localizedDescription
+                )
             }
-            if scanToken == token {
-                isRecognizing = false
-            }
+            if !Task.isCancelled { isRecognizing = false }
         }
     }
 
@@ -541,41 +672,55 @@ struct ReceiptCaptureSheet: View {
         return "Detectamos \(store.displayName); puedes mantener tu selección si necesitas corregirlo."
     }
 
-    private func comparison(for entry: ReceiptPurchaseEntry) -> ReceiptPriceComparison? {
+    private func comparison(for entry: ReceiptPurchaseEntry, using index: ReceiptPriceIndex) -> ReceiptPriceComparison? {
         let comparisonName = activeItems.first(where: { $0.id == entry.associatedItemID })?.name ?? entry.name
-        return ReceiptPriceHistory.latestComparison(
-            productName: comparisonName,
-            newPrice: entry.price,
-            store: selectedStore,
-            allItems: allItems,
-            completedLists: completedLists
-        )
+        return index.comparison(productName: comparisonName, newPrice: entry.price, store: selectedStore)
     }
 
     private func savePurchase() {
         guard let receiptImage, canSave else { return }
         isSaving = true
 
-        do {
-            let summary = try ShoppingPersistenceCoordinator(context: modelContext).registerReceipt(
-                entries: entries,
-                receiptImage: receiptImage,
-                store: selectedStore,
-                activeList: activeList,
-                allItems: allItems,
-                categories: categories,
-                archivingPurchased: closesPurchase
-            )
-            HapticFeedback.success()
-            isSaving = false
-            withAnimation(Theme.defaultAnimation) {
-                savedSummary = summary
+        let image = SendableImage(receiptImage)
+        Task {
+            do {
+                // Codificar una boleta larga puede tardar cientos de
+                // milisegundos: hacerlo en el hilo principal congelaba la vista
+                // justo cuando debía aparecer el indicador de guardado.
+                let data = try await Task.detached(priority: .userInitiated) {
+                    try ReceiptImageStore.encode(image.image)
+                }.value
+                let filename = try ReceiptImageStore.save(data)
+
+                let summary = try ShoppingPersistenceCoordinator(context: modelContext).registerReceipt(
+                    entries: entries,
+                    receiptFilename: filename,
+                    store: selectedStore,
+                    activeList: activeList,
+                    allItems: allItems,
+                    categories: categories,
+                    archivingPurchased: closesPurchase
+                )
+                HapticFeedback.success()
+                isSaving = false
+                withAnimation(Theme.defaultAnimation) {
+                    savedSummary = summary
+                }
+            } catch {
+                alert = ReceiptAlert(
+                    title: "No se pudo registrar la boleta",
+                    message: error.localizedDescription
+                )
+                isSaving = false
             }
-        } catch {
-            errorMessage = error.localizedDescription
-            isSaving = false
         }
     }
+}
+
+private struct ReceiptAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
 
 // MARK: - Fila de producto detectado
@@ -592,6 +737,25 @@ private struct ReceiptEntryRow: View {
     let onDelete: () -> Void
 
     private var isAssociated: Bool { entry.associatedItemID != nil }
+
+    /// Vision entrega su confianza por fragmento y hasta ahora se descartaba.
+    /// Marcar las líneas dudosas dirige la revisión a donde hace falta.
+    private var isUncertain: Bool { entry.confidence < 0.5 }
+
+    private var displayName: String {
+        entry.name.isEmpty ? "Producto sin nombre" : entry.name
+    }
+
+    /// Cuando el total impreso no se reparte en unidades exactas (3 por $2.750),
+    /// mostrar «3 × $917» miente sobre el papel; se muestra el recuento a secas.
+    private var quantityCaption: String? {
+        guard entry.quantity > 1 else { return nil }
+        let derived = entry.price.rounded() * Double(entry.quantity)
+        if abs(derived - entry.lineTotal) > 0.5 {
+            return "\(entry.quantity) unidades"
+        }
+        return "\(entry.quantity) × \(entry.price.rounded().formattedPriceWithSymbol)"
+    }
 
     private var comparisonColor: Color {
         guard let comparison else { return Color.appTextSecondary }
@@ -621,14 +785,24 @@ private struct ReceiptEntryRow: View {
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(entry.name.isEmpty ? "Producto sin nombre" : entry.name)
+                    Text(displayName)
                         .font(Theme.bodyDynamic)
                         .foregroundStyle(Color.appTextPrimary)
                         .lineLimit(1)
 
-                    Text(isAssociated ? "En tu lista" : "Se añadirá como nuevo")
-                        .font(Theme.captionDynamic)
-                        .foregroundStyle(Color.appTextSecondary)
+                    HStack(spacing: 6) {
+                        Text(isAssociated ? "En tu lista" : "Se añadirá como nuevo")
+                        if isUncertain {
+                            Label("Revisar", systemImage: "questionmark.circle")
+                                .labelStyle(.titleAndIcon)
+                        }
+                        if entry.hasDiscount {
+                            Label("Con descuento", systemImage: "tag")
+                                .labelStyle(.titleAndIcon)
+                        }
+                    }
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
                 }
 
                 Spacer(minLength: 8)
@@ -639,8 +813,8 @@ private struct ReceiptEntryRow: View {
                         .foregroundStyle(Color.appTextPrimary)
                         .monospacedDigit()
 
-                    if entry.quantity > 1 {
-                        Text("\(entry.quantity) × \(entry.price.formattedPriceWithSymbol)")
+                    if let quantityCaption {
+                        Text(quantityCaption)
                             .font(Theme.captionDynamic)
                             .foregroundStyle(Color.appTextSecondary)
                             .monospacedDigit()
@@ -658,7 +832,12 @@ private struct ReceiptEntryRow: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(entry.name), \(entry.lineTotal.formattedPriceWithSymbol)\(isAssociated ? ", asociado a tu lista" : ", se añadirá como nuevo")")
+        .accessibilityLabel(
+            "\(displayName), \(entry.lineTotal.formattedPriceWithSymbol)"
+            + (entry.quantity > 1 ? ", \(entry.quantity) unidades" : "")
+            + (isAssociated ? ", asociado a tu lista" : ", se añadirá como nuevo")
+            + (isUncertain ? ", lectura poco clara, conviene revisarla" : "")
+        )
         .accessibilityHint(isExpanded ? "Toca para contraer" : "Toca para editar esta línea")
     }
 
@@ -675,8 +854,10 @@ private struct ReceiptEntryRow: View {
                     Text("Precio unitario")
                         .font(Theme.captionDynamic.weight(.semibold))
                         .foregroundStyle(Color.appTextSecondary)
-                    TextField("Precio", value: $entry.price, format: .number.precision(.fractionLength(0...2)))
-                        .keyboardType(.decimalPad)
+                    // El peso chileno no tiene decimales: admitirlos solo genera
+                    // totales que no cuadran con la boleta.
+                    TextField("Precio", value: $entry.price, format: .number.precision(.fractionLength(0)))
+                        .keyboardType(.numberPad)
                         .frame(minHeight: Theme.minimumTouchTarget)
                         .accessibilityLabel("Precio unitario")
                 }
@@ -686,10 +867,28 @@ private struct ReceiptEntryRow: View {
                     Text("Cantidad")
                         .font(Theme.captionDynamic.weight(.semibold))
                         .foregroundStyle(Color.appTextSecondary)
-                    Stepper("\(entry.quantity)", value: $entry.quantity, in: 1...99)
-                        .accessibilityLabel("Cantidad: \(entry.quantity)")
+                    HStack(spacing: 8) {
+                        // Escribible además del stepper: llegar a 12 a punta de
+                        // toques son once pulsaciones.
+                        TextField("1", value: $entry.quantity, format: .number)
+                            .keyboardType(.numberPad)
+                            .frame(width: 46, height: Theme.minimumTouchTarget)
+                            .multilineTextAlignment(.center)
+                            .accessibilityLabel("Cantidad")
+                        Stepper("", value: $entry.quantity, in: 1...99)
+                            .labelsHidden()
+                            .accessibilityLabel("Cantidad: \(entry.quantity)")
+                    }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if entry.hasDiscount {
+                Label("La boleta traía un descuento en esta línea; el total ya lo incluye.", systemImage: "tag")
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .accessibilityElement(children: .combine)
             }
 
             if let comparison {

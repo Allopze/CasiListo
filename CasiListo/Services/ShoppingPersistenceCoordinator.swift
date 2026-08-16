@@ -117,6 +117,29 @@ final class ShoppingPersistenceCoordinator {
         )
     }
 
+    /// Variante con la foto ya codificada y guardada fuera del hilo principal.
+    @discardableResult
+    func registerReceipt(
+        entries: [ReceiptPurchaseEntry],
+        receiptFilename: String,
+        store: Store,
+        activeList: ShoppingList?,
+        allItems: [ShoppingItem],
+        categories: [Category],
+        archivingPurchased: Bool = false
+    ) throws -> ReceiptRegistrationSummary {
+        try ReceiptPurchaseService.register(
+            entries: entries,
+            receiptFilename: receiptFilename,
+            store: store,
+            activeList: activeList,
+            allItems: allItems,
+            categories: categories,
+            context: context,
+            archivingPurchased: archivingPurchased
+        )
+    }
+
     func cleanUnreferencedFiles() throws {
         let items = try context.fetch(FetchDescriptor<ShoppingItem>())
         let lists = try context.fetch(FetchDescriptor<ShoppingList>())

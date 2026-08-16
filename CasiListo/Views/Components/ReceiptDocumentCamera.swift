@@ -56,24 +56,45 @@ struct ReceiptDocumentCamera: UIViewControllerRepresentable {
 
 /// Une las páginas de una boleta larga en una sola imagen vertical para
 /// guardarla y mostrarla como una boleta continua.
+///
+/// La imagen compuesta es solo para archivo y vista previa —el reconocimiento
+/// trabaja sobre cada página por separado—, así que se acota su tamaño: cinco
+/// páginas a resolución completa arman un lienzo de más de 100 MB y el sistema
+/// termina cerrando la app.
 enum ReceiptImageComposer {
+    /// Presupuesto del lienzo en píxeles (~24 MP): sobra para leer la foto
+    /// guardada y evita picos de memoria en boletas de muchas páginas.
+    static let maximumPixels: CGFloat = 24_000_000
+
     static func stitchVertically(_ images: [UIImage]) -> UIImage? {
         guard !images.isEmpty else { return nil }
         if images.count == 1 { return images[0] }
 
-        let targetWidth = images.map(\.size.width).max() ?? 0
+        // `size` va en puntos; el lienzo se arma en píxeles para no perder
+        // resolución con imágenes de escala distinta de 1.
+        let pixelSizes = images.map { CGSize(width: $0.size.width * $0.scale, height: $0.size.height * $0.scale) }
+        let targetWidth = pixelSizes.map(\.width).max() ?? 0
         guard targetWidth > 0 else { return images.first }
 
-        let scaledSizes = images.map { image -> CGSize in
-            let scale = targetWidth / image.size.width
-            return CGSize(width: targetWidth, height: image.size.height * scale)
+        var scaledSizes = pixelSizes.map { size -> CGSize in
+            let ratio = targetWidth / size.width
+            return CGSize(width: targetWidth, height: size.height * ratio)
         }
-        let totalHeight = scaledSizes.map(\.height).reduce(0, +)
+        var canvasWidth = targetWidth
+        var totalHeight = scaledSizes.map(\.height).reduce(0, +)
+
+        if canvasWidth * totalHeight > maximumPixels {
+            let shrink = (maximumPixels / (canvasWidth * totalHeight)).squareRoot()
+            canvasWidth *= shrink
+            scaledSizes = scaledSizes.map { CGSize(width: $0.width * shrink, height: $0.height * shrink) }
+            totalHeight = scaledSizes.map(\.height).reduce(0, +)
+        }
 
         let format = UIGraphicsImageRendererFormat()
         format.scale = 1
+        format.opaque = true
         let renderer = UIGraphicsImageRenderer(
-            size: CGSize(width: targetWidth, height: totalHeight),
+            size: CGSize(width: canvasWidth, height: totalHeight),
             format: format
         )
 
