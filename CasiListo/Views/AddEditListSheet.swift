@@ -74,6 +74,9 @@ struct AddEditListSheet: View {
                 iconSection
             }
             .formStyle(.grouped)
+            // El formulario es largo y el teclado tapa justo la paleta y los
+            // iconos: al desplazarse hacia ellos se cierra solo.
+            .scrollDismissesKeyboard(.immediately)
             .scrollContentBackground(.hidden)
             .background(Color.appBackground)
             .navigationTitle(isEditing ? "Editar lista" : "Nueva lista")
@@ -228,7 +231,7 @@ struct AddEditListSheet: View {
                         }
                     }
                     .font(.caption.bold())
-                    .foregroundStyle(Theme.accentYellow)
+                    .foregroundStyle(Theme.accentInteractive)
                 }
             }
         }

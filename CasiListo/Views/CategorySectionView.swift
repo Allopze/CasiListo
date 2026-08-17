@@ -138,9 +138,9 @@ struct CategorySectionView: View {
             HStack(spacing: hStackSpacing) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: sfSymbolSize, weight: .semibold))
-                    .foregroundStyle(categoryAccent)
+                    .foregroundStyle(categoryIcon)
                     .frame(width: imageWidth, height: imageWidth)
-                    .background(categoryAccent.opacity(0.14))
+                    .background(categoryAccent.opacity(Category.badgeBackgroundOpacity))
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                 Text(category.displayName)
@@ -189,6 +189,7 @@ struct CategorySectionView: View {
     private var pendingCount: Int { items.filter { !$0.isPurchased }.count }
     private var purchasedCount: Int { items.filter { $0.isPurchased }.count }
     private var categoryAccent: Color { Category.accentColor(forName: category.name) }
+    private var categoryIcon: Color { Category.iconColor(forName: category.name) }
 
     /// Recuento discreto: texto secundario para pendientes; verde solo cuando
     /// la categoría está completa (estado con significado real).

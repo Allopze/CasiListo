@@ -55,7 +55,7 @@ struct VoiceNotePlayerButton: View {
                 } else {
                     Image(systemName: "waveform")
                         .font(.system(size: 14, weight: .bold))
-                        .foregroundStyle(Theme.accentYellow)
+                        .foregroundStyle(Theme.accentInteractive)
                 }
             }
             .frame(

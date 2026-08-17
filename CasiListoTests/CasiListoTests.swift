@@ -1,5 +1,7 @@
 import XCTest
 import SwiftData
+import SwiftUI
+import UIKit
 @testable import CasiListo
 
 @MainActor
@@ -726,6 +728,86 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(itemsListA.count, 2)
         XCTAssertEqual(itemsListB.count, 1)
         XCTAssertEqual(itemsListB.first?.name, "Tomates")
+    }
+
+    /// Un SF Symbol inexistente no falla: simplemente no dibuja nada y deja el
+    /// badge vacío, que es exactamente como se ve un problema de contraste.
+    @MainActor
+    func testEverySFSymbolInTheAppExists() {
+        for category in DefaultCategory.allCases {
+            XCTAssertNotNil(
+                UIImage(systemName: category.sfSymbol),
+                "Categoría \(category.rawValue) usa «\(category.sfSymbol)», que no existe"
+            )
+        }
+
+        for symbol in ListAppearanceCatalog.allSymbols {
+            XCTAssertNotNil(
+                UIImage(systemName: symbol),
+                "El catálogo de iconos de lista ofrece «\(symbol)», que no existe"
+            )
+        }
+
+        for store in Store.allCases {
+            XCTAssertNotNil(
+                UIImage(systemName: store.sfSymbol),
+                "\(store.displayName) usa «\(store.sfSymbol)», que no existe"
+            )
+        }
+    }
+
+    // MARK: - Contraste (WCAG 2.2 AA)
+
+    /// El icono del badge se pinta con el color de la categoría sobre ese mismo
+    /// color al 14%. Con los colores crudos, ocho de quince categorías quedaban
+    /// bajo 3:1 y «Lácteos y huevos» en 1.6:1 — invisible.
+    @MainActor
+    func testCategoryIconsMeetContrastOverTheirBadge() {
+        let surfaces = [("claro", "FFFFFF"), ("oscuro", "2A2928")]
+
+        for category in DefaultCategory.allCases {
+            let accent = UIColor(Category.accentColor(forName: category.rawValue))
+            let icon = UIColor(Category.iconColor(forName: category.rawValue))
+
+            for (name, surfaceHex) in surfaces {
+                let trait = UITraitCollection(
+                    userInterfaceStyle: name == "claro" ? .light : .dark
+                )
+                let badge = accent
+                    .resolvedColor(with: trait)
+                    .blended(alpha: Category.badgeBackgroundOpacity, over: UIColor(hex: surfaceHex))
+                let ratio = Theme.contrastRatio(icon.resolvedColor(with: trait), badge)
+
+                XCTAssertGreaterThanOrEqual(
+                    ratio, 3.0,
+                    "\(category.rawValue) en modo \(name): \(String(format: "%.2f", ratio)):1"
+                )
+            }
+        }
+    }
+
+    /// El amarillo de marca sirve para rellenar, no para escribir.
+    @MainActor
+    func testAccentTokensMeetContrastOnLightSurfaces() {
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let cream = UIColor(hex: "F5F1EB")
+
+        for (name, surface) in [("crema", cream), ("tarjeta", UIColor(hex: "FFFFFF"))] {
+            let ratio = Theme.contrastRatio(
+                UIColor(Theme.accentInteractive).resolvedColor(with: light),
+                surface
+            )
+            XCTAssertGreaterThanOrEqual(
+                ratio, 4.5,
+                "accentInteractive sobre \(name): \(String(format: "%.2f", ratio)):1"
+            )
+        }
+
+        let labelOnFill = Theme.contrastRatio(
+            UIColor(Theme.onAccent).resolvedColor(with: light),
+            UIColor(Theme.accentYellow).resolvedColor(with: light)
+        )
+        XCTAssertGreaterThanOrEqual(labelOnFill, 4.5, "onAccent sobre el relleno amarillo")
     }
 
     // MARK: - Helpers

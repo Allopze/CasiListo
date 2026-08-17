@@ -41,7 +41,7 @@ struct ContentView: View {
                 }
             }
         }
-        .tint(Theme.accentYellow)
+        .tint(Theme.accentInteractive)
         .alert(
             "No se pudieron guardar los cambios",
             isPresented: Binding(

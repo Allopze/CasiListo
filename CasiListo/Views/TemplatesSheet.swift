@@ -164,7 +164,7 @@ struct TemplatesSheet: View {
                     ForEach(template.items, id: \.name) { item in
                         HStack {
                             Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(Theme.accentYellow)
+                                .foregroundStyle(Theme.accentInteractive)
                                 .font(.caption)
                             Text(item.name)
                                 .font(.subheadline)

@@ -12,10 +12,16 @@ enum AppTab: Hashable {
 struct MainTabView: View {
     @State private var selection: AppTab = .compra
 
-    /// Ámbar oscurecido para la selección del tab bar en modo claro
-    /// (el amarillo de marca no contrasta sobre fondos claros); en oscuro
-    /// el amarillo de marca funciona.
-    private let tabTint = Color(light: UIColor(hex: "9A7B00"), dark: UIColor(hex: "F5C518"))
+    /// Mismo token verificado que el resto de textos e íconos de acento: el
+    /// amarillo de marca no contrasta sobre fondos claros.
+    private let tabTint = Theme.accentInteractive
+
+    private var uiTestingColorScheme: ColorScheme? {
+        let arguments = ProcessInfo.processInfo.arguments
+        if arguments.contains("-ui-testing-dark") { return .dark }
+        if arguments.contains("-ui-testing-light") { return .light }
+        return nil
+    }
 
     var body: some View {
         TabView(selection: $selection) {
@@ -36,10 +42,10 @@ struct MainTabView: View {
                 .tag(AppTab.ajustes)
         }
         .tint(tabTint)
-        // Solo para verificación visual automatizada.
-        .preferredColorScheme(
-            ProcessInfo.processInfo.arguments.contains("-ui-testing-dark") ? .dark : nil
-        )
+        // Solo para verificación visual automatizada. La apariencia se fuerza en
+        // ambos sentidos: sin "-ui-testing-light" la app seguiría al simulador,
+        // que conserva el modo de la corrida anterior y arruina la comparación.
+        .preferredColorScheme(uiTestingColorScheme)
         .onOpenURL { url in
             // La lista es el único destino público; rutas desconocidas no
             // modifican el estado ni presentan contenido inesperado.

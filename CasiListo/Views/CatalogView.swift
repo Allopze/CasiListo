@@ -140,9 +140,9 @@ struct CatalogView: View {
             HStack(spacing: 12) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Category.accentColor(forName: category.name))
+                    .foregroundStyle(Category.iconColor(forName: category.name))
                     .frame(width: iconTileSize, height: iconTileSize)
-                    .background(Category.accentColor(forName: category.name).opacity(0.14))
+                    .background(Category.accentColor(forName: category.name).opacity(Category.badgeBackgroundOpacity))
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                 Text(category.displayName)
@@ -224,7 +224,10 @@ struct CatalogView: View {
                 HapticFeedback.selection()
                 removeFromList(catalogItem)
             } label: {
-                Image(systemName: "checkmark.circle.fill")
+                // Carrito, no visto bueno: el círculo amarillo con check ya
+                // significa «comprado» en el detalle de la lista y aquí quiere
+                // decir «ya está en tu compra». Dos sentidos para un mismo icono.
+                Image(systemName: "cart.circle.fill")
                     .font(.system(size: 24))
                     .symbolRenderingMode(.palette)
                     .foregroundStyle(Theme.onAccent, Theme.accentYellow)

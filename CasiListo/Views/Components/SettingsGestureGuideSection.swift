@@ -42,7 +42,7 @@ struct SettingsGestureGuideSection: View {
         HStack(alignment: .top, spacing: 14) {
             Image(systemName: icon)
                 .font(.system(size: iconSize))
-                .foregroundStyle(Theme.accentYellow)
+                .foregroundStyle(Theme.accentInteractive)
                 .frame(width: iconFrame)
 
             VStack(alignment: .leading, spacing: 4) {

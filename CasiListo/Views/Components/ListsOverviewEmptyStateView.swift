@@ -10,7 +10,7 @@ struct ListsOverviewEmptyStateView: View {
         VStack(spacing: 16) {
             Image(systemName: "cart.badge.plus")
                 .font(.system(size: 48, weight: .light))
-                .foregroundStyle(Theme.accentYellow)
+                .foregroundStyle(Theme.accentInteractive)
                 .frame(width: 88, height: 88)
                 .background(Theme.accentYellow.opacity(0.12), in: Circle())
                 .padding(.top, 24)
@@ -31,8 +31,7 @@ struct ListsOverviewEmptyStateView: View {
                 Label("Crear mi primera lista", systemImage: "plus")
                     .frame(maxWidth: .infinity)
             }
-            .buttonStyle(.borderedProminent)
-            .tint(Theme.accentYellow)
+            .buttonStyle(.accentProminent)
             .controlSize(.large)
             .padding(.horizontal, 24)
             .padding(.top, 8)
@@ -46,7 +45,7 @@ struct ListsOverviewEmptyStateView: View {
 
                 HStack(spacing: 8) {
                     quickStarterButton(title: "Supermercado", symbol: "cart.fill", colorHex: "F5C518")
-                    quickStarterButton(title: "Feria & Frutas", symbol: "leaf.fill", colorHex: "4CAF50")
+                    quickStarterButton(title: "Feria", symbol: "leaf.fill", colorHex: "4CAF50")
                     quickStarterButton(title: "Asado", symbol: "flame.fill", colorHex: "FF5722")
                 }
             }
@@ -69,6 +68,7 @@ struct ListsOverviewEmptyStateView: View {
                     .font(.caption)
                 Text(title)
                     .font(Theme.captionDynamic.weight(.medium))
+                    .lineLimit(1)
             }
             .padding(.horizontal, 10)
             .padding(.vertical, 6)

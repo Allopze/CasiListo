@@ -45,7 +45,12 @@ struct ListsOverviewView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
-                headerSummaryCard
+                // Sin listas, la tarjeta solo informaría «0 listas activas, 0
+                // productos» y añadiría un tercer botón «Nueva» junto al «+» de la
+                // barra y al «Crear mi primera lista» del estado vacío.
+                if !activeLists.isEmpty {
+                    headerSummaryCard
+                }
 
                 if activeLists.isEmpty {
                     ListsOverviewEmptyStateView(

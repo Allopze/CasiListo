@@ -63,27 +63,33 @@ struct ShoppingHistoryView: View {
                 if list.totalSpent > 0 {
                     Text(list.totalSpent.formattedPriceWithSymbol)
                         .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.accentYellow)
+                        .foregroundStyle(Theme.accentInteractive)
                 }
             }
 
+            // Los recuentos se apoyan en el icono para ahorrar espacio; sin
+            // etiqueta explícita VoiceOver solo dicta números sueltos.
             HStack(spacing: 12) {
                 Label("\(list.purchasedCount)", systemImage: "checkmark.circle.fill")
+                    .accessibilityLabel("\(list.purchasedCount) comprados")
                 if list.pendingCount > 0 {
                     Label("\(list.pendingCount)", systemImage: "circle")
+                        .accessibilityLabel("\(list.pendingCount) pendientes")
                 }
                 if list.skippedCount > 0 {
                     Label("\(list.skippedCount)", systemImage: "clock")
+                        .accessibilityLabel("\(list.skippedCount) pospuestos")
                 }
                 if list.unavailableCount > 0 {
                     Label("\(list.unavailableCount)", systemImage: "exclamationmark.triangle")
+                        .accessibilityLabel("\(list.unavailableCount) no encontrados")
                 }
             }
             .font(.caption)
             .foregroundStyle(Color.appTextSecondary)
 
             if let completedAt = list.completedAt {
-                Text(completedAt.formatted(date: .abbreviated, time: .shortened))
+                Text(AppDateFormatting.shortWithTime(completedAt))
                     .font(.caption)
                     .foregroundStyle(Color.appTextSecondary)
             }
@@ -96,7 +102,7 @@ struct ShoppingHistoryView: View {
             let itemsByListID = Dictionary(grouping: allItems, by: \.listID)
             var rows = [["Fecha", "Lista", "Supermercado", "Producto", "Cantidad", "Categoria", "Estado", "Precio"]]
             for list in completedLists {
-                let dateStr = (list.completedAt ?? list.createdAt).formatted(date: .numeric, time: .shortened)
+                let dateStr = AppDateFormatting.numericWithTime(list.completedAt ?? list.createdAt)
                 let storeStr = list.storeScope?.displayName ?? "Todos"
 
                 for item in itemsByListID[list.id] ?? [] {

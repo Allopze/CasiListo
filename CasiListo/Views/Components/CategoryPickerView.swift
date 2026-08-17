@@ -53,7 +53,7 @@ struct CategoryPickerView: View {
                 if isSelected {
                     Image(systemName: "checkmark.circle.fill")
                         .font(.system(size: checkmarkSize, weight: .semibold))
-                        .foregroundStyle(Theme.accentYellow)
+                        .foregroundStyle(Theme.accentInteractive)
                         .padding(.trailing, 10)
                         .transition(.scale.combined(with: .opacity))
                 }

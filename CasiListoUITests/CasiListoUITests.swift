@@ -54,7 +54,12 @@ final class CasiListoUITests: XCTestCase {
         nameField.typeText("Producto con estados")
         app.buttons["Añadir"].tap()
 
-        let item = app.staticTexts["Producto con estados"]
+        // La fila combina sus hijos en un solo elemento de accesibilidad y su
+        // etiqueta agrega la tienda, así que buscar el texto exacto es frágil:
+        // basta con que cambie lo que se pinta dentro para que deje de existir.
+        let item = app.descendants(matching: .any)
+            .matching(NSPredicate(format: "label BEGINSWITH %@", "Producto con estados"))
+            .firstMatch
         XCTAssertTrue(item.waitForExistence(timeout: 5))
         item.press(forDuration: 1)
 

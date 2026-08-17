@@ -45,7 +45,7 @@ struct CategoryManagementView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .primaryAction) {
-                Button { sheetMode = .add } label: { Image(systemName: "plus").bold().foregroundStyle(Theme.accentYellow) }
+                Button { sheetMode = .add } label: { Image(systemName: "plus").bold().foregroundStyle(Theme.accentInteractive) }
                     .accessibilityLabel("Nueva categoría")
             }
         }
@@ -79,7 +79,7 @@ struct CategoryManagementView: View {
             HStack(spacing: rowSpacing) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: iconSize, weight: .semibold))
-                    .foregroundStyle(Theme.accentYellow)
+                    .foregroundStyle(Theme.accentInteractive)
                     .frame(width: 32, height: 32)
                     .background(Theme.accentYellow.opacity(0.12))
                     .clipShape(Circle())

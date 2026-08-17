@@ -105,9 +105,12 @@ struct ListCardView: View {
 
         Divider()
 
+        // Sin el tint explícito, el tint amarillo de la app pinta el basurero y
+        // solo el texto queda rojo: la acción destructiva se lee a medias.
         Button(role: .destructive, action: onDelete) {
             Label("Eliminar lista", systemImage: "trash")
         }
+        .tint(.red)
     }
 
     @ViewBuilder

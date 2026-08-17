@@ -75,10 +75,18 @@ struct ShoppingHistoryDetailView: View {
                     Text("Resumen de Gasto")
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
-                    
-                    Text(list.totalSpent > 0 ? list.totalSpent.formattedPriceWithSymbol : "$0")
-                        .font(Theme.titleDynamic)
-                        .foregroundStyle(Theme.accentYellow)
+
+                    // Archivar sin boleta no significa gasto cero, significa que
+                    // no se registró. Un «$0» gigante afirmaba lo primero.
+                    if list.totalSpent > 0 {
+                        Text(list.totalSpent.formattedPriceWithSymbol)
+                            .font(Theme.titleDynamic)
+                            .foregroundStyle(Theme.accentInteractive)
+                    } else {
+                        Text("Sin precios registrados")
+                            .font(Theme.headlineDynamic)
+                            .foregroundStyle(Color.appTextSecondary)
+                    }
                 }
                 
                 Spacer()
@@ -100,14 +108,14 @@ struct ShoppingHistoryDetailView: View {
             Divider().background(Color.appSeparator)
             
             HStack(spacing: 16) {
-                statIndicator(title: "Comprados", count: list.purchasedCount, icon: "checkmark.circle.fill", color: .green)
+                statIndicator(singular: "Comprado", plural: "Comprados", count: list.purchasedCount, icon: "checkmark.circle.fill", color: .green)
                 
                 if list.skippedCount > 0 {
-                    statIndicator(title: "Pospuestos", count: list.skippedCount, icon: "clock.fill", color: .orange)
+                    statIndicator(singular: "Pospuesto", plural: "Pospuestos", count: list.skippedCount, icon: "clock.fill", color: .orange)
                 }
                 
                 if list.unavailableCount > 0 {
-                    statIndicator(title: "No Encontrados", count: list.unavailableCount, icon: "exclamationmark.triangle.fill", color: .red)
+                    statIndicator(singular: "No encontrado", plural: "No encontrados", count: list.unavailableCount, icon: "exclamationmark.triangle.fill", color: .red)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -120,7 +128,7 @@ struct ShoppingHistoryDetailView: View {
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                     
-                    Text("Finalizada el \(completedAt.formatted(date: .long, time: .shortened))")
+                    Text("Finalizada el \(AppDateFormatting.longWithTime(completedAt))")
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                 }
@@ -150,16 +158,25 @@ struct ShoppingHistoryDetailView: View {
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
     }
     
-    private func statIndicator(title: String, count: Int, icon: String, color: Color) -> some View {
+    /// - Parameters:
+    ///   - singular: etiqueta para `count == 1`; evita el «1 Comprados».
+    private func statIndicator(
+        singular: String,
+        plural: String,
+        count: Int,
+        icon: String,
+        color: Color
+    ) -> some View {
         HStack(spacing: 4) {
             Image(systemName: icon)
                 .foregroundStyle(color)
             Text("\(count)")
                 .bold()
-            Text(title)
+            Text(count == 1 ? singular : plural)
                 .foregroundStyle(Color.appTextSecondary)
         }
         .font(Theme.captionDynamic)
+        .accessibilityElement(children: .combine)
     }
     
     private func categorySection(_ category: Category, items: [ShoppingItem]) -> some View {
@@ -167,7 +184,7 @@ struct ShoppingHistoryDetailView: View {
             // Header de la Categoría
             HStack(spacing: 8) {
                 Image(systemName: category.sfSymbol)
-                    .foregroundStyle(Theme.accentYellow)
+                    .foregroundStyle(Theme.accentInteractive)
                 Text(category.displayName)
                     .bold()
                 Spacer()

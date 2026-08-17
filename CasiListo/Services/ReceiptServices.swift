@@ -643,7 +643,7 @@ enum ReceiptPurchaseService {
 
         let now = Date()
         let completedList = ShoppingList(
-            title: "Compra \(store.displayName) - \(now.formatted(date: .abbreviated, time: .omitted))",
+            title: "Compra \(store.displayName) - \(AppDateFormatting.short(now))",
             completedAt: now,
             status: .completed,
             storeScope: store,
@@ -720,7 +720,7 @@ enum ReceiptPurchaseService {
             let groupedByStore = Dictionary(grouping: otherStoreItems, by: \.store)
             for (otherStore, storeItems) in groupedByStore.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
                 let storeList = ShoppingList(
-                    title: "Compra \(otherStore.displayName) - \(now.formatted(date: .abbreviated, time: .omitted))",
+                    title: "Compra \(otherStore.displayName) - \(AppDateFormatting.short(now))",
                     completedAt: now,
                     status: .completed,
                     storeScope: otherStore,

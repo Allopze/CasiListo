@@ -186,7 +186,7 @@ struct ReceiptCaptureSheet: View {
             VStack(spacing: 24) {
                 Image(systemName: "doc.text.viewfinder")
                     .font(.system(size: 50, weight: .medium))
-                    .foregroundStyle(Theme.accentYellow)
+                    .foregroundStyle(Theme.accentInteractive)
                     .frame(width: 104, height: 104)
                     .background(Theme.accentYellow.opacity(0.14), in: Circle())
                     .padding(.top, 44)
@@ -214,8 +214,7 @@ struct ReceiptCaptureSheet: View {
                         Label("Escanear boleta", systemImage: "doc.viewfinder")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accentYellow)
+                    .buttonStyle(.accentProminent)
                     .controlSize(.large)
 
                     Button {
@@ -490,8 +489,7 @@ struct ReceiptCaptureSheet: View {
             .frame(maxWidth: .infinity)
             .frame(minHeight: Theme.minimumTouchTarget)
         }
-        .buttonStyle(.borderedProminent)
-        .tint(Theme.accentYellow)
+        .buttonStyle(.accentProminent)
         .disabled(!canSave)
         .padding(.horizontal, 16)
         .padding(.vertical, 10)
@@ -531,8 +529,7 @@ struct ReceiptCaptureSheet: View {
                         Label("Ver en historial", systemImage: "clock.arrow.circlepath")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.borderedProminent)
-                    .tint(Theme.accentYellow)
+                    .buttonStyle(.accentProminent)
                     .controlSize(.large)
                 }
 

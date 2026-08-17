@@ -52,7 +52,7 @@ struct AddEditVoiceNoteSection: View {
                 } else if let filename = voiceNoteFilename {
                     Image(systemName: "waveform")
                         .font(.system(size: 16))
-                        .foregroundStyle(Theme.accentYellow)
+                        .foregroundStyle(Theme.accentInteractive)
                     Text("Nota de voz")
                         .font(Theme.bodyDynamic)
                         .foregroundStyle(Color.appTextPrimary)
@@ -83,7 +83,7 @@ struct AddEditVoiceNoteSection: View {
                     Button { startRecording() } label: {
                         Image(systemName: "mic.circle.fill")
                             .font(.system(size: 28))
-                            .foregroundStyle(Theme.accentYellow)
+                            .foregroundStyle(Theme.accentInteractive)
                             .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
                     }
                     .buttonStyle(.plain)

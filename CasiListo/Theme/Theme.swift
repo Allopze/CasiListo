@@ -12,7 +12,49 @@ enum Theme {
     static let accentYellow = Color(red: 0.96, green: 0.77, blue: 0.09)
 
     /// Tinta para texto e íconos sobre el amarillo de acento (10.7:1 en ambos modos).
-    static let onAccent = Color(hex: "1A1A1A")
+    nonisolated static let onAccent = Color(hex: "1A1A1A")
+
+    /// Acento para **texto e íconos**, no para rellenos. El amarillo de marca
+    /// rinde 1.45:1 sobre el crema de fondo y 1.63:1 sobre tarjeta blanca: como
+    /// color de texto es ilegible.
+    ///
+    /// El oro claro cumple AA para texto normal sobre las dos superficies de la
+    /// app —4.52:1 sobre el crema, 5.09:1 sobre tarjeta blanca— y en oscuro se
+    /// conserva el amarillo de marca, que ahí rinde 10.6:1. Verificado por
+    /// `testAccentTokensMeetContrastOnLightSurfaces`.
+    ///
+    /// Regla: `accentYellow` rellena, `accentInteractive` escribe.
+    static let accentInteractive = Color(light: UIColor(hex: "8A6A00"), dark: UIColor(hex: "F5C518"))
+
+    /// Color legible sobre un relleno arbitrario: elige blanco o `onAccent`
+    /// según cuál dé mayor contraste WCAG. Ningún valor fijo sirve para una
+    /// paleta que va del amarillo al violeta.
+    nonisolated static func foreground(on hex: String) -> Color {
+        let background = relativeLuminance(of: UIColor(hex: hex))
+        let contrastWithWhite = 1.05 / (background + 0.05)
+        let contrastWithDark = (background + 0.05) / (onAccentLuminance + 0.05)
+        return contrastWithDark >= contrastWithWhite ? onAccent : .white
+    }
+
+    nonisolated private static let onAccentLuminance = relativeLuminance(of: UIColor(hex: "1A1A1A"))
+
+    /// Razón de contraste WCAG entre dos colores opacos.
+    nonisolated static func contrastRatio(_ a: UIColor, _ b: UIColor) -> Double {
+        let la = relativeLuminance(of: a), lb = relativeLuminance(of: b)
+        return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+    }
+
+    nonisolated static func relativeLuminance(of color: UIColor) -> Double {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        color.getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+
+        func linear(_ component: CGFloat) -> Double {
+            let value = Double(component)
+            return value <= 0.03928 ? value / 12.92 : pow((value + 0.055) / 1.055, 2.4)
+        }
+
+        return 0.2126 * linear(red) + 0.7152 * linear(green) + 0.0722 * linear(blue)
+    }
 
     // MARK: - Medidas Estáticas (Compatibilidad)
 
@@ -154,6 +196,30 @@ struct AdaptiveGlassProminentButtonStyle: ButtonStyle {
     }
 }
 
+/// Botón primario de marca: relleno amarillo con tinta oscura (10.7:1).
+///
+/// Existe porque `.borderedProminent` pinta la etiqueta en blanco y el blanco
+/// sobre el amarillo de marca da 1.63:1 — el CTA principal quedaba ilegible en
+/// modo claro. Usar siempre este estilo en vez de `.borderedProminent` + `.tint`.
+struct AccentProminentButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Theme.bodyBoldDynamic)
+            .foregroundStyle(Theme.onAccent)
+            .frame(minHeight: Theme.minimumTouchTarget)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(Theme.accentYellow, in: Capsule())
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(Theme.quickAnimation, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == AccentProminentButtonStyle {
+    static var accentProminent: AccentProminentButtonStyle { AccentProminentButtonStyle() }
+}
+
 extension View {
     @ViewBuilder
     func adaptiveGlassButtonStyle() -> some View {
@@ -214,6 +280,53 @@ enum HapticFeedback {
 }
 
 extension UIColor {
+    /// Oscurece el color —bajando brillo y compensando saturación— hasta alcanzar
+    /// `target` de contraste contra `background`, conservando el tono.
+    ///
+    /// Se usa para iconos pintados sobre una versión translúcida de su propio
+    /// color: ahí los tonos claros quedan casi invisibles (el amarillo de
+    /// «Lácteos y huevos» rendía 1.6:1) y no basta con elegir blanco o negro,
+    /// porque se perdería la identidad cromática de la categoría.
+    nonisolated func darkened(toContrast target: Double, over background: UIColor) -> UIColor {
+        var hue: CGFloat = 0, saturation: CGFloat = 0, brightness: CGFloat = 0, alpha: CGFloat = 0
+        guard getHue(&hue, saturation: &saturation, brightness: &brightness, alpha: &alpha) else {
+            return self
+        }
+
+        var candidate = self
+        var currentBrightness = brightness
+        var currentSaturation = saturation
+
+        // 40 pasos de 2.5% cubren de brillo pleno a negro; se detiene al cumplir.
+        for _ in 0..<40 {
+            if Theme.contrastRatio(candidate, background) >= target { return candidate }
+            currentBrightness = max(0, currentBrightness - 0.025)
+            currentSaturation = min(1, currentSaturation + 0.01)
+            candidate = UIColor(
+                hue: hue,
+                saturation: currentSaturation,
+                brightness: currentBrightness,
+                alpha: alpha
+            )
+        }
+
+        return candidate
+    }
+
+    /// Compone este color con `alpha` sobre `background` (sin translucidez).
+    nonisolated func blended(alpha: CGFloat, over background: UIColor) -> UIColor {
+        var fr: CGFloat = 0, fg: CGFloat = 0, fb: CGFloat = 0, fa: CGFloat = 0
+        var br: CGFloat = 0, bg: CGFloat = 0, bb: CGFloat = 0, ba: CGFloat = 0
+        getRed(&fr, green: &fg, blue: &fb, alpha: &fa)
+        background.getRed(&br, green: &bg, blue: &bb, alpha: &ba)
+        return UIColor(
+            red: fr * alpha + br * (1 - alpha),
+            green: fg * alpha + bg * (1 - alpha),
+            blue: fb * alpha + bb * (1 - alpha),
+            alpha: 1
+        )
+    }
+
     /// Crea un UIColor desde un string hexadecimal (RGB de 6 dígitos).
     nonisolated convenience init(hex: String) {
         let hex = hex.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)

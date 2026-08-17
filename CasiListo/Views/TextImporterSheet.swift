@@ -37,7 +37,8 @@ struct TextImporterSheet: View {
                 }
             }
             .background(Color.appBackground)
-            .navigationTitle(isPreviewing ? "Confirmar productos" : "Importar desde texto")
+            // «Importar desde texto» no cabe entre «Cancelar» y «Procesar»: se truncaba.
+            .navigationTitle(isPreviewing ? "Confirmar productos" : "Importar texto")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -51,14 +52,12 @@ struct TextImporterSheet: View {
                             importSelectedItems()
                         }
                         .fontWeight(.semibold)
-                        .foregroundStyle(Theme.accentYellow)
                         .disabled(selectedCount == 0)
                     } else {
                         Button("Procesar") {
                             parseText()
                         }
                         .fontWeight(.semibold)
-                        .foregroundStyle(Theme.accentYellow)
                         .disabled(rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
@@ -84,9 +83,22 @@ struct TextImporterSheet: View {
                 .padding(.horizontal, 16)
                 .padding(.top, 16)
 
+            // TextEditor no admite placeholder: sin esto el área queda como un
+            // rectángulo blanco enorme y vacío, sin indicar qué hacer con él.
             TextEditor(text: $rawText)
                 .padding(12)
                 .background(Color.appCardBackground)
+                .overlay(alignment: .topLeading) {
+                    if rawText.isEmpty {
+                        Text("Leche\nPan marraqueta 1 kg\nHuevos x12")
+                            .font(Theme.bodyDynamic)
+                            .foregroundStyle(Color.appTextSecondary.opacity(0.6))
+                            .padding(.horizontal, 17)
+                            .padding(.vertical, 20)
+                            .allowsHitTesting(false)
+                            .accessibilityHidden(true)
+                    }
+                }
                 .clipShape(RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous))
                 .padding(.horizontal, 16)
                 .frame(maxHeight: .infinity)
@@ -122,7 +134,7 @@ struct TextImporterSheet: View {
                     withAnimation { isPreviewing = false }
                 }
                 .font(.caption.bold())
-                .foregroundStyle(Theme.accentYellow)
+                .foregroundStyle(Theme.accentInteractive)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
@@ -132,7 +144,7 @@ struct TextImporterSheet: View {
                     HStack(spacing: 12) {
                         Toggle("", isOn: $item.isSelected)
                             .labelsHidden()
-                            .tint(Theme.accentYellow)
+                            .tint(Theme.accentInteractive)
                             .disabled(item.isDuplicate)
 
                         VStack(alignment: .leading, spacing: 2) {

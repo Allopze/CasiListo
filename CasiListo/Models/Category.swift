@@ -36,7 +36,8 @@ enum DefaultCategory: String, CaseIterable, Codable, Identifiable {
         case .despensa: return "tray.full.fill"
         case .frutasVerduras: return "leaf.fill"
         case .hogarLimpieza: return "house.fill"
-        case .lacteosHuevos: return "egg.fill"
+        // «egg.fill» no existe en SF Symbols: el badge salía vacío.
+        case .lacteosHuevos: return "oval.portrait.fill"
         case .mascotas: return "pawprint.fill"
         case .panaderiaDulces: return "birthday.cake.fill"
         case .pescados: return "fish.fill"
@@ -120,6 +121,29 @@ extension Category {
     nonisolated static func accentColor(forName name: String) -> Color {
         DefaultCategory.allCases.first { $0.rawValue == name }?.color
             ?? Color(hue: 0.13, saturation: 0.80, brightness: 0.95)
+    }
+
+    /// Opacidad del fondo del badge de categoría. El icono se pinta encima, así
+    /// que el contraste hay que medirlo contra esta mezcla, no contra la tarjeta.
+    nonisolated static let badgeBackgroundOpacity: CGFloat = 0.14
+
+    /// Color del icono dentro del badge de categoría.
+    ///
+    /// En claro, el color de la categoría sobre su propio 14% deja ocho de las
+    /// quince categorías bajo 3:1 —«Lácteos y huevos» en 1.6:1, invisible—, así
+    /// que se oscurece hasta 4.5:1 conservando el tono. En oscuro la mezcla es
+    /// oscura y el color original ya contrasta.
+    nonisolated static func iconColor(forName name: String) -> Color {
+        let base = UIColor(accentColor(forName: name))
+        let lightBadge = base.blended(alpha: badgeBackgroundOpacity, over: UIColor(hex: "FFFFFF"))
+        let darkBadge = base.blended(alpha: badgeBackgroundOpacity, over: UIColor(hex: "2A2928"))
+
+        return Color(
+            light: base.darkened(toContrast: 4.5, over: lightBadge),
+            dark: Theme.contrastRatio(base, darkBadge) >= 4.5
+                ? base
+                : UIColor(hex: "F5F5F5")
+        )
     }
 }
 

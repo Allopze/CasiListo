@@ -20,7 +20,7 @@ struct UndoToastView: View {
                 onUndo()
             }
             .font(.subheadline.bold())
-            .foregroundStyle(Theme.accentYellow)
+            .foregroundStyle(Theme.accentInteractive)
             .padding(.horizontal, 10)
             .padding(.vertical, 4)
             .background(Theme.accentYellow.opacity(0.15))

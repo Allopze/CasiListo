@@ -28,6 +28,13 @@ struct ShoppingListView: View {
         )
     }
 
+    /// El chip de tienda solo aporta si la lista mezcla supermercados. Con una
+    /// sola tienda repetía la misma etiqueta en cada fila —29 veces seguidas en
+    /// una categoría— sin distinguir nada.
+    private var listMixesStores: Bool {
+        Set(allItems.map(\.store)).count > 1
+    }
+
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var filterSpacing: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 10
@@ -107,7 +114,7 @@ struct ShoppingListView: View {
                         category: group.category,
                         items: group.items,
                         searchText: viewModel.searchText,
-                        showsStore: viewModel.selectedStore == nil,
+                        showsStore: viewModel.selectedStore == nil && listMixesStores,
                         isCollapsed: viewModel.isCategoryCollapsed(
                             group.category,
                             forceExpanded: !viewModel.searchText.isEmpty

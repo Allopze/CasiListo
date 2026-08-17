@@ -110,6 +110,26 @@ No se requieren dependencias externas — el proyecto utiliza únicamente framew
 
 ---
 
+## 📸 Capturas de pantalla
+
+`ci/capture-screenshots.sh` recorre la app con `ScreenshotCaptureTests` y deja 21 PNG por variante, organizados en `<salida>/<dispositivo>/<apariencia>/<tamaño-texto>/`.
+
+```bash
+ci/capture-screenshots.sh                 # iPhone, claro + oscuro (~8 min)
+ci/capture-screenshots.sh --full          # + iPad y texto XXL (~30 min)
+ci/capture-screenshots.sh --out ~/Desktop/capturas
+ci/capture-screenshots.sh --devices "iPad Pro 11-inch (M5)" --appearances dark
+```
+
+Cubre el menú general de listas (vacío, con una y con varias), el sheet de personalización con paleta e iconos, el detalle en sus estados de categoría, el cierre con boleta, plantillas, importador, catálogo, historial y ajustes.
+
+Dos detalles a tener en cuenta si se toca este arnés:
+
+- **Las variables de entorno necesitan el prefijo `TEST_RUNNER_`.** `xcodebuild` no propaga variables sueltas al proceso del runner; les quita ese prefijo al reenviarlas. Por eso el script exporta `TEST_RUNNER_SCREENSHOT_DIR` y el test lee `SCREENSHOT_DIR`.
+- **La apariencia se fuerza por partida doble.** La app respeta `-ui-testing-light` / `-ui-testing-dark`, pero las hojas modales se presentan fuera de esa jerarquía y siguen al sistema, así que el script además fija la apariencia del simulador con `simctl ui`.
+
+---
+
 ## 🧩 Modelo de datos
 
 ### `ShoppingItem` (SwiftData `@Model`)

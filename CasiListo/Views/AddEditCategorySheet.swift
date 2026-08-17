@@ -82,7 +82,7 @@ struct AddEditCategorySheet: View {
                             
                             Image(systemName: selectedSymbol)
                                 .font(.system(size: previewIconSize, weight: .semibold))
-                                .foregroundStyle(Theme.accentYellow)
+                                .foregroundStyle(Theme.accentInteractive)
                         }
                         
                         VStack(alignment: .leading, spacing: 4) {
@@ -154,7 +154,7 @@ struct AddEditCategorySheet: View {
                                 }
                             }
                             .font(.caption.bold())
-                            .foregroundStyle(Theme.accentYellow)
+                            .foregroundStyle(Theme.accentInteractive)
                         }
                     }
                 }

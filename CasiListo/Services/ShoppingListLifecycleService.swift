@@ -111,7 +111,7 @@ enum ShoppingListLifecycleService {
     }
 
     private static func defaultHistoryTitle(store: Store?) -> String {
-        let date = Date().formatted(date: .abbreviated, time: .omitted)
+        let date = AppDateFormatting.short(Date())
         return store.map { "Compra \($0.displayName) - \(date)" } ?? "Compra completada - \(date)"
     }
 }
