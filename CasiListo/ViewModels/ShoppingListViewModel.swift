@@ -170,7 +170,7 @@ final class ShoppingListViewModel {
         }
 
         do {
-            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+            try ShoppingPersistenceCoordinator(context: context).commit()
             HapticFeedback.selection()
         } catch {
             presentPersistenceError(error)
@@ -276,7 +276,7 @@ final class ShoppingListViewModel {
         }
         guard let context else { return }
         do {
-            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+            try ShoppingPersistenceCoordinator(context: context).commit()
             HapticFeedback.success()
         } catch {
             item.status = previousStatus
@@ -294,7 +294,7 @@ final class ShoppingListViewModel {
         }
         guard let context else { return }
         do {
-            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+            try ShoppingPersistenceCoordinator(context: context).commit()
             HapticFeedback.success()
         } catch {
             item.status = previousStatus
@@ -429,10 +429,7 @@ final class ShoppingListViewModel {
             listID: item.listID
         )
         do {
-            try ShoppingPersistenceCoordinator(context: context).deleteItem(
-                item,
-                remainingItems: latestItems.filter { $0.id != item.id }
-            )
+            try ShoppingPersistenceCoordinator(context: context).deleteItem(item)
         } catch {
             presentPersistenceError(error)
             return
@@ -470,10 +467,7 @@ final class ShoppingListViewModel {
         )
         do {
             context.insert(restoredItem)
-            try ShoppingPersistenceCoordinator(context: context).saveItem(
-                restoredItem,
-                allActiveItems: latestItems + [restoredItem]
-            )
+            try ShoppingPersistenceCoordinator(context: context).saveItem(restoredItem)
         } catch {
             presentPersistenceError(error)
             return
@@ -509,7 +503,7 @@ final class ShoppingListViewModel {
                 duplicate.quantity = draft.quantity
             }
             do {
-                try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: latestItems)
+                try ShoppingPersistenceCoordinator(context: context).commit()
                 quickAddText = ""
                 revealCategory(duplicate.category, itemID: duplicate.id)
                 HapticFeedback.success()
@@ -537,7 +531,7 @@ final class ShoppingListViewModel {
         }
         CatalogService.recordAddition(name: draft.name, category: category, store: store, context: context)
         do {
-            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: allItems + [newItem])
+            try ShoppingPersistenceCoordinator(context: context).commit()
             quickAddText = ""
             revealCategory(category, itemID: newItem.id)
             HapticFeedback.success()

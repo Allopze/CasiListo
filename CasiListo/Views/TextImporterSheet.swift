@@ -234,10 +234,7 @@ struct TextImporterSheet: View {
             insertedItems.append(newItem)
         }
         do {
-            try ShoppingPersistenceCoordinator(context: modelContext).importItems(
-                insertedItems,
-                allActiveItems: itemsWithNewEntries
-            )
+            try ShoppingPersistenceCoordinator(context: modelContext).importItems(insertedItems)
             HapticFeedback.success()
             dismiss()
             onFinished()

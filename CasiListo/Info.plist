@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- CFBundleURLTypes es un arreglo de diccionarios y las build settings
+	     INFOPLIST_KEY_* solo aceptan cadenas o arreglos de cadenas: declarado
+	     ahí, el esquema nunca llegaba al bundle. Este plist parcial se fusiona
+	     con las claves que Xcode sigue generando (permisos de cámara, micrófono
+	     y fotos), así que esas se mantienen en las build settings. -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.allopze.CasiListo</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>casilisto</string>
+			</array>
+		</dict>
+	</array>
+</dict>
+</plist>

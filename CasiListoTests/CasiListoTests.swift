@@ -524,7 +524,7 @@ final class CasiListoTests: XCTestCase {
 
         try CategoryBootstrapService.bootstrap(context: context)
 
-        var catDescriptor = FetchDescriptor<CasiListo.Category>()
+        let catDescriptor = FetchDescriptor<CasiListo.Category>()
         let fetched = try context.fetch(catDescriptor)
         let reconciled = fetched.first { $0.name == DefaultCategory.condimentos.rawValue }
         XCTAssertEqual(reconciled?.sfSymbol, DefaultCategory.condimentos.sfSymbol)
@@ -645,6 +645,87 @@ final class CasiListoTests: XCTestCase {
             formattedDecimal == "3,5" || formattedDecimal == "3.5",
             "Unexpected: \(formattedDecimal)"
         )
+    }
+
+    // MARK: - List Customization & Appearance Catalog
+
+    func testShoppingListAppearanceDefaultsAndCustomization() {
+        let defaultList = ShoppingList(title: "Compra actual")
+        XCTAssertEqual(defaultList.iconName, "cart.fill")
+        XCTAssertEqual(defaultList.colorHex, "F5C518")
+
+        let customList = ShoppingList(
+            title: "Asado",
+            iconName: "flame.fill",
+            colorHex: "FF5722"
+        )
+        XCTAssertEqual(customList.iconName, "flame.fill")
+        XCTAssertEqual(customList.colorHex, "FF5722")
+
+        customList.iconName = "party.popper.fill"
+        customList.colorHex = "E91E63"
+        XCTAssertEqual(customList.iconName, "party.popper.fill")
+        XCTAssertEqual(customList.colorHex, "E91E63")
+    }
+
+    func testListAppearanceCatalogSuggestions() {
+        let (asadoIcon, asadoColor) = ListAppearanceCatalog.suggestAppearance(for: "Asado familiar")
+        XCTAssertEqual(asadoIcon, "flame.fill")
+        XCTAssertEqual(asadoColor, "FF5722")
+
+        let (farmaciaIcon, farmaciaColor) = ListAppearanceCatalog.suggestAppearance(for: "Farmacia Cruz Verde")
+        XCTAssertEqual(farmaciaIcon, "pills.fill")
+        XCTAssertEqual(farmaciaColor, "00BCD4")
+
+        let (cumpleIcon, _) = ListAppearanceCatalog.suggestAppearance(for: "Cumpleaños")
+        XCTAssertEqual(cumpleIcon, "party.popper.fill")
+
+        let (feriaIcon, feriaColor) = ListAppearanceCatalog.suggestAppearance(for: "Feria de verduras")
+        XCTAssertEqual(feriaIcon, "leaf.fill")
+        XCTAssertEqual(feriaColor, "4CAF50")
+
+        let (toolsIcon, _) = ListAppearanceCatalog.suggestAppearance(for: "Ferretería y taller")
+        XCTAssertEqual(toolsIcon, "wrench.and.screwdriver.fill")
+    }
+
+    func testShoppingListLifecycleServiceCreateActiveListWithCustomAppearance() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let list = try ShoppingListLifecycleService.createActiveList(
+            in: context,
+            title: "Feria de Verduras",
+            iconName: "leaf.fill",
+            colorHex: "4CAF50"
+        )
+
+        XCTAssertEqual(list.title, "Feria de Verduras")
+        XCTAssertEqual(list.iconName, "leaf.fill")
+        XCTAssertEqual(list.colorHex, "4CAF50")
+        XCTAssertEqual(list.status, .active)
+    }
+
+    func testMultiListItemsIsolation() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let listA = try ShoppingListLifecycleService.createActiveList(in: context, title: "Supermercado")
+        let listB = try ShoppingListLifecycleService.createActiveList(in: context, title: "Feria", iconName: "leaf.fill", colorHex: "4CAF50")
+
+        let itemA1 = ShoppingItem(name: "Leche", listID: listA.id)
+        let itemA2 = ShoppingItem(name: "Pan", listID: listA.id)
+        let itemB1 = ShoppingItem(name: "Tomates", listID: listB.id)
+
+        [itemA1, itemA2, itemB1].forEach { context.insert($0) }
+        try context.save()
+
+        let allItems = try context.fetch(FetchDescriptor<ShoppingItem>())
+        let itemsListA = allItems.filter { $0.listID == listA.id }
+        let itemsListB = allItems.filter { $0.listID == listB.id }
+
+        XCTAssertEqual(itemsListA.count, 2)
+        XCTAssertEqual(itemsListB.count, 1)
+        XCTAssertEqual(itemsListB.first?.name, "Tomates")
     }
 
     // MARK: - Helpers

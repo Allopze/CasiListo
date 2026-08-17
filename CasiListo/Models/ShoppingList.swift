@@ -1,5 +1,12 @@
 import Foundation
 import SwiftData
+import SwiftUI
+import UIKit
+
+/// Raw value de la lista activa para usar en `@Query`. `#Predicate` no evalúa
+/// `ShoppingListStatus.active.rawValue` en línea ni miembros estáticos: solo
+/// captura identificadores sueltos, así que el literal vive aquí una sola vez.
+let activeShoppingListStatusRawValue = ShoppingListStatus.active.rawValue
 
 /// Estado persistido de una lista de compra.
 enum ShoppingListStatus: String, Codable, CaseIterable {
@@ -27,6 +34,10 @@ final class ShoppingList {
     /// Fecha en la que se registró la boleta. Se mantiene separada de
     /// `completedAt` para compras importadas o corregidas posteriormente.
     var receiptCapturedAt: Date?
+    /// Ícono SF Symbol de la lista (ej: "cart.fill", "basket.fill", "flame.fill").
+    var iconNameRawValue: String?
+    /// Color distintivo en formato hexadecimal (ej: "F5C518", "FF9500").
+    var colorHexRawValue: String?
 
     var status: ShoppingListStatus {
         get { ShoppingListStatus(rawValue: statusRawValue) ?? .active }
@@ -43,6 +54,24 @@ final class ShoppingList {
         }
     }
 
+    var iconName: String {
+        get { iconNameRawValue ?? "cart.fill" }
+        set { iconNameRawValue = newValue }
+    }
+
+    var colorHex: String {
+        get { colorHexRawValue ?? "F5C518" }
+        set { colorHexRawValue = newValue }
+    }
+
+    var accentColor: Color {
+        Color(hex: colorHex)
+    }
+
+    var uiColor: UIColor {
+        UIColor(hex: colorHex)
+    }
+
     init(
         title: String,
         createdAt: Date = Date(),
@@ -55,7 +84,9 @@ final class ShoppingList {
         unavailableCount: Int = 0,
         totalSpent: Double = 0,
         receiptImageFilename: String? = nil,
-        receiptCapturedAt: Date? = nil
+        receiptCapturedAt: Date? = nil,
+        iconName: String = "cart.fill",
+        colorHex: String = "F5C518"
     ) {
         self.id = UUID()
         self.title = title
@@ -70,5 +101,7 @@ final class ShoppingList {
         self.totalSpent = totalSpent
         self.receiptImageFilename = receiptImageFilename
         self.receiptCapturedAt = receiptCapturedAt
+        self.iconNameRawValue = iconName
+        self.colorHexRawValue = colorHex
     }
 }

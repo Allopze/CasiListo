@@ -292,7 +292,7 @@ struct AddEditItemSheet: View {
                     store: selectedStore,
                     context: modelContext
                 )
-                try ShoppingPersistenceCoordinator(context: modelContext).saveItem(newItem, allActiveItems: allItems + [newItem])
+                try ShoppingPersistenceCoordinator(context: modelContext).saveItem(newItem)
                 onItemAdded?(newItem)
 
             case .edit(let item):
@@ -307,7 +307,7 @@ struct AddEditItemSheet: View {
                 if let activeList {
                     ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems)
                 }
-                try ShoppingPersistenceCoordinator(context: modelContext).commit(itemsForWidget: allItems)
+                try ShoppingPersistenceCoordinator(context: modelContext).commit()
                 if oldFilename != promotedFilename, let oldFilename {
                     voiceNoteService.deleteVoiceNote(filename: oldFilename)
                 }

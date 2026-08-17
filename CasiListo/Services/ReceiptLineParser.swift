@@ -121,9 +121,16 @@ nonisolated enum ReceiptLineParser {
         "vuelto", "cambio", "propina", "gracias"
     ]
 
-    /// Líneas de rebaja que se restan al producto inmediatamente anterior.
-    /// `ahorro` queda fuera a propósito: en las boletas chilenas casi siempre es
-    /// el resumen de la compra, no una rebaja de la línea de arriba.
+    /// Recuentos de unidades que también empiezan con «TOTAL»: Líder imprime
+    /// «TOTAL NUMERO DE ARTIC VEND 45». El 45 es un conteo, no el monto pagado.
+    /// No van en `footerTokens`: un producto llamado «ARTICULOS DE ASEO» cortaría
+    /// el cuerpo de la boleta y se perdería todo lo que viniera después.
+    private static let itemCountTokens: Set<String> = [
+        "articulos", "artic", "articulo", "unidades", "bultos", "numero"
+    ]
+
+    /// Líneas de rebaja explícitas («DCTO SOCIO 1.000») que pueden venir con monto positivo.
+    /// Cualquier línea con monto negativo en la boleta se interpreta automáticamente como descuento.
     private static let discountTokens: Set<String> = [
         "dcto", "dctos", "descuento", "descuentos",
         "promocion", "promocional", "rebaja", "oferta"
@@ -132,23 +139,38 @@ nonisolated enum ReceiptLineParser {
     /// Ruido intercalado que se ignora sin cortar la relación nombre → precio.
     private static let noiseTokens: Set<String> = [
         "ahorro", "ahorros", "puntos", "socio", "socios", "acumulados", "acumulado",
-        "copia", "original", "valida", "validez", "consulte", "reclamos"
+        "copia", "original", "valida", "validez", "consulte", "reclamos",
+        // Secciones de supermercados chilenos
+        "ofertas", "codigo"
     ]
 
     /// Una línea de rebaja es corta («DCTO SOCIO 1.000»); si trae varias palabras
     /// es más probable que sea un producto en promoción.
-    private static let maximumDiscountWords = 3
+    private static let maximumDiscountWords = 4
+
+    /// Etiquetas de sección intercaladas entre productos: «Open bar»,
+    /// «Mercado FFVV», «Precio normal». Se reconocen solo cuando la línea NO
+    /// trae un monto propio (con monto puede ser un descuento de sección).
+    private static let sectionLabels: Set<String> = [
+        "open bar", "mercado ffvv", "precio normal"
+    ]
+
+    /// Líneas de referencia de promoción de Líder: «RF lleve M x $»,
+    /// «SX1010 7801234…», «CODIGO 780044…».
+    private static let liderPromoPattern = ReceiptAmount.regex(
+        "^\\s*(RF\\s|SX[0-9]|[0-9]+X[0-9]+\\s+[0-9]{7,})"
+    )
 
     // MARK: Expresiones
 
-    /// `PRODUCTO ... $1.290` — el número final de la fila.
+    /// `PRODUCTO ... $1.290`, `DESCUENTO ... -1.290`, `OFERTA ... -$1.290`
     private static let amountAtEnd = ReceiptAmount.regex(
-        "^(.*?)[\\s\\t]+(\\$\\s*)?(\(ReceiptAmount.pattern))\\s*$"
+        "^(.*?)[\\s\\t]+(-?\\s*\\$?\\s*|-)(\(ReceiptAmount.pattern))\\s*$"
     )
 
-    /// `$1.290` — la fila entera es un monto.
+    /// `$1.290`, `-1.290`, `-$1.290` — la fila entera es un monto.
     private static let amountOnly = ReceiptAmount.regex(
-        "^\\s*(\\$\\s*)?(\(ReceiptAmount.pattern))\\s*$"
+        "^\\s*(-?\\s*\\$?\\s*|-)(\(ReceiptAmount.pattern))\\s*$"
     )
 
     /// `2 x $1.990 $3.980`, `2 UN × $1.990`, `0,860 KG X $1.290/KG $1.109`.
@@ -242,6 +264,8 @@ nonisolated enum ReceiptLineParser {
         var fallback: Double?
         for index in start..<lines.count {
             guard let amount = trailingAmount(in: lines[index])?.value else { continue }
+            // «TOTAL NUMERO DE ARTIC VEND 45» lleva «total» pero no es el monto.
+            guard tokens[index].isDisjoint(with: itemCountTokens) else { continue }
             if tokens[index].contains("total") && !tokens[index].contains("subtotal") {
                 return ReceiptAmount.rounded(amount)
             }
@@ -275,8 +299,17 @@ nonisolated enum ReceiptLineParser {
     }
 
     private static func classify(_ line: ReceiptTextLine, tokens: Set<String>) -> LineKind {
-        let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        var text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return .noise }
+
+        // Un «$» suelto al inicio seguido de espacio y texto no numérico es una
+        // marca visual de la boleta («$ Open bar»), no un precio.
+        if text.hasPrefix("$"), text.count > 1 {
+            let afterDollar = String(text.dropFirst()).trimmingCharacters(in: .whitespaces)
+            if let first = afterDollar.first, first.isLetter {
+                text = afterDollar
+            }
+        }
 
         if !tokens.isDisjoint(with: discountTokens), letterWordCount(tokens) <= maximumDiscountWords {
             if let amount = trailingAmount(in: line)?.value {
@@ -285,8 +318,18 @@ nonisolated enum ReceiptLineParser {
             return .noise
         }
 
+        // Cualquier línea con monto negativo en el cuerpo de la boleta es un descuento
+        // («Open bar -390», «Mercado FFVV -1.383», «JUMBO OFERTAS -1.180», «RF Lleve N x $ -600»).
+        if let trailing = trailingAmount(in: line), trailing.value < 0 {
+            return .discount(abs(ReceiptAmount.rounded(trailing.value)))
+        }
+
+        // Líneas de sección como «Open bar» o «Mercado FFVV» sin monto.
+        if isSectionLabel(text) { return .noise }
+
         if !tokens.isDisjoint(with: noiseTokens) || isHeaderLine(line, tokens: tokens) { return .noise }
         if isContactNoise(line, tokens: tokens) { return .noise }
+        if matches(liderPromoPattern, text) { return .noise }
 
         if let quantity = quantityInfo(in: text) { return .quantity(quantity) }
 
@@ -320,6 +363,13 @@ nonisolated enum ReceiptLineParser {
     /// número largo. El umbral de una palabra deja pasar `7801… ACEITE MARAVILLA`.
     private static func isContactNoise(_ line: ReceiptTextLine, tokens: Set<String>) -> Bool {
         letterWordCount(tokens) <= 1 && matches(longNumberPattern, line.text)
+    }
+
+    /// Etiqueta de sección sin monto: «Open bar», «Mercado FFVV».
+    private static func isSectionLabel(_ text: String) -> Bool {
+        let lowered = text.lowercased()
+            .trimmingCharacters(in: .whitespacesAndNewlines.union(CharacterSet(charactersIn: "$")))
+        return sectionLabels.contains(lowered)
     }
 
     private static func letterWordCount(_ tokens: Set<String>) -> Int {
@@ -503,11 +553,14 @@ nonisolated enum ReceiptLineParser {
         // Camino preferente: Vision devolvió el precio como columna aparte.
         if let columns = line.columns,
            let match = firstMatch(amountOnly, in: columns.right),
-           let value = capture(match, 2, in: columns.right).flatMap(ReceiptAmount.value) {
+           let raw = capture(match, 2, in: columns.right),
+           let value = ReceiptAmount.value(raw) {
+            let prefix = capture(match, 1, in: columns.right) ?? ""
+            let isNegative = prefix.contains("-")
             return TrailingAmount(
                 name: columns.left,
-                value: value,
-                hasCurrencySymbol: capture(match, 1, in: columns.right) != nil,
+                value: isNegative ? -value : value,
+                hasCurrencySymbol: prefix.contains("$"),
                 isOwnColumn: true
             )
         }
@@ -518,10 +571,12 @@ nonisolated enum ReceiptLineParser {
               let value = ReceiptAmount.value(raw)
         else { return nil }
 
+        let prefix = capture(match, 2, in: text) ?? ""
+        let isNegative = prefix.contains("-")
         return TrailingAmount(
             name: capture(match, 1, in: text) ?? "",
-            value: value,
-            hasCurrencySymbol: capture(match, 2, in: text) != nil,
+            value: isNegative ? -value : value,
+            hasCurrencySymbol: prefix.contains("$"),
             isOwnColumn: false
         )
     }
@@ -533,7 +588,10 @@ nonisolated enum ReceiptLineParser {
               let value = ReceiptAmount.value(raw)
         else { return nil }
 
-        let hasCurrency = capture(match, 1, in: text) != nil
+        let prefix = capture(match, 1, in: text) ?? ""
+        guard !prefix.contains("-") else { return nil }
+
+        let hasCurrency = prefix.contains("$")
         let amount = ReceiptAmount.rounded(value)
         guard amount >= (hasCurrency ? minimumAmount : bareAmountFloor), amount < maximumAmount else { return nil }
         return amount

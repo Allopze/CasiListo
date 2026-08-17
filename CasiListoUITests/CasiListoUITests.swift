@@ -1,12 +1,18 @@
 import XCTest
 
 final class CasiListoUITests: XCTestCase {
+    /// Arranca con el fixture sembrado y entra a la lista: la raíz de la pestaña
+    /// Compra es "Mis Listas", los productos viven un nivel más adentro.
     @MainActor
     private func launchFreshApp() -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-ui-testing-reset"]
         app.launch()
+
+        let card = app.buttons["list-card-Compra actual"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
         return app
     }
 

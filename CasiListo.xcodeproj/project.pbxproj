@@ -63,11 +63,21 @@
 			);
 			target = 89DA07042FC112FD0037C004 /* CasiListoWidget */;
 		};
+		89DA070F2FC112FD0037C00F /* Exceptions for "CasiListo" folder in "CasiListo" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 89DA05EE2FC112FA0037C4D0 /* CasiListo */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		89DA05F12FC112FA0037C4D0 /* CasiListo */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				89DA070F2FC112FD0037C00F /* Exceptions for "CasiListo" folder in "CasiListo" target */,
+			);
 			path = CasiListo;
 			sourceTree = "<group>";
 		};
@@ -504,13 +514,7 @@
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleTypeRole = Editor;
-						CFBundleURLName = "com.allopze.CasiListo";
-						CFBundleURLSchemes = (casilisto);
-					},
-				);
+				INFOPLIST_FILE = CasiListo/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "CasiListo usa la cámara para fotografiar boletas y registrar productos y precios.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micrófono para guardar notas de voz en productos de tu lista.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CasiListo usa tus fotos solo cuando eliges una boleta para registrar productos y precios.";
@@ -548,13 +552,7 @@
 				DEVELOPMENT_TEAM = GKVPN3HBMN;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleURLTypes = (
-					{
-						CFBundleTypeRole = Editor;
-						CFBundleURLName = "com.allopze.CasiListo";
-						CFBundleURLSchemes = (casilisto);
-					},
-				);
+				INFOPLIST_FILE = CasiListo/Info.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "CasiListo usa la cámara para fotografiar boletas y registrar productos y precios.";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "CasiListo usa el micrófono para guardar notas de voz en productos de tu lista.";
 				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "CasiListo usa tus fotos solo cuando eliges una boleta para registrar productos y precios.";

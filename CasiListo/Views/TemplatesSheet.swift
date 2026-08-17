@@ -237,10 +237,7 @@ struct TemplatesSheet: View {
             return
         }
         do {
-            try ShoppingPersistenceCoordinator(context: modelContext).importItems(
-                insertedItems,
-                allActiveItems: itemsWithNewEntries
-            )
+            try ShoppingPersistenceCoordinator(context: modelContext).importItems(insertedItems)
             HapticFeedback.success()
             dismiss()
             onFinished()

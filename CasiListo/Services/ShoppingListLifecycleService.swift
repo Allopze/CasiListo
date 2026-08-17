@@ -3,21 +3,37 @@ import SwiftData
 
 @MainActor
 enum ShoppingListLifecycleService {
-    static func bootstrap(context: ModelContext) throws -> ShoppingList {
+    /// Devuelve la lista activa que adopta los productos huérfanos, o `nil` si no
+    /// hacía falta ninguna.
+    ///
+    /// En una instalación limpia no se crea nada: el usuario elige su primera
+    /// lista desde «Mis Listas». Solo se crea una cuando hay productos sin lista
+    /// que rescatar —migración desde las versiones de lista única—, porque de lo
+    /// contrario desaparecerían de la interfaz.
+    @discardableResult
+    static func bootstrap(context: ModelContext) throws -> ShoppingList? {
         let lists = try context.fetch(FetchDescriptor<ShoppingList>())
         let items = try context.fetch(FetchDescriptor<ShoppingItem>())
-        let activeList: ShoppingList
+
         if let existing = lists.first(where: { $0.status == .active }) {
-            activeList = existing
-        } else {
-            activeList = try createActiveList(in: context)
+            try assignOrphanItems(items, to: existing, context: context)
+            return existing
         }
-        try assignOrphanItems(items, to: activeList, context: context)
-        return activeList
+
+        guard items.contains(where: { $0.listID == nil }) else { return nil }
+
+        let adoptingList = try createActiveList(in: context)
+        try assignOrphanItems(items, to: adoptingList, context: context)
+        return adoptingList
     }
 
-    static func createActiveList(in context: ModelContext, title: String = "Compra actual") throws -> ShoppingList {
-        let list = ShoppingList(title: title)
+    static func createActiveList(
+        in context: ModelContext,
+        title: String = "Compra actual",
+        iconName: String = "cart.fill",
+        colorHex: String = "F5C518"
+    ) throws -> ShoppingList {
+        let list = ShoppingList(title: title, status: .active, iconName: iconName, colorHex: colorHex)
         context.insert(list)
         try context.save()
         return list
@@ -62,9 +78,8 @@ enum ShoppingListLifecycleService {
             updateActiveListCounters(activeList, items: currentItems)
         }
 
-        let activeItems = currentItems.filter { $0.listID == activeList?.id }
         if let coordinator {
-            try coordinator.commit(itemsForWidget: activeItems)
+            try coordinator.commit()
         } else {
             try context.save()
         }

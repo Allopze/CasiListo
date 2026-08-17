@@ -1,7 +1,7 @@
 import SwiftUI
 import SwiftData
 
-/// Raíz de la pestaña Compra: la lista activa.
+/// Raíz de la pestaña Compra: Menú General de Listas ("Mis Listas") con navegación hacia el detalle.
 struct ContentView: View {
     /// Cambia a la pestaña de Historial (inyectado por MainTabView).
     var onShowHistory: () -> Void = {}
@@ -11,116 +11,53 @@ struct ContentView: View {
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
     @Query(sort: \Category.sortIndex) private var categories: [Category]
-    @State private var viewModel = ShoppingListViewModel()
-    @State private var showsClearPurchasedDialog = false
 
-    private var activeList: ShoppingList? {
-        allLists.first { $0.status == .active }
-    }
-
-    private var activeItems: [ShoppingItem] {
-        guard let activeList else { return [] }
-        return allItems.filter { $0.listID == activeList.id }
-    }
-
-    private var completedLists: [ShoppingList] {
-        allLists
-            .filter { $0.status == .completed }
-            .sorted { ($0.completedAt ?? $0.createdAt) > ($1.completedAt ?? $1.createdAt) }
-    }
+    @State private var navigationPath = NavigationPath()
+    @State private var persistenceErrorMessage: String?
 
     var body: some View {
-        NavigationStack {
-                    ZStack {
-                        Color.appBackground.ignoresSafeArea()
-
-                        if activeItems.isEmpty {
-                            EmptyStateView(
-                                onAddTapped: { presentAddItem() },
-                                hasHistory: !completedLists.isEmpty,
-                                onShowHistory: onShowHistory,
-                                onQuickAdd: { name in
-                                    viewModel.quickAddText = name
-                                    viewModel.addQuickItem(
-                                        to: activeList,
-                                        from: activeItems,
-                                        categories: categories,
-                                        context: modelContext
-                                    )
-                                },
-                                onShowTemplates: { viewModel.presentTemplates() }
-                            )
-                        } else {
-                            ShoppingListView(
-                                activeList: activeList,
-                                allItems: activeItems,
-                                categories: categories,
-                                viewModel: viewModel,
-                                onEdit: { viewModel.presentEditItem($0) },
-                                onAddTapped: { presentAddItem() },
-                                onArchivePurchased: { showsClearPurchasedDialog = true }
-                            )
-                        }
-                    }
-                    .navigationTitle("CasiListo")
-                    .navigationBarTitleDisplayMode(.inline)
-                    .searchable(
-                        text: $viewModel.searchText,
-                        placement: .navigationBarDrawer(displayMode: .automatic),
-                        prompt: "Buscar productos..."
+        NavigationStack(path: $navigationPath) {
+            ListsOverviewView(
+                onSelectList: { list in
+                    navigationPath.append(list.id)
+                },
+                onShowHistory: onShowHistory
+            )
+            .navigationDestination(for: UUID.self) { listID in
+                if let list = allLists.first(where: { $0.id == listID }) {
+                    ShoppingListDetailView(
+                        list: list,
+                        allItems: allItems,
+                        allLists: allLists,
+                        categories: categories,
+                        onShowHistory: onShowHistory
                     )
-                    .adaptiveSearchToolbarBehavior()
-                    .adaptiveSearchPresentationToolbarBehavior()
-                    .toolbarBackground(Color.appBackground, for: .navigationBar)
-                    .toolbarBackground(.visible, for: .navigationBar)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) { menuButton }
-                    }
-                    .sheet(item: $viewModel.presentedSheet) { sheetContent(for: $0) }
-                    .confirmationDialog(
-                        "Archivar productos comprados",
-                        isPresented: $showsClearPurchasedDialog,
-                        titleVisibility: .visible
-                    ) {
-                        Button("Añadir boleta y archivar") {
-                            viewModel.presentReceipt(closesPurchase: true)
-                        }
-                        Button({
-                            let count = viewModel.itemCounts(from: activeItems).purchased
-                            return count == 1 ? "Archivar 1 comprado" : "Archivar \(count) comprados"
-                        }(), role: .destructive) {
-                            do {
-                                try ShoppingPersistenceCoordinator(context: modelContext).archivePurchased(
-                                    from: activeItems,
-                                    activeList: activeList
-                                )
-                                HapticFeedback.success()
-                            } catch {
-                                viewModel.presentPersistenceError(error)
-                            }
-                        }
-                        Button("Cancelar", role: .cancel) {}
-                    } message: {
-                        Text("Mueve los comprados al historial. Con la boleta, CasiListo además registra los precios que pagaste.")
-                    }
+                } else {
+                    // La lista se borró mientras estaba abierta: sin este `else`
+                    // SwiftUI deja una pantalla en blanco de la que no se sale.
+                    Color.appBackground
+                        .ignoresSafeArea()
+                        .onAppear { navigationPath = NavigationPath() }
+                }
+            }
         }
         .tint(Theme.accentYellow)
         .alert(
             "No se pudieron guardar los cambios",
             isPresented: Binding(
-                get: { viewModel.persistenceErrorMessage != nil },
-                set: { if !$0 { viewModel.persistenceErrorMessage = nil } }
+                get: { persistenceErrorMessage != nil },
+                set: { if !$0 { persistenceErrorMessage = nil } }
             )
         ) {
             Button("Entendido", role: .cancel) {}
         } message: {
-            Text(viewModel.persistenceErrorMessage ?? "Inténtalo nuevamente.")
+            Text(persistenceErrorMessage ?? "Inténtalo nuevamente.")
         }
         .task {
             if resetStorageForUITestsIfNeeded() {
                 return
             }
-            
+
             let persistence = ShoppingPersistenceCoordinator(context: modelContext)
             do {
                 // Limpieza única de preferencias heredadas (geofencing, logros).
@@ -128,7 +65,7 @@ struct ContentView: View {
                 UserDefaults.standard.removeObject(forKey: "user_stats")
                 UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
                 try CategoryBootstrapService.bootstrap(context: modelContext)
-                _ = try ShoppingListLifecycleService.bootstrap(context: modelContext)
+                try ShoppingListLifecycleService.bootstrap(context: modelContext)
                 try SuggestedProducts.seedCatalogItems(in: modelContext)
 
                 // La lista parte vacía: el catálogo completo vive en su pestaña
@@ -155,152 +92,11 @@ struct ContentView: View {
                 }
 
                 try persistence.cleanUnreferencedFiles()
-                WidgetDataBridge.write(items: activeItems)
+                persistence.refreshWidgetSnapshot()
             } catch {
-                viewModel.presentPersistenceError(error)
+                persistenceErrorMessage = error.localizedDescription
             }
         }
-    }
-
-    private var formattedShareText: String {
-        let groups = viewModel.groupedItems(from: activeItems, categories: categories)
-        let storeTitle = viewModel.selectedStore?.displayName ?? "Todos"
-        guard !groups.isEmpty else { return "Mi lista de compras en CasiListo (\(storeTitle)) está vacía." }
-        
-        var text = "📝 *Lista de Compras: CasiListo (\(storeTitle))*\n\n"
-        for group in groups {
-            text += "*\(group.category.displayName.uppercased())*\n"
-            for item in group.items {
-                let check = item.isPurchased ? "✅" : "⬜"
-                let qty = item.quantity.isEmpty ? "" : " (\(item.quantity))"
-                let note = item.note.isEmpty ? "" : " [Nota: \(item.note)]"
-                text += "\(check) \(item.name)\(qty)\(note)\n"
-            }
-            text += "\n"
-        }
-        return text
-    }
-
-    private var menuButton: some View {
-        Menu {
-            Button {
-                HapticFeedback.selection()
-                withAnimation(Theme.defaultAnimation) {
-                    viewModel.showPurchased.toggle()
-                }
-            } label: {
-                Label(
-                    viewModel.showPurchased ? "Ocultar comprados" : "Mostrar comprados",
-                    systemImage: viewModel.showPurchased ? "eye.slash" : "eye"
-                )
-            }
-
-            ShareLink(item: formattedShareText) {
-                Label("Compartir lista", systemImage: "square.and.arrow.up")
-            }
-
-            Button {
-                HapticFeedback.selection()
-                viewModel.presentTextImporter()
-            } label: {
-                Label("Importar desde texto", systemImage: "doc.on.clipboard")
-            }
-
-            Button {
-                HapticFeedback.selection()
-                viewModel.presentTemplates()
-            } label: {
-                Label("Usar plantilla", systemImage: "square.grid.2x2")
-            }
-
-            Button {
-                HapticFeedback.impact()
-                viewModel.presentReceipt()
-            } label: {
-                Label("Registrar boleta", systemImage: "doc.text.viewfinder")
-            }
-
-            if viewModel.itemCounts(from: activeItems).purchased > 0 {
-                Button(role: .destructive) { showsClearPurchasedDialog = true } label: {
-                    Label("Archivar comprados", systemImage: "archivebox")
-                }
-            }
-        } label: {
-            Image(systemName: "ellipsis")
-        }
-        .adaptiveGlassButtonStyle()
-        .accessibilityLabel("Opciones")
-        .accessibilityIdentifier("toolbar-options-menu")
-    }
-
-    @ViewBuilder
-    private func sheetContent(for destination: ShoppingListSheetDestination) -> some View {
-        switch destination {
-        case .addItem:
-            let draft = viewModel.quickAddText.isEmpty ? nil : viewModel.quickAddDraft(from: viewModel.quickAddText)
-            AddEditItemSheet(
-                mode: .add,
-                activeList: activeList,
-                allItems: activeItems,
-                preselectedStore: viewModel.selectedStore,
-                initialName: draft?.name ?? "",
-                initialQuantity: draft?.quantity ?? "",
-                onQuickAddConsumed: { viewModel.quickAddText = "" },
-                nextSortOrder: { viewModel.nextSortOrder(for: $0, in: activeItems) },
-                checkDuplicate: { viewModel.duplicateItem(named: $0, store: $1, in: activeItems, excluding: $2) },
-                onItemAdded: { viewModel.revealCategory($0.category, itemID: $0.id) }
-            )
-        case .editItem(let item):
-            AddEditItemSheet(
-                mode: .edit(item),
-                activeList: activeList,
-                allItems: activeItems,
-                preselectedStore: nil,
-                initialName: "",
-                initialQuantity: "",
-                onQuickAddConsumed: {},
-                nextSortOrder: { viewModel.nextSortOrder(for: $0, in: activeItems) },
-                checkDuplicate: { viewModel.duplicateItem(named: $0, store: $1, in: activeItems, excluding: $2) }
-            )
-        case .receipt(let closesPurchase):
-            ReceiptCaptureSheet(
-                activeList: activeList,
-                activeItems: activeItems,
-                allItems: allItems,
-                completedLists: completedLists,
-                categories: categories,
-                closesPurchase: closesPurchase,
-                onShowHistory: {
-                    viewModel.presentedSheet = nil
-                    onShowHistory()
-                }
-            )
-        case .textImporter:
-            TextImporterSheet(
-                activeList: activeList,
-                allItems: activeItems,
-                categories: categories,
-                viewModel: viewModel,
-                onFinished: {
-                    viewModel.updateDerivedState(items: activeItems, categories: categories)
-                }
-            )
-        case .templates:
-            TemplatesSheet(
-                activeList: activeList,
-                allItems: activeItems,
-                categories: categories,
-                viewModel: viewModel,
-                onFinished: {
-                    viewModel.updateDerivedState(items: activeItems, categories: categories)
-                }
-            )
-        }
-    }
-
-    private func presentAddItem() {
-        HapticFeedback.impact()
-        viewModel.presentAddItem()
     }
 
     @discardableResult
@@ -315,7 +111,7 @@ struct ContentView: View {
             return false
         }
 
-        viewModel.resetCategoryCollapseState()
+        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
         UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
 
         for item in allItems {
@@ -327,7 +123,7 @@ struct ContentView: View {
         for catalogItem in catalogItems {
             modelContext.delete(catalogItem)
         }
-        
+
         let catDescriptor = FetchDescriptor<Category>()
         if let allCats = try? modelContext.fetch(catDescriptor) {
             for cat in allCats {
@@ -338,13 +134,15 @@ struct ContentView: View {
         UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
         do {
             try CategoryBootstrapService.bootstrap(context: modelContext)
-            let list = try ShoppingListLifecycleService.createActiveList(in: modelContext)
+            // "-ui-testing-reset-empty" no crea lista: reproduce el primer arranque
+            // real, en el que "Mis Listas" aparece vacío y el usuario elige la suya.
             if seedsListFixture && !startsEmpty {
+                let list = try ShoppingListLifecycleService.createActiveList(in: modelContext)
                 try SuggestedProducts.seedDefaultItems(in: modelContext, listID: list.id)
             }
             try SuggestedProducts.seedCatalogItems(in: modelContext)
         } catch {
-            viewModel.presentPersistenceError(error)
+            persistenceErrorMessage = error.localizedDescription
         }
         return true
     }

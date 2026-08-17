@@ -13,6 +13,8 @@ final class ScreenshotCaptureTests: XCTestCase {
 
         let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] ?? "/tmp"
 
+        openSeededList(in: app)
+
         let categoryCard = app.buttons["category-section-Aseo personal"]
         XCTAssertTrue(categoryCard.waitForExistence(timeout: 10))
 
@@ -42,6 +44,8 @@ final class ScreenshotCaptureTests: XCTestCase {
         app.launch()
 
         let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] ?? "/tmp"
+
+        openSeededList(in: app)
 
         let categoryCard = app.buttons["category-section-Aseo personal"]
         XCTAssertTrue(categoryCard.waitForExistence(timeout: 10))
@@ -81,11 +85,16 @@ final class ScreenshotCaptureTests: XCTestCase {
 
         let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] ?? "/tmp"
 
-        // Primer arranque real: lista vacía con acceso a plantillas.
-        let templatesButton = app.buttons["empty-state-templates"]
-        XCTAssertTrue(templatesButton.waitForExistence(timeout: 10))
+        // Primer arranque real: "Mis Listas" sin ninguna lista todavía.
+        let starter = app.buttons["list-starter-Supermercado"]
+        XCTAssertTrue(starter.waitForExistence(timeout: 10))
         save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/capture-empty-start.png")
 
+        // El atajo crea la lista y entra directo a su detalle, todavía vacío.
+        starter.tap()
+
+        let templatesButton = app.buttons["empty-state-templates"]
+        XCTAssertTrue(templatesButton.waitForExistence(timeout: 10))
         templatesButton.tap()
 
         // La primera tarjeta es "Catálogo completo"; aplicarla puebla la lista.
@@ -119,6 +128,8 @@ final class ScreenshotCaptureTests: XCTestCase {
         let dir = ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] ?? "/tmp"
 
         // Genera una compra en el historial: marca un producto y archívalo.
+        openSeededList(in: app)
+
         let categoryCard = app.buttons["category-section-Aseo personal"]
         XCTAssertTrue(categoryCard.waitForExistence(timeout: 10))
         if (categoryCard.value as? String) == "Colapsada" {
@@ -155,8 +166,10 @@ final class ScreenshotCaptureTests: XCTestCase {
         sleep(1)
         save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/dark-ajustes.png")
 
-        // Plantillas e importador, desde el menú de la lista.
+        // Plantillas e importador, desde el menú de la lista. Volver a la pestaña
+        // Compra aterriza en "Mis Listas", así que hay que entrar de nuevo.
         app.tabBars.buttons["Compra"].tap()
+        openSeededList(in: app)
         app.buttons["toolbar-options-menu"].tap()
         let templatesOption = app.buttons["Usar plantilla"]
         XCTAssertTrue(templatesOption.waitForExistence(timeout: 5))
@@ -173,7 +186,16 @@ final class ScreenshotCaptureTests: XCTestCase {
         save(screenshot: XCUIScreen.main.screenshot(), to: "\(dir)/dark-importador.png")
     }
 
-    private func save(screenshot: XCUIScreenshot, to path: String) {
+    /// La raíz de la pestaña Compra es "Mis Listas": hay que entrar a la lista
+    /// sembrada antes de poder tocar sus productos.
+    @MainActor
+    private func openSeededList(in app: XCUIApplication) {
+        let card = app.buttons["list-card-Compra actual"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+    }
+
+    @MainActor private func save(screenshot: XCUIScreenshot, to path: String) {
         try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
     }
 }

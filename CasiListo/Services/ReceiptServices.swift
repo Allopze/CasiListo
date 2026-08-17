@@ -288,7 +288,7 @@ nonisolated enum ReceiptStoreDetector {
     private static let headerLineLimit = 12
 
     private static let jumboMarks = ["jumbo", "cencosud", "812010000", "81201000"]
-    private static let liderMarks = ["lider", "walmart", "ekono", "867219007", "86721900"]
+    private static let liderMarks = ["lider", "walmart", "ekono", "867219007", "86721900", "76134941"]
 
     static func detectStoreRawValue(in recognizedLines: [String]) -> String? {
         let header = recognizedLines.prefix(headerLineLimit)
@@ -748,8 +748,7 @@ enum ReceiptPurchaseService {
             if let activeList {
                 ShoppingListLifecycleService.updateActiveListCounters(activeList, items: currentItems)
             }
-            let activeItems = currentItems.filter { $0.listID == activeList?.id }
-            try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: activeItems)
+            try ShoppingPersistenceCoordinator(context: context).commit()
 
             return ReceiptRegistrationSummary(
                 list: completedList,

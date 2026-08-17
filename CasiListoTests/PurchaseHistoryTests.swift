@@ -688,6 +688,175 @@ final class PurchaseHistoryTests: XCTestCase {
         XCTAssertEqual(item.quantity, "")
     }
 
+    // MARK: - Boletas reales: secciones y descuentos de supermercado
+
+    /// Las boletas del Jumbo intercalan etiquetas de sección entre productos:
+    /// «JUMBO OFERTAS», «Open bar», «Mercado FFVV». No son productos.
+    func testParserIgnoresJumboSectionLabels() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "CHAMPIÑONES LAMINA 4.500",
+            "JUMBO OFERTAS",
+            "JABON LIQGARRET $2.590",
+            "Open bar",
+            "BEBIDA ENER FU 250 $890",
+            "TOTAL 7.980"
+        ])
+
+        XCTAssertEqual(parsed.map(\.name), ["CHAMPIÑONES LAMINA", "JABON LIQGARRET", "BEBIDA ENER FU 250"])
+    }
+
+    /// Jumbo usa «Campaña Sabores» como nombre de descuento por línea.
+    func testParserRecognizesCampaignDiscount() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "TURRON EL ALMENDRO $5.590",
+            "Campaña Sabores -1.118",
+            "TOTAL 4.472"
+        ])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].lineTotal, 4_472)
+        XCTAssertTrue(parsed[0].hasDiscount)
+    }
+
+    /// Jumbo: «OFERTA SEMANA -3.594» es un descuento por línea.
+    func testParserRecognizesOfertaSemanaDiscount() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "VINO CS 14G 750CC 18.580",
+            "OFERTA SEMANA -3.594",
+            "TOTAL 14.986"
+        ])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].lineTotal, 14_986)
+        XCTAssertTrue(parsed[0].hasDiscount)
+    }
+
+    /// Líder: «RF Precio Antes Ahora -490» indica un descuento.
+    func testParserRecognizesLiderPriceBeforeAfterDiscount() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "CALDDCARNE $1.490",
+            "RF Precio Antes Ahora -490",
+            "TOTAL 1.000"
+        ])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].lineTotal, 1_000)
+        XCTAssertTrue(parsed[0].hasDiscount)
+    }
+
+    /// Las boletas del Líder intercalan líneas de referencia de promoción
+    /// («RF lleve M x $», «SX1010 780…», «CODIGO 780…»). No son productos.
+    func testParserIgnoresLiderPromoAndCodeLines() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "SX1010 7808743605826",
+            "RF lleve M x $",
+            "CODIGO 780044223848",
+            "FIDEO SP 400",
+            "$900",
+            "TOTAL 900"
+        ])
+
+        XCTAssertEqual(parsed.map(\.name), ["FIDEO SP 400"])
+    }
+
+    /// Algunas sucursales del Líder usan el RUT 76.134.941 en vez de 86.721.900.
+    func testStoreDetectorRecognizesLiderAlternateRUT() {
+        XCTAssertEqual(
+            ReceiptStoreDetector.detectStoreRawValue(in: [
+                "SUC AVDA SOR VICENTA", "RUT 76.134.941-4", "BOLETA ELECTRONICA"
+            ]),
+            Store.lider.rawValue
+        )
+    }
+
+    /// «JUMBO OFERTAS -4.000» con monto negativo es un descuento de sección,
+    /// no ruido: el monto se resta del producto anterior.
+    func testParserTreatsJumboOfertasWithAmountAsDiscount() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "YOGURT FRUIT SEC 10.320",
+            "JUMBO OFERTAS -4.000",
+            "TOTAL 6.320"
+        ])
+
+        XCTAssertEqual(parsed.count, 1)
+        XCTAssertEqual(parsed[0].lineTotal, 6_320)
+        XCTAssertTrue(parsed[0].hasDiscount)
+    }
+
+    /// «$ Open bar» con $ suelto al inicio no es un producto ni un monto.
+    func testParserIgnoresDollarPrefixedSectionLabel() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "BEBIDA ENER AE 250 $3.780",
+            "$ Open bar",
+            "HELADO CAPUCCIN IL $5.090",
+            "TOTAL 8.870"
+        ])
+
+        XCTAssertEqual(parsed.map(\.name), ["BEBIDA ENER AE 250", "HELADO CAPUCCIN IL"])
+    }
+
+    /// «Open bar -390», «Mercado FFVV -1.383» y «RF Lleve N x $ -600» con montos negativos
+    /// se descuentan del producto inmediatamente anterior.
+    func testParserRecognizesSectionDiscountsWithNegativeAmounts() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "BEBIDA ENER FD 250 1.890",
+            "Open bar -390",
+            "MANZANA VERDE GRAN 4.610",
+            "Mercado FFVV -1.383",
+            "MOSTACCIOLI $3.150",
+            "RF Lleve N x $ -600",
+            "TOTAL 6.877"
+        ])
+
+        XCTAssertEqual(parsed.count, 3)
+        XCTAssertEqual(parsed[0].name, "BEBIDA ENER FD 250")
+        XCTAssertEqual(parsed[0].lineTotal, 1_500)
+        XCTAssertTrue(parsed[0].hasDiscount)
+
+        XCTAssertEqual(parsed[1].name, "MANZANA VERDE GRAN")
+        XCTAssertEqual(parsed[1].lineTotal, 3_227)
+        XCTAssertTrue(parsed[1].hasDiscount)
+
+        XCTAssertEqual(parsed[2].name, "MOSTACCIOLI")
+        XCTAssertEqual(parsed[2].lineTotal, 2_550)
+        XCTAssertTrue(parsed[2].hasDiscount)
+    }
+
+    /// Líder cierra con «TOTAL NUMERO DE ARTIC VEND 45»: ese 45 es un conteo de
+    /// unidades y no puede confundirse con el monto pagado.
+    func testParserIgnoresItemCountLineWhenReadingPrintedTotal() {
+        let result = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "PAN 1.250",
+            "LECHE 990",
+            "TOTAL NUMERO DE ARTIC VEND 45",
+            "TOTAL 2.240"
+        ].map { ReceiptTextLine(text: $0) })
+
+        XCTAssertEqual(result.printedTotal, 2_240)
+    }
+
+    /// Un producto que se llama «ARTICULOS DE ASEO» no puede cortar la boleta:
+    /// todo lo que viniera después se perdería.
+    func testParserKeepsProductsAfterLineNamedArticulos() {
+        let parsed = ReceiptLineParser.parse([
+            "BOLETA ELECTRONICA",
+            "ARTICULOS DE ASEO 2.990",
+            "LECHE COLUN 1L 990",
+            "TOTAL 3.980"
+        ])
+
+        XCTAssertEqual(parsed.map(\.name), ["ARTICULOS DE ASEO", "LECHE COLUN 1L"])
+    }
+
     private func makeInMemoryContainer() throws -> ModelContainer {
         try ModelContainer(
             for: ShoppingItem.self, ShoppingList.self, ProductCatalogItem.self, Category.self,

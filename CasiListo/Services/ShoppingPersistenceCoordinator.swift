@@ -46,14 +46,9 @@ final class ShoppingPersistenceCoordinator {
         self.widgetWriter = widgetWriter
     }
 
-    func commit(itemsForWidget items: [ShoppingItem]) throws {
-        do {
-            try context.save()
-            widgetWriter.publish(items: items)
-        } catch {
-            context.rollback()
-            throw PersistenceError.saveFailed(error.localizedDescription)
-        }
+    func commit() throws {
+        try commitWithoutWidget()
+        refreshWidgetSnapshot()
     }
 
     func commitWithoutWidget() throws {
@@ -65,8 +60,29 @@ final class ShoppingPersistenceCoordinator {
         }
     }
 
-    func saveItem(_ item: ShoppingItem, allActiveItems: [ShoppingItem]) throws {
-        try commit(itemsForWidget: allActiveItems)
+    /// El widget refleja **todas** las listas activas. Con multi-lista no existe
+    /// una «lista actual» única, y dejar que cada pantalla decida qué publicar
+    /// hacía que el widget mostrara la última lista abierta —o una ya borrada.
+    ///
+    /// No propaga errores a propósito: un snapshot desactualizado no puede tumbar
+    /// una escritura que SwiftData ya confirmó.
+    func refreshWidgetSnapshot() {
+        guard let items = try? itemsInActiveLists() else { return }
+        widgetWriter.publish(items: items)
+    }
+
+    private func itemsInActiveLists() throws -> [ShoppingItem] {
+        let activeListIDs = Set(
+            try context.fetch(FetchDescriptor<ShoppingList>())
+                .filter { $0.status == .active }
+                .map(\.id)
+        )
+        return try context.fetch(FetchDescriptor<ShoppingItem>())
+            .filter { item in item.listID.map(activeListIDs.contains) ?? false }
+    }
+
+    func saveItem(_ item: ShoppingItem) throws {
+        try commit()
     }
 
     func archivePurchased(
@@ -85,14 +101,14 @@ final class ShoppingPersistenceCoordinator {
         )
     }
 
-    func deleteItem(_ item: ShoppingItem, remainingItems: [ShoppingItem]) throws {
+    func deleteItem(_ item: ShoppingItem) throws {
         context.delete(item)
-        try commit(itemsForWidget: remainingItems)
+        try commit()
     }
 
-    func importItems(_ importedItems: [ShoppingItem], allActiveItems: [ShoppingItem]) throws {
+    func importItems(_ importedItems: [ShoppingItem]) throws {
         guard !importedItems.isEmpty else { return }
-        try commit(itemsForWidget: allActiveItems)
+        try commit()
     }
 
     @discardableResult
@@ -168,8 +184,7 @@ final class ShoppingPersistenceCoordinator {
             UserDefaults(suiteName: WidgetDataBridge.appGroupID)?.removeObject(forKey: WidgetDataBridge.snapshotKey)
 
             try CategoryBootstrapService.bootstrap(context: context)
-            _ = try ShoppingListLifecycleService.createActiveList(in: context)
-            try commit(itemsForWidget: [])
+            try commit()
         } catch {
             context.rollback()
             throw PersistenceError.resetFailed(error.localizedDescription)

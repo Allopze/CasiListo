@@ -34,7 +34,7 @@ enum CatalogService {
         if let activeList {
             ShoppingListLifecycleService.updateActiveListCounters(activeList, items: activeItems + [item])
         }
-        try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: activeItems + [item])
+        try ShoppingPersistenceCoordinator(context: context).commit()
         return item
     }
 
@@ -56,7 +56,7 @@ enum CatalogService {
         if let activeList {
             ShoppingListLifecycleService.updateActiveListCounters(activeList, items: remaining)
         }
-        try ShoppingPersistenceCoordinator(context: context).commit(itemsForWidget: remaining)
+        try ShoppingPersistenceCoordinator(context: context).commit()
     }
 
     /// Registra en el catálogo un producto añadido manualmente para que el
