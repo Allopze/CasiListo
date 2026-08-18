@@ -456,6 +456,73 @@ final class PurchaseHistoryTests: XCTestCase {
         XCTAssertNil(ProductNameMatcher.bestMatch(for: "TE", in: [leche]))
     }
 
+    /// Las boletas chilenas abrevian agresivamente los nombres de producto:
+    /// «ACEIT FRAG» por «Aceite fragante», «BEBIDA ENER» por «Bebida
+    /// energética», «CHAMPINON» por «Champiñones». El matcher tiene que
+    /// reconocer que son el mismo producto usando emparejamiento por prefijos.
+    func testMatcherRecognizesTypicalReceiptAbbreviations() {
+        let items = [
+            ShoppingItem(name: "Aceite fragante", status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Bebida energética", status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Champiñones", status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Leche Colún", status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Detergente líquido", status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Yogur batido", status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Salsa tomate", status: .purchased, store: .jumbo)
+        ]
+
+        XCTAssertEqual(
+            ProductNameMatcher.bestMatch(for: "ACEIT FRAG", in: items)?.name,
+            "Aceite fragante"
+        )
+        XCTAssertEqual(
+            ProductNameMatcher.bestMatch(for: "BEBIDA ENER", in: items)?.name,
+            "Bebida energética"
+        )
+        XCTAssertEqual(
+            ProductNameMatcher.bestMatch(for: "CHAMPINON 500GR", in: items)?.name,
+            "Champiñones"
+        )
+        XCTAssertEqual(
+            ProductNameMatcher.bestMatch(for: "LCH COLUN", in: items)?.name,
+            "Leche Colún"
+        )
+        XCTAssertEqual(
+            ProductNameMatcher.bestMatch(for: "SALSA TOMAT POMAR", in: items)?.name,
+            "Salsa tomate"
+        )
+    }
+
+    /// La señal de prefijos no debe producir falsos positivos: productos
+    /// con nombres completamente distintos no deben emparejarse.
+    func testMatcherPrefixSignalDoesNotProduceFalsePositives() {
+        let items = [
+            ShoppingItem(name: "Pan marraqueta", status: .purchased, store: .jumbo),
+            ShoppingItem(name: "Aceite de oliva", status: .purchased, store: .jumbo)
+        ]
+
+        // «Pasta» no es «Pan» a pesar de compartir «pa» (demasiado corto para prefijo).
+        XCTAssertNil(ProductNameMatcher.bestMatch(for: "PASTA DENTAL", in: items))
+        // Nombres sin relación real.
+        XCTAssertNil(ProductNameMatcher.bestMatch(for: "CERVEZA LAGER", in: items))
+    }
+
+    /// El emparejamiento de prefijos debe funcionar también al asignar
+    /// múltiples líneas de boleta contra la lista completa.
+    func testMatcherAssignUsesTokenPrefixToAlign() {
+        let aceite = ShoppingItem(name: "Aceite de oliva", status: .purchased, store: .jumbo)
+        let champi = ShoppingItem(name: "Champiñones laminados", status: .purchased, store: .jumbo)
+        let lines = [
+            RecognizedReceiptLine(name: "ACEIT OLIV", lineTotal: 3_490),
+            RecognizedReceiptLine(name: "CHAMPINON LAMIN", lineTotal: 2_990)
+        ]
+
+        let assignments = ProductNameMatcher.assign(lines: lines, to: [aceite, champi])
+
+        XCTAssertEqual(assignments[lines[0].id], aceite.id)
+        XCTAssertEqual(assignments[lines[1].id], champi.id)
+    }
+
     // MARK: - Presentación de nombres
 
     func testNameFormatterSoftensAllCapsButKeepsFormats() {

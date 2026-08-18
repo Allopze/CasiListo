@@ -50,9 +50,12 @@ nonisolated struct ReceiptParseResult: Sendable {
 /// dos cifras al final (`1290,50`).
 nonisolated enum ReceiptAmount {
     /// Fragmento de patrón reutilizable para montos dentro de otras expresiones.
-    static let pattern = "[0-9]{1,3}(?:[.,\\s][0-9]{3})+|[0-9]+(?:[.,][0-9]{1,2})?"
+    /// El tope de dígitos es lo que separa un precio de un código de barras:
+    /// sin él, `7803473002665` se leía como monto, la línea se descartaba por
+    /// superar el máximo y el producto desaparecía sin dejar rastro.
+    static let pattern = "[0-9]{1,3}(?:(?:[.,]\\s?|\\s)[0-9]{3}){1,2}|[0-9]{1,6}(?:[.,][0-9]{1,2})?"
 
-    private static let thousands = regex("^[0-9]{1,3}(?:[.,\\s][0-9]{3})+$")
+    private static let thousands = regex("^[0-9]{1,3}(?:(?:[.,]\\s?|\\s)[0-9]{3}){1,2}$")
     private static let decimals = regex("^[0-9]+[.,][0-9]{1,2}$")
 
     static func value(_ raw: String) -> Double? {
@@ -81,7 +84,9 @@ nonisolated enum ReceiptAmount {
 
     /// Cantidades como `2`, `2,000` o `0,860` (kilos). Aquí el separador sí es decimal.
     static func decimalQuantity(_ raw: String) -> Double {
-        let text = raw.replacingOccurrences(of: ",", with: ".")
+        var text = raw.replacingOccurrences(of: ",", with: ".")
+        // El OCR se come el cero de «0,918» y queda «,918».
+        if text.hasPrefix(".") { text = "0" + text }
         return Double(text) ?? 0
     }
 
@@ -111,7 +116,14 @@ nonisolated enum ReceiptLineParser {
         "fono", "telefono", "tel", "www", "cliente", "atendido", "atendida",
         "operador", "terminal", "comercio", "local", "avenida", "av", "avda",
         "calle", "pasaje", "psje", "mall", "matriz", "emision", "documento",
-        "razon", "social", "sucursales", "vendedor"
+        "razon", "social", "sucursales", "vendedor", "suc"
+    ]
+
+    /// Descalifican una fila «TOTAL» como el monto pagado: son desgloses del pie
+    /// («SUB TOTAL», «TOTAL AFECTO», «TOTAL IVA»), no lo que se cobró.
+    private static let totalQualifierTokens: Set<String> = [
+        "sub", "subtotal", "iva", "neto", "exento", "afecto", "descuento",
+        "descuentos", "ahorro", "ahorros", "propina", "redondeo", "puntos"
     ]
 
     /// Pie: a partir de aquí ya no hay productos, solo el cierre monetario.
@@ -174,19 +186,44 @@ nonisolated enum ReceiptLineParser {
     )
 
     /// `2 x $1.990 $3.980`, `2 UN × $1.990`, `0,860 KG X $1.290/KG $1.109`.
-    /// Vision normaliza la `x` mecanografiada al signo `×` (U+00D7), así que la
-    /// clase de caracteres tiene que aceptar ambos y sus variantes.
+    /// Vision normaliza la `x` mecanografiada al signo `×` (U+00D7) y en papel
+    /// térmico gastado la confunde con la Х cirílica o la Χ griega: sin aceptar
+    /// esos homóglifos el desglose entero de la línea se pierde.
     private static let quantityLine = ReceiptAmount.regex(
-        "^\\s*([0-9]{1,2}(?:[.,][0-9]{1,3})?)\\s*"
+        "^\\s*([0-9]{0,3}[.,][0-9]{1,3}|[0-9]{1,3})\\s*"
         + "(UN|UNI|UND|UD|U|KGS|KG|KLS|KL|K|GRS|GR|G|LTS|LT|L|MT|M)?\\.?\\s*"
-        + "[xX\u{00D7}\u{2715}\u{2716}*]\\s*"
+        + "[xX\u{00D7}\u{2715}\u{2716}\u{0425}\u{0445}\u{03A7}\u{03C7}*]\\s*"
         + "(?:\\$\\s*)?(\(ReceiptAmount.pattern))"
         + "(?:\\s*/\\s*[A-Za-z]{1,3}\\.?)?"
         + "(?:[\\s\\t]+(?:\\$\\s*)?(\(ReceiptAmount.pattern)))?\\s*$"
     )
 
+    /// Desglose de cantidad pegado al inicio de una fila con más contenido:
+    /// `3X1.050 MOSTACCIOLI $ 3.150` (así lo imprime el Líder) o
+    /// `2 X $1.490 7803473002662 PAN IDEAL 2.990` (cuando Vision junta el
+    /// desglose con la fila de abajo). Solo cubre el prefijo: el resto de la
+    /// fila se vuelve a clasificar por su cuenta.
+    private static let quantityPrefix = ReceiptAmount.regex(
+        "^\\s*(?:[0-9]{0,3}[.,][0-9]{1,3}|[0-9]{1,3})\\s*"
+        + "(?:UN|UNI|UND|UD|U|KGS|KG|KLS|KL|K|GRS|GR|G|LTS|LT|L|MT|M)?\\.?\\s*"
+        + "[xX\u{00D7}\u{2715}\u{2716}\u{0425}\u{0445}\u{03A7}\u{03C7}*]\\s*"
+        + "(?:\\$\\s*)?(?:\(ReceiptAmount.pattern))"
+        + "(?:\\s*/\\s*[A-Za-z]{1,3}\\.?)?\\s+"
+    )
+
+    /// Línea de sucursal del encabezado: «LOS ANGELES - LOS ANGELES»,
+    /// «LOS ANGELES - REG. DEL BIO BIO». Sin cifras y con un guion aislado.
+    private static let branchPattern = ReceiptAmount.regex("^[^0-9$]{2,}\\s[-\u{2013}\u{2014}]\\s[^0-9$]{2,}$")
+
+    /// Fila que solo repite el peso o las unidades de la línea anterior
+    /// («× 1.414 KG»): no es un producto ni un precio.
+    private static let unitOnlyPattern = ReceiptAmount.regex(
+        "^\\s*[xX\u{00D7}\u{2715}\u{2716}\u{0425}\u{0445}\u{03A7}\u{03C7}*]?\\s*[0-9]{1,3}(?:[.,][0-9]{1,3})?\\s*"
+        + "(?:UN|UNI|UND|UD|U|KGS|KG|KLS|KL|K|GRS|GR|G|LTS|LT|L|MT|M)\\.?\\s*$"
+    )
+
     /// Código de barras u otro identificador largo al inicio del nombre.
-    private static let leadingCode = ReceiptAmount.regex("^[0-9]{7,}\\s+")
+    private static let leadingCode = ReceiptAmount.regex("^[0-9]{7,}[^0-9\\s]{0,3}\\s+")
 
     private static let rutPattern = ReceiptAmount.regex("[0-9]{1,2}\\.[0-9]{3}\\.[0-9]{3}\\s*-\\s*[0-9kK]")
     private static let datePattern = ReceiptAmount.regex("[0-9]{1,2}[/-][0-9]{1,2}[/-][0-9]{2,4}")
@@ -213,6 +250,7 @@ nonisolated enum ReceiptLineParser {
     }
 
     static func parse(_ lines: [ReceiptTextLine]) -> ReceiptParseResult {
+        let lines = lines.flatMap(splitLeadingQuantity)
         let tokens = lines.map { Set(ProductNameNormalizer.normalize($0.text).split(separator: " ").map(String.init)) }
 
         let headerEnd = headerBoundary(lines: lines, tokens: tokens)
@@ -230,6 +268,29 @@ nonisolated enum ReceiptLineParser {
         return ReceiptParseResult(products: walk(kinds), printedTotal: total)
     }
 
+    /// Una fila puede traer el desglose de cantidad pegado al contenido real.
+    /// Separarla antes de clasificar deja que cada mitad siga el camino que ya
+    /// existía, en vez de convertir todo en un producto con nombre ilegible.
+    private static func splitLeadingQuantity(_ line: ReceiptTextLine) -> [ReceiptTextLine] {
+        let text = line.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard quantityInfo(in: text) == nil,
+              let match = firstMatch(quantityPrefix, in: text),
+              let range = Range(match.range, in: text)
+        else { return [line] }
+
+        let remainder = String(text[range.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        // Sin letras detrás no hay producto que rescatar: se deja la fila entera.
+        guard remainder.rangeOfCharacter(from: .letters) != nil else { return [line] }
+
+        let prefix = String(text[range]).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard quantityInfo(in: prefix) != nil else { return [line] }
+
+        return [
+            ReceiptTextLine(text: prefix, confidence: line.confidence, pageIndex: line.pageIndex),
+            ReceiptTextLine(text: remainder, confidence: line.confidence, pageIndex: line.pageIndex)
+        ]
+    }
+
     // MARK: Segmentación
 
     private static func headerBoundary(lines: [ReceiptTextLine], tokens: [Set<String>]) -> Int {
@@ -245,6 +306,7 @@ nonisolated enum ReceiptLineParser {
         let text = line.text
         if matches(rutPattern, text) || matches(datePattern, text) || matches(timePattern, text) { return true }
         if matches(legalEntityPattern, text) { return true }
+        if matches(branchPattern, text.trimmingCharacters(in: .whitespacesAndNewlines)) { return true }
         return false
     }
 
@@ -259,19 +321,23 @@ nonisolated enum ReceiptLineParser {
         return lines.count
     }
 
+    /// El monto pagado es la fila «TOTAL» sin apellidos. «SUB TOTAL» y
+    /// «SUBTOTAL» solo sirven de respaldo: en Jumbo van antes de los descuentos,
+    /// así que tomarlos hacía aparecer un descuadre en toda boleta con rebajas.
     private static func printedTotal(lines: [ReceiptTextLine], tokens: [Set<String>], from start: Int) -> Double? {
         guard start < lines.count else { return nil }
         var fallback: Double?
         for index in start..<lines.count {
-            guard let amount = trailingAmount(in: lines[index])?.value else { continue }
-            // «TOTAL NUMERO DE ARTIC VEND 45» lleva «total» pero no es el monto.
-            guard tokens[index].isDisjoint(with: itemCountTokens) else { continue }
-            if tokens[index].contains("total") && !tokens[index].contains("subtotal") {
+            let line = tokens[index]
+            guard line.contains("total") || line.contains("subtotal") else { continue }
+            // «TOTAL NUMERO DE ARTIC VEND 45» lleva «total» pero cuenta unidades.
+            guard line.isDisjoint(with: itemCountTokens) else { continue }
+            guard let amount = trailingAmount(in: lines[index])?.value, amount > 0 else { continue }
+
+            if line.contains("total"), line.isDisjoint(with: totalQualifierTokens) {
                 return ReceiptAmount.rounded(amount)
             }
-            if tokens[index].contains("subtotal"), fallback == nil {
-                fallback = ReceiptAmount.rounded(amount)
-            }
+            if fallback == nil { fallback = ReceiptAmount.rounded(amount) }
         }
         return fallback
     }
@@ -311,7 +377,11 @@ nonisolated enum ReceiptLineParser {
             }
         }
 
-        if !tokens.isDisjoint(with: discountTokens), letterWordCount(tokens) <= maximumDiscountWords {
+        // Una fila que empieza con código de barras es un producto, aunque su
+        // nombre contenga «OFERTA»: restarla del anterior perdía dos líneas.
+        if !tokens.isDisjoint(with: discountTokens),
+           letterWordCount(tokens) <= maximumDiscountWords,
+           !matches(leadingCode, text) {
             if let amount = trailingAmount(in: line)?.value {
                 return .discount(abs(ReceiptAmount.rounded(amount)))
             }
@@ -326,6 +396,9 @@ nonisolated enum ReceiptLineParser {
 
         // Líneas de sección como «Open bar» o «Mercado FFVV» sin monto.
         if isSectionLabel(text) { return .noise }
+
+        // «× 1.414 KG» debajo de un producto solo repite la pesada.
+        if matches(unitOnlyPattern, text) { return .noise }
 
         if !tokens.isDisjoint(with: noiseTokens) || isHeaderLine(line, tokens: tokens) { return .noise }
         if isContactNoise(line, tokens: tokens) { return .noise }
@@ -362,7 +435,11 @@ nonisolated enum ReceiptLineParser {
     /// Teléfonos, folios y códigos sueltos: filas con a lo más una palabra y un
     /// número largo. El umbral de una palabra deja pasar `7801… ACEITE MARAVILLA`.
     private static func isContactNoise(_ line: ReceiptTextLine, tokens: Set<String>) -> Bool {
-        letterWordCount(tokens) <= 1 && matches(longNumberPattern, line.text)
+        guard letterWordCount(tokens) <= 1, matches(longNumberPattern, line.text) else { return false }
+        // Un producto de una sola palabra con su código y su precio
+        // («7802950005974 CALDOCARNE $ 1.490») cumple lo anterior sin ser ruido:
+        // descartarlo perdía el producto y le pegaba su rebaja al de más arriba.
+        return !(matches(leadingCode, line.text) && trailingAmount(in: line) != nil)
     }
 
     /// Etiqueta de sección sin monto: «Open bar», «Mercado FFVV».
@@ -422,7 +499,7 @@ nonisolated enum ReceiptLineParser {
 
                 // Número suelto al final del nombre con un precio real debajo:
                 // era el gramaje del envase («LECHE DESCREMADA 1000» / «$990»).
-                if !isReliable, isPriceBearing(next) {
+                if !isReliable, supersedesAmount(next) {
                     flushPending()
                     pendingName = rawText
                     pendingConfidence = confidence
@@ -435,8 +512,10 @@ nonisolated enum ReceiptLineParser {
                     continue
                 }
 
-                // El total va en la fila del nombre y el desglose por unidad debajo.
-                if case .quantity = next {
+                // El total va en la fila del nombre y el desglose por unidad
+                // debajo. Solo cuando las cifras del desglose dan ese total:
+                // si no, el desglose describe al producto que viene después.
+                if case let .quantity(info) = next, quantityDescribes(info, total: amount) {
                     flushPending()
                     pendingName = name
                     pendingAmount = amount
@@ -487,11 +566,28 @@ nonisolated enum ReceiptLineParser {
         return products
     }
 
-    private static func isPriceBearing(_ kind: LineKind?) -> Bool {
+    /// ¿La fila siguiente se lleva el precio de esta? Un monto suelto sí: es el
+    /// precio que le faltaba al nombre de arriba. Un desglose de cantidad solo
+    /// si declara su propio total; «2 X $2.590» sin total describe al producto
+    /// de abajo, y creerle desplazaba todos los precios de la boleta en uno.
+    private static func supersedesAmount(_ kind: LineKind?) -> Bool {
         switch kind {
-        case .amount, .quantity: return true
+        case .amount: return true
+        case let .quantity(info): return info.total != nil
         default: return false
         }
+    }
+
+    /// ¿El desglose cuadra con este total de línea? Es lo que distingue
+    /// «PAN 3.980» + «2 x $1.990» (el desglose es de esta línea) de
+    /// «BOLSA 290» + «2 X $2.590» (el desglose es del producto siguiente).
+    /// La tolerancia es de un peso: dos productos vecinos pueden valer casi lo
+    /// mismo y una holgura porcentual los confundía.
+    private static func quantityDescribes(_ info: QuantityInfo, total: Double) -> Bool {
+        if let printed = info.total { return abs(printed - total) <= 1 }
+        guard let unitPrice = info.unitPrice else { return false }
+        let units = info.isWeight ? info.weight : Double(info.count)
+        return abs(unitPrice * units - total) <= 1
     }
 
     private static func append(
@@ -612,7 +708,9 @@ nonisolated enum ReceiptLineParser {
         let isWeight = weightUnits.contains(unit) || hasFraction
 
         let count = max(1, Int(numeric.rounded()))
-        guard count <= 99 else { return nil }
+        // En una pesada el número es kilos, no unidades: da igual que el OCR se
+        // haya comido el «1,» de «1,262 KG» porque manda el total impreso.
+        guard isWeight || count <= 99 else { return nil }
         guard unitPrice != nil || total != nil else { return nil }
 
         return QuantityInfo(

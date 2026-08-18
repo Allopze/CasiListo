@@ -32,10 +32,11 @@ nonisolated struct ReceiptTextLine: Sendable {
         self.pageIndex = pageIndex
     }
 
-    /// Línea sintética a partir de texto plano (pruebas y entradas sin geometría).
-    init(text: String, pageIndex: Int = 0) {
+    /// Línea sintética a partir de texto plano (pruebas, entradas sin geometría
+    /// y las mitades en que se parte una fila que traía dos cosas juntas).
+    init(text: String, confidence: Double = 1, pageIndex: Int = 0) {
         self.init(
-            fragments: [ReceiptTextFragment(text: text, minX: 0, maxX: 1, confidence: 1)],
+            fragments: [ReceiptTextFragment(text: text, minX: 0, maxX: 1, confidence: confidence)],
             midY: 0.5,
             height: 0.02,
             pageIndex: pageIndex
@@ -109,6 +110,10 @@ nonisolated enum ReceiptLineAssembler {
     /// verticalmente en al menos esta fracción de la más baja de las dos.
     private static let verticalOverlapRatio = 0.4
 
+    /// Los fragmentos de una misma fila se reparten el ancho del papel: nunca se
+    /// pisan. La holgura absorbe cajas que se rozan en columnas apretadas.
+    private static let horizontalOverlapTolerance = 0.02
+
     static func assemble(_ observations: [Observation], pageIndex: Int = 0) -> [ReceiptTextLine] {
         let usable = observations
             .filter { !$0.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -124,27 +129,56 @@ nonisolated enum ReceiptLineAssembler {
 
         guard !usable.isEmpty else { return [] }
 
-        var bands: [[Observation]] = []
-        var current: [Observation] = [usable[0]]
-        var bandMinY = usable[0].minY
-        var bandMaxY = usable[0].maxY
+        // Agrupar por afinidad, de la mejor pareja a la peor, en vez de por orden
+        // de aparición: recorriendo de arriba abajo, el precio de la columna
+        // derecha se enganchaba a la fila de más arriba solo porque esa banda ya
+        // existía cuando le tocaba el turno, y toda la boleta quedaba corrida.
+        var parent = Array(usable.indices)
+        var members: [[Int]] = usable.indices.map { [$0] }
 
-        for observation in usable.dropFirst() {
-            let overlap = min(bandMaxY, observation.maxY) - max(bandMinY, observation.minY)
-            let threshold = verticalOverlapRatio * min(bandMaxY - bandMinY, observation.height)
+        func root(_ index: Int) -> Int {
+            var current = index
+            while parent[current] != current {
+                parent[current] = parent[parent[current]]
+                current = parent[current]
+            }
+            return current
+        }
 
-            if overlap >= threshold {
-                current.append(observation)
-                bandMinY = min(bandMinY, observation.minY)
-                bandMaxY = max(bandMaxY, observation.maxY)
-            } else {
-                bands.append(current)
-                current = [observation]
-                bandMinY = observation.minY
-                bandMaxY = observation.maxY
+        var candidates: [(score: Double, lhs: Int, rhs: Int)] = []
+        for lhs in usable.indices {
+            for rhs in usable.indices where rhs > lhs {
+                guard let score = affinity([lhs], [rhs], in: usable) else { continue }
+                candidates.append((score, lhs, rhs))
             }
         }
-        bands.append(current)
+        // El desempate por índice mantiene el resultado reproducible.
+        candidates.sort {
+            if $0.score != $1.score { return $0.score > $1.score }
+            if $0.lhs != $1.lhs { return $0.lhs < $1.lhs }
+            return $0.rhs < $1.rhs
+        }
+
+        for candidate in candidates {
+            let lhs = root(candidate.lhs)
+            let rhs = root(candidate.rhs)
+            // Se revalida sobre las bandas ya formadas: así una fila no crece
+            // hasta tragarse a sus vecinas de arriba y de abajo.
+            guard lhs != rhs, affinity(members[lhs], members[rhs], in: usable) != nil else { continue }
+            parent[rhs] = lhs
+            members[lhs] += members[rhs]
+            members[rhs] = []
+        }
+
+        let bands = usable.indices
+            .filter { root($0) == $0 }
+            .map { members[$0].map { usable[$0] } }
+            .sorted { lhs, rhs in
+                let left = lhs.map(\.midY).reduce(0, +) / Double(lhs.count)
+                let right = rhs.map(\.midY).reduce(0, +) / Double(rhs.count)
+                if left != right { return left > right }
+                return (lhs.map(\.minX).min() ?? 0) < (rhs.map(\.minX).min() ?? 0)
+            }
 
         return bands.map { band in
             let ordered = band.sorted { $0.minX < $1.minX }
@@ -157,5 +191,34 @@ nonisolated enum ReceiptLineAssembler {
                 pageIndex: pageIndex
             )
         }
+    }
+
+    /// Cuánto se parecen dos grupos a una misma fila, o `nil` si no pueden serlo.
+    ///
+    /// Fotografiada en ángulo, una boleta devuelve cajas más altas que la
+    /// separación entre sus filas: el producto y el descuento de abajo se solapan
+    /// en vertical aunque sean filas distintas. Lo que sí los separa es el eje
+    /// horizontal — el precio de una fila no se monta sobre su nombre —, y sin
+    /// esa condición las filas se fundían de a seis en una sola ilegible.
+    private static func affinity(_ lhs: [Int], _ rhs: [Int], in observations: [Observation]) -> Double? {
+        for left in lhs {
+            for right in rhs {
+                let shared = min(observations[left].maxX, observations[right].maxX)
+                    - max(observations[left].minX, observations[right].minX)
+                if shared > horizontalOverlapTolerance { return nil }
+            }
+        }
+
+        let lhsMinY = lhs.map { observations[$0].minY }.min() ?? 0
+        let lhsMaxY = lhs.map { observations[$0].maxY }.max() ?? 0
+        let rhsMinY = rhs.map { observations[$0].minY }.min() ?? 0
+        let rhsMaxY = rhs.map { observations[$0].maxY }.max() ?? 0
+
+        let overlap = min(lhsMaxY, rhsMaxY) - max(lhsMinY, rhsMinY)
+        let shorter = min(lhsMaxY - lhsMinY, rhsMaxY - rhsMinY)
+        guard shorter > 0 else { return nil }
+
+        let score = overlap / shorter
+        return score >= verticalOverlapRatio ? score : nil
     }
 }

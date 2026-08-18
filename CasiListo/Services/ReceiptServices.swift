@@ -418,18 +418,22 @@ nonisolated enum ProductNameMatcher {
         return best?.item
     }
 
-    /// Combina tres señales: palabras en común, contención por palabras
-    /// completas y distancia de edición. Esta última es la que rescata los
-    /// errores típicos del OCR («LECFE COLUN» → «Leche Colún»).
+    /// Combina cuatro señales: palabras en común, contención por palabras
+    /// completas, distancia de edición y emparejamiento por prefijos entre
+    /// tokens individuales. Esta última rescata las abreviaturas agresivas
+    /// de las boletas chilenas («ACEIT FRAG» → «Aceite fragante»).
     static func similarity(_ scanned: String, _ candidate: String) -> Double {
         guard !scanned.isEmpty, !candidate.isEmpty else { return 0 }
         if scanned == candidate { return 1 }
 
-        let scannedTokens = Set(scanned.split(separator: " ").map(String.init))
-        let candidateTokens = Set(candidate.split(separator: " ").map(String.init))
+        let scannedTokens = Array(scanned.split(separator: " ").map(String.init))
+        let candidateTokens = Array(candidate.split(separator: " ").map(String.init))
         guard !scannedTokens.isEmpty, !candidateTokens.isEmpty else { return 0 }
 
-        let overlap = Double(scannedTokens.intersection(candidateTokens).count)
+        let scannedSet = Set(scannedTokens)
+        let candidateSet = Set(candidateTokens)
+
+        let overlap = Double(scannedSet.intersection(candidateSet).count)
         let tokenScore = overlap / Double(max(scannedTokens.count, candidateTokens.count))
 
         // Contención por palabras completas: «te» dentro de «leche» no cuenta.
@@ -442,7 +446,87 @@ nonisolated enum ProductNameMatcher {
         let distance = editDistance(scanned, candidate)
         let editScore = 1 - Double(distance) / Double(max(scanned.count, candidate.count))
 
-        return max(tokenScore, containmentScore, editScore >= 0.78 ? editScore : 0)
+        // Emparejamiento por prefijos: las boletas abrevian los nombres
+        // («ACEIT» → «aceite», «ENER» → «energetica»). Cada token del
+        // nombre escaneado se intenta emparejar con el mejor token del
+        // candidato por prefijo o distancia de edición por token.
+        let prefixScore = tokenPrefixScore(scannedTokens, candidateTokens)
+
+        return max(tokenScore, containmentScore, editScore >= 0.78 ? editScore : 0, prefixScore)
+    }
+
+    /// Empareja tokens individuales del nombre escaneado contra los del
+    /// candidato, aceptando prefijos (≥ 3 caracteres) y errores de un
+    /// carácter por token. Devuelve la proporción de tokens que calzaron.
+    ///
+    /// El emparejamiento es greedy: se ordena por calidad del match y cada
+    /// token del candidato se usa a lo sumo una vez.
+    private static func tokenPrefixScore(_ scanned: [String], _ candidate: [String]) -> Double {
+        /// Mínimo de caracteres para que un prefijo sea significativo:
+        /// sin esto, «de» calza con «detergente» y todo sube.
+        let minimumPrefixLength = 3
+
+        struct TokenMatch {
+            let scannedIndex: Int
+            let candidateIndex: Int
+            let score: Double
+        }
+
+        var matches: [TokenMatch] = []
+        for (si, st) in scanned.enumerated() {
+            // Tokens puramente numéricos (gramajes, formatos) no aportan a
+            // la identidad del producto y generan falsos positivos.
+            guard st.contains(where: \.isLetter) else { continue }
+            for (ci, ct) in candidate.enumerated() {
+                guard ct.contains(where: \.isLetter) else { continue }
+
+                if st == ct {
+                    matches.append(TokenMatch(scannedIndex: si, candidateIndex: ci, score: 1.0))
+                    continue
+                }
+
+                // Prefijo: «aceit» es prefijo de «aceite».
+                if st.count >= minimumPrefixLength, ct.hasPrefix(st) {
+                    matches.append(TokenMatch(scannedIndex: si, candidateIndex: ci, score: 0.85))
+                    continue
+                }
+                // Prefijo inverso: «aceite» empieza con «aceit» del candidato.
+                if ct.count >= minimumPrefixLength, st.hasPrefix(ct) {
+                    matches.append(TokenMatch(scannedIndex: si, candidateIndex: ci, score: 0.85))
+                    continue
+                }
+
+                // Distancia de edición por token: rescata errores de un
+                // carácter del OCR dentro de cada palabra individual.
+                let maxLen = max(st.count, ct.count)
+                guard maxLen >= minimumPrefixLength else { continue }
+                let dist = editDistance(st, ct)
+                guard dist <= 2, dist < maxLen else { continue }
+                let tokenEditScore = 1.0 - Double(dist) / Double(maxLen)
+                guard tokenEditScore >= 0.6 else { continue }
+                matches.append(TokenMatch(scannedIndex: si, candidateIndex: ci, score: tokenEditScore))
+            }
+        }
+
+        // Greedy: mejor score primero, cada token se usa una sola vez.
+        matches.sort { $0.score > $1.score }
+        var usedScanned = Set<Int>()
+        var usedCandidate = Set<Int>()
+        var totalScore = 0.0
+
+        for m in matches where !usedScanned.contains(m.scannedIndex) && !usedCandidate.contains(m.candidateIndex) {
+            usedScanned.insert(m.scannedIndex)
+            usedCandidate.insert(m.candidateIndex)
+            totalScore += m.score
+        }
+
+        let letterTokenCount = { (tokens: [String]) -> Int in
+            tokens.count { $0.contains(where: \.isLetter) }
+        }
+        let denominator = max(letterTokenCount(scanned), letterTokenCount(candidate))
+        guard denominator > 0 else { return 0 }
+
+        return totalScore / Double(denominator)
     }
 
     static func editDistance(_ lhs: String, _ rhs: String) -> Int {
