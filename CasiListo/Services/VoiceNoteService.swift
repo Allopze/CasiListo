@@ -63,6 +63,24 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
 
     func startRecording() -> Result<String, VoiceNoteError> {
         let session = AVAudioSession.sharedInstance()
+
+        // Verificar permiso de micrófono antes de intentar grabar.
+        switch AVAudioApplication.shared.recordPermission {
+        case .denied:
+            lastError = .permissionDenied
+            return .failure(.permissionDenied)
+        case .undetermined:
+            // Si el permiso no se ha pedido aún, la grabación fallará cuando
+            // iOS muestre el diálogo y el usuario decida. Se informa de
+            // inmediato para que el caller solicite el permiso explícitamente.
+            lastError = .permissionDenied
+            return .failure(.permissionDenied)
+        case .granted:
+            break
+        @unknown default:
+            break
+        }
+
         do {
             try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
             try session.setActive(true)

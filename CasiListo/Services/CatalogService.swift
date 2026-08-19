@@ -72,10 +72,10 @@ enum CatalogService {
         let normalized = ProductNameNormalizer.normalize(trimmed)
         guard !normalized.isEmpty else { return }
 
-        let existing = (try? context.fetch(FetchDescriptor<ProductCatalogItem>())) ?? []
-        if let match = existing.first(where: { ProductNameNormalizer.normalize($0.name) == normalized }) {
-            match.timesAdded += 1
-            match.lastAddedAt = .now
+        // Reusar match() en vez de un fetch completo redundante.
+        if let existing = match(named: trimmed, context: context) {
+            existing.timesAdded += 1
+            existing.lastAddedAt = .now
         } else {
             let entry = ProductCatalogItem(
                 name: trimmed,

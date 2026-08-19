@@ -46,7 +46,7 @@ final class ShoppingListViewModel {
     var quickAddText: String = ""
     var showUndoToast: Bool = false
     var persistenceErrorMessage: String?
-    @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, category: Category, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)? = nil
+    @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, categoryName: String, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)? = nil
     @ObservationIgnored private var undoTimerTask: Task<Void, Never>? = nil
     /// Categorías que la persona usuaria ha contraído. Se persiste entre
     /// lanzamientos para respetar el contexto del usuario.
@@ -143,7 +143,10 @@ final class ShoppingListViewModel {
                 }
                 return (category: category, items: sorted)
             }
-            .sorted { $0.category.name.localizedCompare($1.category.name) == .orderedAscending }
+            .sorted {
+                if $0.category.sortIndex != $1.category.sortIndex { return $0.category.sortIndex < $1.category.sortIndex }
+                return $0.category.name.localizedCompare($1.category.name) == .orderedAscending
+            }
     }
 
     /// Reordenamiento habilitado solo cuando la vista muestra la categoría
@@ -418,7 +421,7 @@ final class ShoppingListViewModel {
         let buffer = (
             name: item.name,
             quantity: item.quantity,
-            category: item.category,
+            categoryName: item.category.name,
             store: item.store,
             note: item.note,
             isPurchased: item.isPurchased,
@@ -452,11 +455,14 @@ final class ShoppingListViewModel {
     /// Restaura el último producto eliminado.
     func undoLastDelete(context: ModelContext) {
         guard let buffer = deletedItemUndoBuffer else { return }
+        // Resolver la categoría desde el contexto actual en vez de retener
+        // una instancia gestionada que podría estar invalidada.
+        let resolvedCategory = resolveCategory(named: buffer.categoryName, in: context)
         let restoredItem = ShoppingItem(
             name: buffer.name,
             listID: buffer.listID,
             quantity: buffer.quantity,
-            category: buffer.category,
+            category: resolvedCategory,
             note: buffer.note,
             isPurchased: buffer.isPurchased,
             status: buffer.status,
@@ -575,6 +581,17 @@ final class ShoppingListViewModel {
             showUndoToast = false
             deletedItemUndoBuffer = nil
         }
+    }
+
+    /// Busca una categoría por nombre en el contexto; cae a `resolvedFallback`
+    /// si no existe (ej: se borró entre delete y undo).
+    private func resolveCategory(named name: String, in context: ModelContext) -> Category {
+        var descriptor = FetchDescriptor<Category>(predicate: #Predicate { $0.name == name })
+        descriptor.fetchLimit = 1
+        if let match = try? context.fetch(descriptor).first {
+            return match
+        }
+        return Category.resolvedFallback(in: context)
     }
 
     private func parseTrailingMultiplier(_ parts: [String]) -> QuickAddDraft? {

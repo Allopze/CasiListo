@@ -852,7 +852,16 @@ enum ReceiptPurchaseService {
     /// que sumarlo sin la cantidad subestima la compra.
     private static func lineTotal(of item: ShoppingItem) -> Double {
         guard let price = item.price else { return 0 }
-        let units = Int(item.quantity.trimmingCharacters(in: .whitespaces)) ?? 1
+        let units = parseLeadingInteger(from: item.quantity) ?? 1
         return price * Double(max(1, units))
+    }
+
+    /// Extrae el entero inicial de una cantidad libre: "2" → 2, "2 kg" → 2,
+    /// "500 g" → 500, "docena" → nil. Solo el primer token numérico cuenta.
+    private static func parseLeadingInteger(from quantity: String) -> Int? {
+        let trimmed = quantity.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return nil }
+        let firstToken = trimmed.split(separator: " ").first.map(String.init) ?? trimmed
+        return Int(firstToken)
     }
 }

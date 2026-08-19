@@ -61,9 +61,12 @@ struct ContentView: View {
             let persistence = ShoppingPersistenceCoordinator(context: modelContext)
             do {
                 // Limpieza única de preferencias heredadas (geofencing, logros).
-                UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
-                UserDefaults.standard.removeObject(forKey: "user_stats")
-                UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
+                if !UserDefaults.standard.bool(forKey: "hasCleanedLegacyDefaultsV1") {
+                    UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
+                    UserDefaults.standard.removeObject(forKey: "user_stats")
+                    UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
+                    UserDefaults.standard.set(true, forKey: "hasCleanedLegacyDefaultsV1")
+                }
                 try CategoryBootstrapService.bootstrap(context: modelContext)
                 try ShoppingListLifecycleService.bootstrap(context: modelContext)
                 try SuggestedProducts.seedCatalogItems(in: modelContext)

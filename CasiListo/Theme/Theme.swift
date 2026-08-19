@@ -267,14 +267,17 @@ enum HapticFeedback {
     private static let impactGenerator = UIImpactFeedbackGenerator(style: .light)
 
     static func selection() {
+        selectionGenerator.prepare()
         selectionGenerator.selectionChanged()
     }
 
     static func success() {
+        notificationGenerator.prepare()
         notificationGenerator.notificationOccurred(.success)
     }
 
     static func impact() {
+        impactGenerator.prepare()
         impactGenerator.impactOccurred()
     }
 }

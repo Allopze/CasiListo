@@ -18,6 +18,10 @@ enum CasiListoMigrationPlan: SchemaMigrationPlan {
 
 @MainActor
 enum CasiListoModelContainer {
+    /// Indicador visible para la UI: si `true`, la base de datos persistente
+    /// no se pudo abrir y la sesión usa almacenamiento temporal.
+    nonisolated(unsafe) static var isUsingInMemoryFallback = false
+
     static func make() -> ModelContainer {
         do {
             return try ModelContainer(
@@ -28,7 +32,23 @@ enum CasiListoModelContainer {
                 migrationPlan: CasiListoMigrationPlan.self
             )
         } catch {
-            fatalError("No se pudo abrir la base de datos local: \(error.localizedDescription)")
+            // En vez de tumbar la app con fatalError, se arranca con un
+            // container en memoria. La persona puede seguir usando la app
+            // (sin persistencia) y resetear los datos desde Ajustes.
+            Self.isUsingInMemoryFallback = true
+            let config = ModelConfiguration(isStoredInMemoryOnly: true)
+            do {
+                return try ModelContainer(
+                    for: ShoppingItem.self,
+                    ShoppingList.self,
+                    ProductCatalogItem.self,
+                    Category.self,
+                    configurations: config
+                )
+            } catch {
+                // Si ni el container en memoria funciona, no hay nada que hacer.
+                fatalError("No se pudo crear un contenedor de datos de emergencia: \(error.localizedDescription)")
+            }
         }
     }
 }

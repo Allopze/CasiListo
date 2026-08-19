@@ -40,6 +40,7 @@ struct ShoppingListView: View {
     @ScaledMetric(relativeTo: .body) private var listRowInsetTop: CGFloat = 10
     @ScaledMetric(relativeTo: .body) private var listRowInsetBottom: CGFloat = 4
     @ScaledMetric(relativeTo: .body) private var noResultsVerticalPadding: CGFloat = 60
+    @State private var scrollTask: Task<Void, Never>?
 
     var body: some View {
         ScrollViewReader { scrollProxy in
@@ -181,10 +182,12 @@ struct ShoppingListView: View {
         }
         .onChange(of: viewModel.scrollTargetItemID) { _, target in
             guard let target else { return }
+            scrollTask?.cancel()
             // Pequeña espera para que la expansión de la categoría materialice
             // las filas antes de desplazar.
-            Task { @MainActor in
+            scrollTask = Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(80))
+                guard !Task.isCancelled else { return }
                 withAnimation(Theme.defaultAnimation) {
                     scrollProxy.scrollTo("item-row-\(target)", anchor: .center)
                 }
