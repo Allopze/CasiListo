@@ -11,7 +11,7 @@
 | Característica | Descripción |
 |---|---|
 | **Categorías inteligentes** | 15 categorías predefinidas (Frutas y verduras, Lácteos y huevos, Carnes, Despensa, Bebidas, Vinos, Congelados, Conservas, Hogar y limpieza, Aseo personal, Mascotas, Panadería y dulces, Pescados, Condimentos, Varios) con íconos SF Symbols y orden personalizable |
-| **Autocompletado** | Base de datos integrada de ~290 productos frecuentes con sugerencias en tiempo real |
+| **Autocompletado** | Base de datos integrada de 355 productos frecuentes con sugerencias en tiempo real |
 | **Categorización automática** | Al seleccionar un producto sugerido, la categoría se asigna automáticamente |
 | **Marcar como comprado** | Checkbox animado con feedback háptico para tachar productos |
 | **Búsqueda** | Filtrado en tiempo real por nombre, nota o categoría |
@@ -25,6 +25,14 @@
 | **Accesibilidad** | Labels, hints y acciones accesibles en todos los elementos interactivos |
 | **Filtro por Supermercado** | Asignación de cada producto a un supermercado (Jumbo o Líder) con filtro rápido en la cabecera. |
 | **Notas de Voz por Producto 🎤** | Grabación inline de audios de hasta 30 segundos para añadir indicaciones de marcas o pasillos. |
+| **OCR de boletas 🧾** | Escaneo de boletas de Jumbo y Líder con VisionKit + Vision: reconoce productos, cantidades y precios, los concilia con el total impreso y los registra en el historial. |
+| **Múltiples listas** | Varias listas activas en paralelo, cada una con su paleta, ícono y supermercado. |
+| **Catálogo** | Pestaña dedicada con los productos frecuentes agrupados por categoría, para añadir en lote. |
+| **Plantillas** | Listas prearmadas que se materializan en una lista nueva. |
+| **Importador de texto** | Pegar un texto suelto y convertirlo en ítems, con detección de cantidad y categoría. |
+| **Historial y export CSV** | Las listas archivadas quedan en Historial, con detalle de gasto y exportación a CSV. |
+| **Widget de WidgetKit** | Widget de pantalla de inicio con pendientes, comprados y los primeros 5 productos. |
+| **Deep link** | Esquema `casilisto://` para abrir directo la pestaña de compra. |
 
 ---
 
@@ -34,29 +42,52 @@ El proyecto sigue el patrón **MVVM (Model-View-ViewModel)** con una estructura 
 
 ```
 CasiListo/
-├── CasiListoApp.swift          # Punto de entrada (@main)
+├── CasiListoApp.swift              # @main; monta el ModelContainer
 ├── Models/
-│   ├── ShoppingItem.swift      # Modelo SwiftData del producto
-│   ├── Category.swift          # Modelo SwiftData + DefaultCategory enum
-│   ├── ShoppingList.swift      # Modelo SwiftData de sesión/historial
-│   ├── Store.swift             # Supermercados (Jumbo / Líder)
-│   ├── ProductCatalogItem.swift # Productos frecuentes catalogados
-│   ├── SuggestedProducts.swift # Base de datos de ~290 sugerencias
+│   ├── ShoppingItem.swift          # @Model producto (+ formateo de precios)
+│   ├── Category.swift              # @Model categoría (name es @Attribute(.unique))
+│   ├── ShoppingList.swift          # @Model lista/sesión + ShoppingListStatus
+│   ├── ProductCatalogItem.swift    # @Model producto catalogado
+│   ├── Store.swift                 # Jumbo / Líder
+│   ├── SuggestedProducts.swift     # Semilla del catálogo
+│   ├── ListAppearanceCatalog.swift # Paletas e íconos por lista
+│   ├── AppDateFormatting.swift
+│   └── CasiListoSchemaMigration.swift
 ├── ViewModels/
-│   └── ShoppingListViewModel.swift  # Lógica de filtrado, agrupación y acciones
+│   └── ShoppingListViewModel.swift # Único ViewModel (@Observable)
 ├── Services/
-│   ├── AppSettings.swift             # Estado global observable de ajustes
-│   ├── VoiceNoteService.swift        # Grabación y reproducción de audio
-│   ├── ShoppingListLifecycleService.swift # Ciclo de vida e historial de listas
-│   ├── CategoryBootstrapService.swift # Inicialización de categorías
-│   └── WidgetDataBridge.swift        # Sincronización con widget nativo
+│   ├── ShoppingPersistenceCoordinator.swift # Punto transaccional de escritura
+│   ├── ShoppingListLifecycleService.swift   # Ciclo de vida e historial
+│   ├── CategoryBootstrapService.swift       # Inicialización de categorías
+│   ├── CatalogService.swift
+│   ├── ReceiptServices.swift                # OCR: reconocimiento + matcher + registro
+│   ├── ReceiptLineParser.swift              # Gramática de montos CLP
+│   ├── ReceiptTextLine.swift                # Ensamblado de filas
+│   ├── ProductNameNormalizer.swift          # Normalización + DuplicatePolicy
+│   ├── VoiceNoteService.swift               # Grabación y reproducción
+│   ├── LocalFileStore.swift                 # Blobs en disco
+│   ├── WidgetDataBridge.swift               # Snapshot JSON al App Group
+│   ├── CSVSerializer.swift
+│   ├── AppRoute.swift                       # Deep link casilisto://
+│   └── CategoryIconMapper.swift
 ├── Views/
-│   ├── ContentView.swift       # Vista principal con NavigationStack
-│   ├── ShoppingListView.swift  # Lista activa agrupada por categoría
-│   ├── AddEditItemSheet.swift  # Modal para crear/editar productos
-│   └── SettingsSheet.swift     # Hojas de ajustes y accesibilidad
-└── Theme/
-    └── Theme.swift             # Sistema de diseño (colores, fuentes, animaciones, glass effects)
+│   ├── MainTabView.swift           # Raíz real: 4 pestañas
+│   ├── ContentView.swift           # Pestaña Compra + bootstrap de datos
+│   ├── ListsOverviewView.swift     # Menú general de listas
+│   ├── ShoppingListDetailView.swift
+│   ├── ShoppingListView.swift
+│   ├── CategorySectionView.swift
+│   ├── ItemRowView.swift
+│   ├── CatalogView.swift
+│   ├── ShoppingHistoryView.swift / ShoppingHistoryDetailView.swift
+│   ├── SettingsView.swift / CategoryManagementView.swift
+│   ├── AddEditItemSheet.swift / AddEditListSheet.swift / AddEditCategorySheet.swift
+│   ├── ReceiptCaptureSheet.swift / TemplatesSheet.swift / TextImporterSheet.swift
+│   ├── PreviewSupport.swift        # Todos los #Preview viven aquí
+│   └── Components/                 # ~18 componentes reutilizables
+├── Theme/
+│   └── Theme.swift                 # Sistema de diseño
+└── CasiListoWidget/                # Target aparte; no comparte fuentes con la app
 ```
 
 ---
@@ -79,7 +110,7 @@ CasiListo utiliza un sistema de diseño centralizado en `Theme.swift`:
 |---|---|
 | **iOS** | 17.0+ |
 | **Xcode** | 26.0+ para archivar y subir a App Store Connect |
-| **Swift** | 5.9+ |
+| **Swift** | 6.0 (`SWIFT_STRICT_CONCURRENCY = complete`) |
 
 > Los efectos Liquid Glass nativos (`glassEffect`) requieren **iOS 26+**. En versiones anteriores se aplica un fallback visual con `ultraThinMaterial`.
 
@@ -139,10 +170,10 @@ Dos detalles a tener en cuenta si se toca este arnés:
 | `id` | `UUID` | Identificador único |
 | `name` | `String` | Nombre del producto |
 | `quantity` | `String` | Cantidad libre (ej: "2", "1 kg", "500 g") |
-| `category` | `Category` | Categoría asociada (relación SwiftData) |
+| `category` | `Category` | Computada. Persiste doble: relación `categoryRelation` + sombra `categoryRawValue` |
 | `store` | `Store` | Supermercado preferido (.jumbo / .lider) |
 | `note` | `String` | Nota opcional |
-| `status` | `ShoppingItemStatus` | Estado (pending, purchased, skipped, unavailable) |
+| `status` | `ShoppingItemStatus` | Computada sobre `statusRawValue`, con fallback al viejo `isPurchased` |
 | `price` | `Double?` | Precio estimado opcional |
 | `voiceNoteFilename` | `String?` | Archivo de nota de voz asociante |
 | `sortOrder` | `Int` | Orden dentro de su categoría |
@@ -162,28 +193,30 @@ Dos detalles a tener en cuenta si se toca este arnés:
 ## 🔄 Flujo de la app
 
 ```
-┌─────────────────────────────────┐
-│         CasiListoApp            │
-│   SwiftData ModelContainer      │
-└──────────────┬──────────────────┘
-               │
-       ┌───────▼───────┐
-       │  ContentView   │  ← NavigationStack + búsqueda + toolbar
-       └───────┬───────┘
-               │
-    ┌──────────┼──────────────┐
-    │          │              │
-    ▼          ▼              ▼
-EmptyState  ShoppingList   AddEditSheet
-  View        View           (modal)
-               │
-        ┌──────┼──────┐
-        ▼             ▼
-  CategorySection  SummaryBar
-     View            View
+CasiListoApp  (@main — monta el ModelContainer)
         │
         ▼
-   ItemRowView
+   MainTabView  ← raíz real: 4 pestañas
+        │
+ ┌──────┴───────┬───────────┬──────────┐
+ ▼              ▼           ▼          ▼
+Compra       Catálogo   Historial   Ajustes
+ │            │           │
+ ▼            ▼           ▼
+ContentView  CatalogView  ShoppingHistoryView
+ │  (bootstrap de datos en su .task)      │
+ ▼                                        ▼
+ListsOverviewView            ShoppingHistoryDetailView
+ │  navigationDestination(for: UUID.self)
+ ▼
+ShoppingListDetailView
+ │
+ ▼
+ShoppingListView ──► CategorySectionView ──► ItemRowView
+        └──► SummaryBarView / BottomAddBarView
+
+Sheets modales: AddEditItemSheet · AddEditListSheet · AddEditCategorySheet
+                ReceiptCaptureSheet · TemplatesSheet · TextImporterSheet
 ```
 
 ---
@@ -192,7 +225,11 @@ EmptyState  ShoppingList   AddEditSheet
 
 Para mantener la base de código limpia, modular y fácil de mantener:
 
-- **Límite de tamaño de archivo**: Los archivos de código (`.swift`) **no deben superar las 100 líneas** a menos que sea estrictamente necesario. Si un archivo empieza a crecer más allá de este límite, se debe considerar refactorizarlo o dividirlo en componentes o extensiones independientes.
+- **Límite de tamaño de archivo (aspiracional)**: la intención es que los `.swift` no superen las **100 líneas** y que al crecer se extraigan componentes o extensiones.
+
+  > ⚠️ **Hoy no se cumple y nada lo aplica.** 46 de 75 archivos `.swift` exceden el límite —los mayores son `ReceiptCaptureSheet.swift` (1007), `PurchaseHistoryTests.swift` (960), `ReceiptServices.swift` (873) y `CasiListoTests.swift` (835)— y no hay SwiftLint, SwiftFormat ni check de CI que lo verifique. Tómalo como «extrae componentes cuando toques una vista», no como un gate de merge.
+  >
+  > Consecuencia práctica: **un tipo no vive necesariamente en el archivo con su nombre**. `DuplicatePolicy` está en `ProductNameNormalizer.swift`, `WidgetItemSnapshot` en `WidgetDataBridge.swift` y `ReceiptServices.swift` contiene 14 tipos de nivel superior.
 
 ---
 
