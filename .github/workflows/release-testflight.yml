@@ -2,6 +2,11 @@ name: Release to TestFlight
 
 on:
   workflow_dispatch:
+    inputs:
+      build_number:
+        description: 'Build number (CURRENT_PROJECT_VERSION). Vacío = usa el número de ejecución del workflow.'
+        required: false
+        type: string
 
 jobs:
   archive-export-upload:
@@ -17,19 +22,44 @@ jobs:
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: '26.0'
-      - name: Validate Xcode, version and build number
+      - name: Validate Xcode, secrets and version
         shell: bash
         run: |
           set -euo pipefail
           major="$(xcodebuild -version | awk '/Xcode/{split($2, v, "."); print v[1]}')"
           test "$major" -ge 26
+
+          # Los secretos se validan ANTES del archive: fallar después de 40
+          # minutos de compilación por una variable vacía no tiene sentido.
+          test -n "$ASC_KEY_ID"
+          test -n "$ASC_ISSUER_ID"
+          test -n "$ASC_PRIVATE_KEY"
+
           settings="$(xcodebuild -showBuildSettings -project CasiListo.xcodeproj -scheme CasiListo -configuration Release)"
           marketing="$(printf '%s\n' "$settings" | awk -F' = ' '/MARKETING_VERSION/{print $2; exit}')"
-          build="$(printf '%s\n' "$settings" | awk -F' = ' '/CURRENT_PROJECT_VERSION/{print $2; exit}')"
           test -n "$marketing"
-          test -n "$build"
+
+          # CURRENT_PROJECT_VERSION está fijo en 1 en el pbxproj y nadie lo
+          # subía: App Store Connect rechaza un build repetido. Se deriva del
+          # número de ejecución del workflow (monótono) salvo override manual.
+          build="${{ inputs.build_number }}"
+          if [ -z "$build" ]; then build="${{ github.run_number }}"; fi
           [[ "$build" =~ ^[0-9]+$ ]]
+          echo "BUILD_NUMBER=$build" >> "$GITHUB_ENV"
+          echo "Publicando $marketing ($build)"
+
           bash ci/validate-privacy-manifests.sh artifacts
+      - name: Prepare App Store Connect key
+        shell: bash
+        run: |
+          set -euo pipefail
+          # La key se escribe ANTES del archive: `-allowProvisioningUpdates`
+          # necesita autenticarse contra ASC para emitir el perfil de
+          # distribución, no solo el paso de upload.
+          key_dir="$HOME/.appstoreconnect/private_keys"
+          mkdir -p "$key_dir"
+          printf '%s' "$ASC_PRIVATE_KEY" > "$key_dir/AuthKey_${ASC_KEY_ID}.p8"
+          echo "ASC_KEY_PATH=$key_dir/AuthKey_${ASC_KEY_ID}.p8" >> "$GITHUB_ENV"
       - name: Archive Release
         shell: bash
         run: |
@@ -41,7 +71,11 @@ jobs:
             -configuration Release \
             -archivePath artifacts/CasiListo.xcarchive \
             -destination 'generic/platform=iOS' \
-            -allowProvisioningUpdates | tee artifacts/xcodebuild-archive.log
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" | tee artifacts/xcodebuild-archive.log
       - name: Export IPA
         shell: bash
         run: |
@@ -49,23 +83,23 @@ jobs:
           xcodebuild -exportArchive \
             -archivePath artifacts/CasiListo.xcarchive \
             -exportPath artifacts/export \
-            -exportOptionsPlist ci/ExportOptions-AppStore.plist | tee artifacts/xcodebuild-export.log
-      - name: Upload to TestFlight with App Store Connect JWT
+            -exportOptionsPlist ci/ExportOptions-AppStore.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tee artifacts/xcodebuild-export.log
+      - name: Upload to TestFlight
         shell: bash
         run: |
           set -euo pipefail
-          test -n "$ASC_KEY_ID"
-          test -n "$ASC_ISSUER_ID"
-          test -n "$ASC_PRIVATE_KEY"
-          key_dir="$HOME/.appstoreconnect/private_keys"
-          mkdir -p "$key_dir"
-          key_path="$key_dir/AuthKey_${ASC_KEY_ID}.p8"
-          trap 'rm -f "$key_path"' EXIT
-          printf '%s' "$ASC_PRIVATE_KEY" > "$key_path"
           xcrun iTMSTransporter -m upload \
             -assetFile artifacts/export/CasiListo.ipa \
             -apiKey "$ASC_KEY_ID" \
             -apiIssuer "$ASC_ISSUER_ID"
+      - name: Remove App Store Connect key
+        if: always()
+        shell: bash
+        run: rm -f "$HOME/.appstoreconnect/private_keys/AuthKey_${ASC_KEY_ID}.p8"
       - name: Upload release artifacts
         if: always()
         uses: actions/upload-artifact@v4

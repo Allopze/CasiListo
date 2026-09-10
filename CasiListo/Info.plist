@@ -7,6 +7,12 @@
 	     ahí, el esquema nunca llegaba al bundle. Este plist parcial se fusiona
 	     con las claves que Xcode sigue generando (permisos de cámara, micrófono
 	     y fotos), así que esas se mantienen en las build settings. -->
+	<!-- La app es 100% local: no hace red ni implementa criptografía propia,
+	     solo usa las APIs estándar del sistema. Declararlo aquí evita que cada
+	     build quede esperando la respuesta manual de compliance en App Store
+	     Connect. -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
