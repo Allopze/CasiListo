@@ -452,7 +452,55 @@ nonisolated enum ProductNameMatcher {
         // candidato por prefijo o distancia de edición por token.
         let prefixScore = tokenPrefixScore(scannedTokens, candidateTokens)
 
-        return max(tokenScore, containmentScore, editScore >= 0.78 ? editScore : 0, prefixScore)
+        // Dos variantes de tamaño del mismo producto comparten todas sus
+        // palabras, así que el prefijo las empataba en 1.0 —el mismo score que
+        // un nombre idéntico— y podían ganarle a la variante correcta en la
+        // asignación 1:1. Si ambos nombres declaran medidas y no coinciden, el
+        // prefijo deja de poder empatar.
+        //
+        // Solo aplica cuando los dos lados traen medida: la boleta suele traer
+        // el gramaje («champinon 500gr») y el catálogo no («champinones»), y
+        // ese caso debe seguir calzando.
+        let scannedMeasures = Set(scannedTokens.filter(isMeasurementToken))
+        let candidateMeasures = Set(candidateTokens.filter(isMeasurementToken))
+        let sizeMismatch = !scannedMeasures.isEmpty
+            && !candidateMeasures.isEmpty
+            && scannedMeasures != candidateMeasures
+        let adjustedPrefixScore = sizeMismatch ? prefixScore * 0.85 : prefixScore
+
+        return max(tokenScore, containmentScore, editScore >= 0.78 ? editScore : 0, adjustedPrefixScore)
+    }
+
+    /// Unidades que aparecen pegadas al número en las boletas.
+    private static let measurementUnits: Set<String> = [
+        "g", "gr", "grs", "k", "kg", "kgs", "l", "lt", "lts",
+        "ml", "cc", "un", "u", "x", "pack"
+    ]
+
+    /// Un token es una medida cuando es un número con unidad opcional:
+    /// «500», «500GR», «1KG», «3L», «1,5L». No identifica al producto, solo
+    /// distingue variantes de tamaño.
+    ///
+    /// Ojo con la regla ingenua «contiene un dígito»: dejaba fuera marcas como
+    /// «7UP», que sí identifican, y anulaba la señal de prefijos del nombre.
+    private static func isMeasurementToken(_ token: String) -> Bool {
+        var digits = ""
+        var unit = ""
+        for character in token {
+            if unit.isEmpty, character.isNumber || character == "," || character == "." {
+                digits.append(character)
+            } else {
+                unit.append(character)
+            }
+        }
+        guard digits.contains(where: \.isNumber) else { return false }
+        return unit.isEmpty || measurementUnits.contains(unit)
+    }
+
+    /// Un token aporta a la identidad del producto si lleva letras y no es un
+    /// gramaje ni un formato. «7UP» sí identifica; «500GR» no.
+    private static func isDescriptiveWord(_ token: String) -> Bool {
+        token.contains(where: \.isLetter) && !isMeasurementToken(token)
     }
 
     /// Empareja tokens individuales del nombre escaneado contra los del
@@ -474,11 +522,11 @@ nonisolated enum ProductNameMatcher {
 
         var matches: [TokenMatch] = []
         for (si, st) in scanned.enumerated() {
-            // Tokens puramente numéricos (gramajes, formatos) no aportan a
-            // la identidad del producto y generan falsos positivos.
-            guard st.contains(where: \.isLetter) else { continue }
+            // Gramajes y formatos («500GR», «1KG», «3L») no aportan a la
+            // identidad del producto y distorsionan la similitud.
+            guard isDescriptiveWord(st) else { continue }
             for (ci, ct) in candidate.enumerated() {
-                guard ct.contains(where: \.isLetter) else { continue }
+                guard isDescriptiveWord(ct) else { continue }
 
                 if st == ct {
                     matches.append(TokenMatch(scannedIndex: si, candidateIndex: ci, score: 1.0))
@@ -520,10 +568,10 @@ nonisolated enum ProductNameMatcher {
             totalScore += m.score
         }
 
-        let letterTokenCount = { (tokens: [String]) -> Int in
-            tokens.count { $0.contains(where: \.isLetter) }
+        let descriptiveTokenCount = { (tokens: [String]) -> Int in
+            tokens.count { isDescriptiveWord($0) }
         }
-        let denominator = max(letterTokenCount(scanned), letterTokenCount(candidate))
+        let denominator = max(descriptiveTokenCount(scanned), descriptiveTokenCount(candidate))
         guard denominator > 0 else { return 0 }
 
         return totalScore / Double(denominator)
