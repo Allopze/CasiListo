@@ -175,6 +175,11 @@ struct ShoppingListView: View {
         }
         .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
         .onAppear {
+            viewModel.bind(listID: activeList?.id)
+            viewModel.updateDerivedState(items: allItems, categories: categories)
+        }
+        .onChange(of: activeList?.id) { _, newID in
+            viewModel.bind(listID: newID)
             viewModel.updateDerivedState(items: allItems, categories: categories)
         }
         .onChange(of: allItems) { _, _ in

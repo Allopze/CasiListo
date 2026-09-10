@@ -11,6 +11,8 @@ struct CatalogView: View {
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
 
+    @AppStorage(ActiveListSelection.storageKey) private var selectedActiveListID = ""
+
     @State private var searchText = ""
     @State private var collapsedCategories: Set<String> = []
     @State private var hasLoadedCollapseState = false
@@ -25,7 +27,7 @@ struct CatalogView: View {
     private static let collapseKey = "catalogCollapsedCategoryNames"
 
     private var activeList: ShoppingList? {
-        allLists.first { $0.status == .active }
+        ActiveListSelection.resolve(from: allLists, storedID: selectedActiveListID)
     }
 
     private var activeItems: [ShoppingItem] {

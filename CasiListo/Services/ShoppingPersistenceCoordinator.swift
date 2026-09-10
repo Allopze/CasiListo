@@ -77,7 +77,15 @@ final class ShoppingPersistenceCoordinator {
                 .filter { $0.status == .active }
                 .map(\.id)
         )
-        return try context.fetch(FetchDescriptor<ShoppingItem>())
+        // El widget publica solo los primeros 5 pendientes: sin orden explícito
+        // SwiftData los devuelve en el orden que quiera y el «top 5» cambiaba
+        // entre refrescos sin que nadie tocara la lista.
+        var descriptor = FetchDescriptor<ShoppingItem>()
+        descriptor.sortBy = [
+            SortDescriptor(\.sortOrder),
+            SortDescriptor(\.createdAt)
+        ]
+        return try context.fetch(descriptor)
             .filter { item in item.listID.map(activeListIDs.contains) ?? false }
     }
 
@@ -174,17 +182,24 @@ final class ShoppingPersistenceCoordinator {
             for catalogItem in try context.fetch(FetchDescriptor<ProductCatalogItem>()) { context.delete(catalogItem) }
 
             try context.save()
-            try fileStore.resetAllFiles()
             UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
             UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
             UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
-            UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+            ShoppingListViewModel.removeAllCollapsedCategoryState()
+            UserDefaults.standard.removeObject(forKey: ActiveListSelection.storageKey)
             UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
             UserDefaults.standard.removeObject(forKey: "user_stats")
             UserDefaults(suiteName: WidgetDataBridge.appGroupID)?.removeObject(forKey: WidgetDataBridge.snapshotKey)
 
             try CategoryBootstrapService.bootstrap(context: context)
             try commit()
+
+            // Los archivos se borran al final, con la base ya reseteada y con
+            // categorías: si esto lanza, el `rollback()` del catch ya no puede
+            // deshacer el `save()` anterior, y dejar la base vacía y sin
+            // categorías es mucho peor que dejar blobs sueltos —que además
+            // barre `cleanupUnreferencedFiles` en el siguiente arranque.
+            try fileStore.resetAllFiles()
         } catch {
             context.rollback()
             throw PersistenceError.resetFailed(error.localizedDescription)

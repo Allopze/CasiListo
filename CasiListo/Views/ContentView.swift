@@ -14,11 +14,15 @@ struct ContentView: View {
 
     @State private var navigationPath = NavigationPath()
     @State private var persistenceErrorMessage: String?
+    /// Compartida con Catálogo: esa pestaña necesita saber sobre qué lista
+    /// está operando la persona, no adivinarla.
+    @AppStorage(ActiveListSelection.storageKey) private var selectedActiveListID = ""
 
     var body: some View {
         NavigationStack(path: $navigationPath) {
             ListsOverviewView(
                 onSelectList: { list in
+                    selectedActiveListID = list.id.uuidString
                     navigationPath.append(list.id)
                 },
                 onShowHistory: onShowHistory
@@ -114,7 +118,7 @@ struct ContentView: View {
             return false
         }
 
-        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+        ShoppingListViewModel.removeAllCollapsedCategoryState()
         UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
 
         for item in allItems {

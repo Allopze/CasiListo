@@ -54,7 +54,35 @@ final class ShoppingListViewModel {
     /// si muestra los productos de cada tarjeta.
     private var collapsedCategories: Set<String> = []
     @ObservationIgnored private var hasInitializedCategoryCollapseState = false
-    @ObservationIgnored private static let collapsedCategoriesKey = "collapsedCategoryNames"
+    @ObservationIgnored private static let collapsedCategoriesKeyPrefix = "collapsedCategoryNames"
+    /// Lista a la que está asociado este VM. El colapso se guarda **por lista**:
+    /// con una sola clave global, contraer una categoría en una lista la
+    /// contraía en todas, porque cada `ShoppingListDetailView` crea su propio VM.
+    @ObservationIgnored private var listID: UUID?
+
+    /// Clave de persistencia del colapso. Sin lista asociada (tests, previews)
+    /// cae a la clave global histórica.
+    private var collapsedCategoriesKey: String {
+        guard let listID else { return Self.collapsedCategoriesKeyPrefix }
+        return "\(Self.collapsedCategoriesKeyPrefix)-\(listID.uuidString)"
+    }
+
+    /// Asocia el VM a una lista. Al cambiar de lista se vuelve a leer el
+    /// colapso de la nueva en el siguiente `updateDerivedState`.
+    func bind(listID: UUID?) {
+        guard self.listID != listID else { return }
+        self.listID = listID
+        hasInitializedCategoryCollapseState = false
+    }
+
+    /// Borra el colapso de todas las listas. Lo usan el reseteo de datos y la
+    /// limpieza de defaults legacy.
+    static func removeAllCollapsedCategoryState(in defaults: UserDefaults = .standard) {
+        for key in defaults.dictionaryRepresentation().keys
+        where key == collapsedCategoriesKeyPrefix || key.hasPrefix("\(collapsedCategoriesKeyPrefix)-") {
+            defaults.removeObject(forKey: key)
+        }
+    }
 
     /// Ítems recién marcados como comprados que permanecen visibles durante una
     /// ventana de gracia aunque "ocultar comprados" esté activo, dando feedback
@@ -81,7 +109,7 @@ final class ShoppingListViewModel {
             latestCategories = categories
 
             if !hasInitializedCategoryCollapseState && !items.isEmpty && !categories.isEmpty {
-                if let stored = UserDefaults.standard.stringArray(forKey: Self.collapsedCategoriesKey) {
+                if let stored = UserDefaults.standard.stringArray(forKey: collapsedCategoriesKey) {
                     collapsedCategories = Set(stored)
                 } else {
                     // Primera vez: todo colapsado para no abrumar con la lista completa.
@@ -404,13 +432,13 @@ final class ShoppingListViewModel {
     func resetCategoryCollapseState() {
         collapsedCategories.removeAll()
         hasInitializedCategoryCollapseState = false
-        UserDefaults.standard.removeObject(forKey: Self.collapsedCategoriesKey)
+        UserDefaults.standard.removeObject(forKey: collapsedCategoriesKey)
     }
 
     private func persistCollapsedCategories() {
         UserDefaults.standard.set(
             Array(collapsedCategories).sorted(),
-            forKey: Self.collapsedCategoriesKey
+            forKey: collapsedCategoriesKey
         )
     }
 
