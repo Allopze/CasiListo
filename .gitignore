@@ -1,3 +1,12 @@
 privacy-site/dist/
 artifacts/
 build/
+
+# Ruido de macOS
+.DS_Store
+
+# Binario suelto y fotos de referencia que se colaron al repo.
+# Ya están versionados: para sacarlos del historial futuro hace falta
+# `git rm --cached main IMG_0406.png IMG_0412.png IMG_0413.png`.
+/main
+/IMG_*.png
