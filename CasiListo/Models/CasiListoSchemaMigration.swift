@@ -63,7 +63,7 @@ enum CasiListoStoreLocation {
 
     /// La URL que `.automatic` viene resolviendo desde el primer día.
     static func appGroupStoreURL(
-        appGroupID: String = WidgetDataBridge.appGroupID,
+        appGroupID: String = WidgetContract.appGroupID,
         fileManager: FileManager = .default
     ) -> URL? {
         fileManager
@@ -137,7 +137,7 @@ enum CasiListoModelContainer {
 
     static func make(
         resolution: CasiListoStoreLocation.Resolution = CasiListoStoreLocation.resolve(),
-        appGroupID: String = WidgetDataBridge.appGroupID,
+        appGroupID: String = WidgetContract.appGroupID,
         defaults: UserDefaults = .standard
     ) -> ModelContainer {
         isUsingInMemoryFallback = false

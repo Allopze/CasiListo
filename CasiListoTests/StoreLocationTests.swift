@@ -40,13 +40,13 @@ final class StoreLocationTests: XCTestCase {
     /// futuro, esto lo caza antes de mover el store de un usuario real.
     func testExplicitAppGroupConfigurationResolvesToTheSameURLAsTheImplicitOne() throws {
         try XCTSkipIf(
-            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: WidgetDataBridge.appGroupID) == nil,
+            FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: WidgetContract.appGroupID) == nil,
             "Sin App Group disponible en este entorno de test"
         )
 
         let schema = Schema(versionedSchema: CasiListoSchemaV1.self)
         let implicit = ModelConfiguration(schema: schema)
-        let explicit = ModelConfiguration(schema: schema, groupContainer: .identifier(WidgetDataBridge.appGroupID))
+        let explicit = ModelConfiguration(schema: schema, groupContainer: .identifier(WidgetContract.appGroupID))
 
         let implicitURL = try XCTUnwrap(implicit.url.resolvingSymlinksInPath() as URL?)
         let explicitURL = try XCTUnwrap(explicit.url.resolvingSymlinksInPath() as URL?)

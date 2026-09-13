@@ -112,10 +112,26 @@ struct MainTabView: View {
         // coordinador, así que esto es una red de seguridad, no la única vía
         // de guardado.
         .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .background {
+            switch newPhase {
+            case .background:
                 try? modelContext.save()
                 voiceNoteService.stopPlaying()
+            case .active:
+                applyPendingWidgetPurchases()
+            default:
+                break
             }
         }
+        // El primer `.active` puede llegar antes de que esta vista exista:
+        // se drena también al aparecer para no perder lo marcado con la app
+        // cerrada del todo.
+        .task { applyPendingWidgetPurchases() }
+    }
+
+    /// Lo que se marcó desde el widget mientras la app no estaba. Un fallo
+    /// aquí no se muestra: la persona no hizo nada en esta pantalla que
+    /// explicar, y el widget ya refleja el cambio de forma optimista.
+    private func applyPendingWidgetPurchases() {
+        try? ShoppingPersistenceCoordinator(context: modelContext).applyPendingWidgetPurchases()
     }
 }

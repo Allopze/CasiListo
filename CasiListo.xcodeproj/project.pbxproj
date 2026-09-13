@@ -99,6 +99,11 @@
 			path = CasiListoWidget;
 			sourceTree = "<group>";
 		};
+		89DA0800000000000000CA5A /* CasiListoShared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = CasiListoShared;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -140,6 +145,7 @@
 				89DA06012FC112FD0037C4D0 /* CasiListoTests */,
 				89DA060B2FC112FD0037C4D0 /* CasiListoUITests */,
 				89DA07022FC112FD0037C002 /* CasiListoWidget */,
+				89DA0800000000000000CA5A /* CasiListoShared */,
 				89DA05F02FC112FA0037C4D0 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -174,6 +180,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				89DA05F12FC112FA0037C4D0 /* CasiListo */,
+				89DA0800000000000000CA5A /* CasiListoShared */,
 			);
 			name = CasiListo;
 			packageProductDependencies = (
@@ -242,6 +249,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				89DA07022FC112FD0037C002 /* CasiListoWidget */,
+				89DA0800000000000000CA5A /* CasiListoShared */,
 			);
 			name = CasiListoWidget;
 			packageProductDependencies = (

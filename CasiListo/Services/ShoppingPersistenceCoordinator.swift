@@ -164,6 +164,25 @@ final class ShoppingPersistenceCoordinator {
         )
     }
 
+    /// Aplica en SwiftData lo que la persona marcó desde el widget.
+    ///
+    /// El widget no abre la base: `MarkPurchasedIntent` solo actualiza el
+    /// snapshot de forma optimista y deja el ID en una cola del App Group.
+    /// Aquí se persiste de verdad. Un ID que ya no corresponde a un producto
+    /// pendiente —borrado o marcado desde la app entre medio— se descarta;
+    /// el `commit()` final republica el snapshot desde la base, que es la
+    /// única fuente de verdad, por si el optimista se había quedado atrás.
+    func applyPendingWidgetPurchases(from defaults: UserDefaults? = WidgetContract.groupDefaults) throws {
+        let pendingIDs = Set(WidgetActionQueue.drain(from: defaults))
+        guard !pendingIDs.isEmpty else { return }
+
+        let items = try context.fetch(FetchDescriptor<ShoppingItem>())
+        for item in items where pendingIDs.contains(item.id) && item.status == .pending {
+            item.status = .purchased
+        }
+        try commit()
+    }
+
     func cleanUnreferencedFiles() throws {
         let items = try context.fetch(FetchDescriptor<ShoppingItem>())
         let lists = try context.fetch(FetchDescriptor<ShoppingList>())
@@ -183,13 +202,17 @@ final class ShoppingPersistenceCoordinator {
 
             try context.save()
             UserDefaults.standard.removeObject(forKey: SuggestedProducts.hasSeededCatalogKey)
-            UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
-            UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
+            UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.geofencingEnabled)
+            UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.accessibilityTextSizeScale)
             ShoppingListViewModel.removeAllCollapsedCategoryState()
             UserDefaults.standard.removeObject(forKey: ActiveListSelection.storageKey)
-            UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
-            UserDefaults.standard.removeObject(forKey: "user_stats")
-            UserDefaults(suiteName: WidgetDataBridge.appGroupID)?.removeObject(forKey: WidgetDataBridge.snapshotKey)
+            UserDefaults.standard.removeObject(forKey: CatalogView.collapseKey)
+            UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.userStats)
+            UserDefaults(suiteName: WidgetContract.appGroupID)?.removeObject(forKey: WidgetContract.snapshotKey)
+            // Los IDs encolados desde el widget apuntan a productos que
+            // acaban de desaparecer: aplicarlos después no marcaría nada,
+            // pero dejarlos ahí es basura que sobrevive al «borrar todo».
+            _ = WidgetActionQueue.drain()
 
             try CategoryBootstrapService.bootstrap(context: context)
             // Borrar todo deja la app como recién instalada, y eso incluye el

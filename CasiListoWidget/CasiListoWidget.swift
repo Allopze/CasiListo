@@ -1,3 +1,4 @@
+import AppIntents
 import WidgetKit
 import SwiftUI
 import UIKit
@@ -172,15 +173,23 @@ struct MediumWidgetView: View {
                         .foregroundStyle(textColorSecondary)
                 } else {
                     ForEach(snapshot.topItems.prefix(5)) { item in
-                        HStack(spacing: 6) {
-                            Circle()
-                                .stroke(checkboxBorderColor, lineWidth: 1.5)
-                                .frame(width: 10, height: 10)
-                            Text(item.name)
-                                .font(.system(size: 13, design: .rounded))
-                                .foregroundStyle(textColorItemName)
-                                .lineLimit(1)
+                        // Cada fila es un botón: marca el producto sin abrir
+                        // la app. El resto del widget sigue abriendo la lista
+                        // vía `widgetURL`.
+                        Button(intent: MarkPurchasedIntent(itemID: item.id)) {
+                            HStack(spacing: 6) {
+                                Circle()
+                                    .stroke(checkboxBorderColor, lineWidth: 1.5)
+                                    .frame(width: 10, height: 10)
+                                Text(item.name)
+                                    .font(.system(size: 13, design: .rounded))
+                                    .foregroundStyle(textColorItemName)
+                                    .lineLimit(1)
+                            }
+                            .contentShape(Rectangle())
                         }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Marcar \(item.name) como comprado")
                     }
                 }
                 Spacer()
@@ -191,6 +200,76 @@ struct MediumWidgetView: View {
         }
     }
 }
+
+// MARK: - Pantalla bloqueada / StandBy
+
+/// Las familias `.accessory*` se renderizan en un solo color que decide el
+/// sistema (esfera de Lock Screen, texto junto al reloj): los colores
+/// propios de `WidgetPalette` no aplican aquí y `.foregroundStyle` con un
+/// color explícito puede incluso ignorarse. Todo el contenido usa el estilo
+/// por defecto a propósito.
+struct AccessoryCircularView: View {
+    let snapshot: WidgetSnapshot
+
+    var body: some View {
+        if snapshot.isPlaceholder {
+            Image(systemName: "cart")
+                .font(.system(size: 20, weight: .semibold))
+        } else {
+            VStack(spacing: 0) {
+                Image(systemName: "cart.fill")
+                    .font(.system(size: 11, weight: .semibold))
+                Text("\(snapshot.pendingCount)")
+                    .font(.system(size: 16, weight: .bold, design: .rounded))
+                    .minimumScaleFactor(0.7)
+            }
+        }
+    }
+}
+
+struct AccessoryRectangularView: View {
+    let snapshot: WidgetSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Label("CasiListo", systemImage: "cart.fill")
+                .font(.system(size: 12, weight: .semibold))
+                .lineLimit(1)
+
+            if snapshot.isPlaceholder {
+                Text("Abre CasiListo para empezar")
+                    .font(.system(size: 12))
+                    .lineLimit(1)
+            } else {
+                Text(snapshot.pendingCount == 1 ? "1 pendiente" : "\(snapshot.pendingCount) pendientes")
+                    .font(.system(size: 13, weight: .bold))
+                    .lineLimit(1)
+                if let firstItem = snapshot.topItems.first {
+                    Text(firstItem.name)
+                        .font(.system(size: 12))
+                        .lineLimit(1)
+                }
+            }
+        }
+    }
+}
+
+struct AccessoryInlineView: View {
+    let snapshot: WidgetSnapshot
+
+    var body: some View {
+        if snapshot.isPlaceholder {
+            Label("CasiListo", systemImage: "cart")
+        } else {
+            Label(
+                snapshot.pendingCount == 1 ? "1 pendiente" : "\(snapshot.pendingCount) pendientes",
+                systemImage: "cart.fill"
+            )
+        }
+    }
+}
+
+// MARK: - Home Screen
 
 /// Cabecera común de los dos tamaños.
 private struct WidgetHeader: View {
@@ -225,6 +304,22 @@ struct CasiListoWidgetEntryView: View {
     let entry: PendingItemsEntry
     @Environment(\.widgetFamily) private var family
 
+    /// Fondo opaco solo en Home Screen: la pantalla bloqueada y StandBy ponen
+    /// su propio material detrás, y pintar uno propio ahí se ve como un
+    /// bloque de color fuera de lugar en vez de integrarse con el sistema.
+    private var containerBackground: Color {
+        switch family {
+        case .accessoryCircular, .accessoryRectangular, .accessoryInline:
+            return .clear
+        default:
+            return Color(uiColor: UIColor { traitCollection in
+                traitCollection.userInterfaceStyle == .dark
+                    ? UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1.0)
+                    : UIColor(red: 0.98, green: 0.97, blue: 0.96, alpha: 1.0)
+            })
+        }
+    }
+
     var body: some View {
         let content = Group {
             switch family {
@@ -232,6 +327,12 @@ struct CasiListoWidgetEntryView: View {
                 SmallWidgetView(snapshot: entry.snapshot)
             case .systemMedium:
                 MediumWidgetView(snapshot: entry.snapshot)
+            case .accessoryCircular:
+                AccessoryCircularView(snapshot: entry.snapshot)
+            case .accessoryRectangular:
+                AccessoryRectangularView(snapshot: entry.snapshot)
+            case .accessoryInline:
+                AccessoryInlineView(snapshot: entry.snapshot)
             default:
                 SmallWidgetView(snapshot: entry.snapshot)
             }
@@ -239,30 +340,25 @@ struct CasiListoWidgetEntryView: View {
         content
             .widgetAccentable()
             .widgetURL(URL(string: "casilisto://list"))
+            .containerBackground(containerBackground, for: .widget)
     }
 }
 
 // MARK: - Widget
 
 struct CasiListoWidget: Widget {
-    let kind = "CasiListoWidget"
-
-    private var widgetBackground: Color {
-        Color(uiColor: UIColor { traitCollection in
-            traitCollection.userInterfaceStyle == .dark
-                ? UIColor(red: 0.12, green: 0.12, blue: 0.14, alpha: 1.0)
-                : UIColor(red: 0.98, green: 0.97, blue: 0.96, alpha: 1.0)
-        })
-    }
+    let kind = WidgetContract.widgetKind
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: PendingItemsProvider()) { entry in
             CasiListoWidgetEntryView(entry: entry)
-                .containerBackground(widgetBackground, for: .widget)
         }
         .configurationDisplayName("CasiListo")
         .description("Productos pendientes en tu lista de compra.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .supportedFamilies([
+            .systemSmall, .systemMedium,
+            .accessoryCircular, .accessoryRectangular, .accessoryInline
+        ])
     }
 }
 
