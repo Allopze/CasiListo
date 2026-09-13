@@ -285,8 +285,13 @@ final class ScreenshotCaptureTests: XCTestCase {
 
     /// La raíz de la pestaña Compra es "Mis Listas": hay que entrar a la lista
     /// sembrada antes de poder tocar sus productos.
+    ///
+    /// Volver desde otra pestaña conserva el `navigationPath`, así que puede
+    /// que ya estemos dentro. Antes no se notaba porque el reseteo de UI tests
+    /// se ejecutaba otra vez en cada aparición y vaciaba la pila de paso.
     @MainActor
     private func openSeededList(in app: XCUIApplication) {
+        if app.buttons["toolbar-options-menu"].exists { return }
         let card = app.buttons["list-card-Compra actual"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         card.tap()

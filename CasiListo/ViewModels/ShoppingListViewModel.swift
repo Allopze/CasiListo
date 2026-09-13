@@ -54,6 +54,10 @@ final class ShoppingListViewModel {
     /// si muestra los productos de cada tarjeta.
     private var collapsedCategories: Set<String> = []
     @ObservationIgnored private var hasInitializedCategoryCollapseState = false
+    /// Por debajo de este tamaño, la primera carga deja todo expandido: con
+    /// pocos productos no hay nada que "abrumar" y colapsarlo todo hacía que
+    /// una lista recién poblada pareciera vacía.
+    @ObservationIgnored private static let autoCollapseThreshold = 40
     @ObservationIgnored private static let collapsedCategoriesKeyPrefix = "collapsedCategoryNames"
     /// Lista a la que está asociado este VM. El colapso se guarda **por lista**:
     /// con una sola clave global, contraer una categoría en una lista la
@@ -111,8 +115,11 @@ final class ShoppingListViewModel {
             if !hasInitializedCategoryCollapseState && !items.isEmpty && !categories.isEmpty {
                 if let stored = UserDefaults.standard.stringArray(forKey: collapsedCategoriesKey) {
                     collapsedCategories = Set(stored)
-                } else {
-                    // Primera vez: todo colapsado para no abrumar con la lista completa.
+                } else if items.count > Self.autoCollapseThreshold {
+                    // Primera vez con una lista grande: todo colapsado para no
+                    // abrumar. Por debajo del umbral —importar 6 productos
+                    // desde texto, por ejemplo— colapsarlo todo hacía que la
+                    // pantalla pareciera vacía justo después de añadirlos.
                     collapsedCategories = Set(categories.map(\.name))
                     persistCollapsedCategories()
                 }
@@ -677,15 +684,16 @@ final class ShoppingListViewModel {
         Double(value.normalizedDecimalSeparator) != nil
     }
 
+    // El vocabulario de unidades vive en `QuantitySemantics`, no aquí: antes
+    // esta lista decidía qué texto se guardaba en `quantity` y otra lista
+    // distinta, en `ReceiptServices`, decidía qué significaba ese texto al
+    // archivar. Por eso «3 unidades» se escribía bien y se cobraba mal.
     private func isNumberWithUnit(_ value: String) -> Bool {
-        let lowered = value.lowercased()
-        return ["kg", "g", "l", "lt", "ml"].contains { unit in
-            lowered.hasSuffix(unit) && isNumberLike(String(lowered.dropLast(unit.count)))
-        }
+        QuantitySemantics.isNumberWithUnit(value)
     }
 
     private func isUnit(_ value: String) -> Bool {
-        ["kg", "g", "l", "lt", "ml", "u", "un", "uds", "unidad", "unidades"].contains(value.lowercased())
+        QuantitySemantics.isUnitWord(value)
     }
 }
 

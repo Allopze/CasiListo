@@ -27,10 +27,14 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts
+          # El arnés de capturas no verifica nada en CI: escribe ~20 PNG en el
+          # /tmp del runner y los descarta, con más de 20 sleep() bloqueantes.
+          # Se salta para que el gate del PR mida lo que importa.
           xcodebuild test \
             -project CasiListo.xcodeproj \
             -scheme CasiListo \
-            -destination 'platform=iOS Simulator,name=iPhone 16 Pro,OS=latest' \
+            -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
+            -skip-testing:CasiListoUITests/ScreenshotCaptureTests \
             -resultBundlePath artifacts/CasiListoTests.xcresult | tee artifacts/xcodebuild-test.log
       - name: Validate privacy manifests
         if: always()

@@ -51,10 +51,13 @@ struct ItemRowView: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityLabel)
             .accessibilityHint("Toca para editar el producto")
+            .accessibilityIdentifier("item-row-\(item.id.uuidString)")
 
             if let voiceNote = item.voiceNoteFilename {
                 VoiceNotePlayerButton(filename: voiceNote)
             }
+
+            moreActionsMenu
         }
         .padding(.vertical, scaledPaddingVertical)
         .contextMenu {
@@ -201,6 +204,47 @@ struct ItemRowView: View {
                 }
             }
         }
+    }
+
+    /// "Posponer" y "No encontrado" solo vivían en el menú contextual
+    /// (pulsación larga): dos de los cuatro estados del producto sin ninguna
+    /// pista visual de que existieran. Este botón repite las mismas acciones,
+    /// siempre visible, sin tocar los swipe actions existentes.
+    private var moreActionsMenu: some View {
+        Menu {
+            Button {
+                HapticFeedback.selection()
+                onEdit()
+            } label: {
+                Label("Editar", systemImage: "pencil")
+            }
+            Button {
+                markStatus(.skipped)
+            } label: {
+                Label("Posponer", systemImage: "clock")
+            }
+            Button {
+                markStatus(.unavailable)
+            } label: {
+                Label("No encontrado", systemImage: "exclamationmark.triangle")
+            }
+            Divider()
+            Button(role: .destructive) {
+                HapticFeedback.impact()
+                withAnimation(Theme.defaultAnimation) {
+                    onDelete()
+                }
+            } label: {
+                Label("Eliminar", systemImage: "trash")
+            }
+        } label: {
+            Image(systemName: "ellipsis.circle")
+                .font(.system(size: 20))
+                .foregroundStyle(Color.appTextSecondary)
+                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+        }
+        .accessibilityLabel("Más acciones para \(item.name)")
+        .accessibilityIdentifier("item-menu-\(item.id.uuidString)")
     }
 
     private var checkboxView: some View {

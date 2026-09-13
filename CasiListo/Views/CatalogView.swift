@@ -17,6 +17,7 @@ struct CatalogView: View {
     @State private var collapsedCategories: Set<String> = []
     @State private var hasLoadedCollapseState = false
     @State private var errorMessage: String?
+    @State private var catalogItemPendingDeletion: ProductCatalogItem?
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
@@ -70,10 +71,30 @@ struct CatalogView: View {
                     catalogList
                 }
             }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                destinationBanner
+            }
             .background(Color.appBackground)
             .navigationTitle("Catálogo")
             .toolbarBackground(Color.appBackground, for: .navigationBar)
             .searchable(text: $searchText, prompt: "Buscar en el catálogo...")
+            .confirmationDialog(
+                "¿Quitar del catálogo?",
+                isPresented: Binding(
+                    get: { catalogItemPendingDeletion != nil },
+                    set: { if !$0 { catalogItemPendingDeletion = nil } }
+                ),
+                titleVisibility: .visible,
+                presenting: catalogItemPendingDeletion
+            ) { item in
+                Button("Eliminar \(item.name)", role: .destructive) {
+                    deleteCatalogItem(item)
+                    catalogItemPendingDeletion = nil
+                }
+                Button("Cancelar", role: .cancel) {}
+            } message: { _ in
+                Text("Dejará de aparecer como sugerencia. Los productos que ya están en tus listas no se tocan.")
+            }
             .alert(
                 "No se pudo actualizar la lista",
                 isPresented: Binding(
@@ -87,6 +108,29 @@ struct CatalogView: View {
             }
         }
         .onAppear(perform: loadCollapseStateIfNeeded)
+    }
+
+    /// A qué lista van los productos. Sin esto no había ninguna indicación de
+    /// destino, ni siquiera cuando sí existía una lista activa.
+    private var destinationBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: activeList == nil ? "plus.circle" : "cart.fill")
+                .font(Theme.captionDynamic)
+                .foregroundStyle(Theme.accentInteractive)
+                .accessibilityHidden(true)
+
+            Text(activeList.map { "Añadiendo a \($0.title)" } ?? "Se creará una lista nueva")
+                .font(Theme.captionDynamic)
+                .foregroundStyle(Color.appTextSecondary)
+                .lineLimit(1)
+
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, cardPadding)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(Color.appBackground)
+        .accessibilityElement(children: .combine)
     }
 
     private var catalogList: some View {
@@ -116,7 +160,7 @@ struct CatalogView: View {
                                 .swipeActions(edge: .trailing) {
                                     Button(role: .destructive) {
                                         HapticFeedback.impact()
-                                        deleteCatalogItem(catalogItem)
+                                        catalogItemPendingDeletion = catalogItem
                                     } label: {
                                         Label("Eliminar del catálogo", systemImage: "trash")
                                     }
@@ -271,13 +315,27 @@ struct CatalogView: View {
         do {
             try CatalogService.addToActiveList(
                 catalogItem,
-                activeList: activeList,
+                activeList: try resolvedDestinationList(),
                 activeItems: activeItems,
                 context: modelContext
             )
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    /// El Catálogo puede ser la primera pantalla en la que la persona hace algo:
+    /// en instalación limpia no existe ninguna lista y aquí ya hay 355 productos
+    /// con su «+». Tocar ese botón es una decisión, así que la lista se crea en
+    /// ese momento; antes el producto se perdía en un huérfano invisible.
+    private func resolvedDestinationList() throws -> ShoppingList {
+        if let activeList { return activeList }
+        let created = try ShoppingListLifecycleService.createActiveList(
+            in: modelContext,
+            title: "Mi compra"
+        )
+        selectedActiveListID = created.id.uuidString
+        return created
     }
 
     private func removeFromList(_ catalogItem: ProductCatalogItem) {
@@ -293,9 +351,16 @@ struct CatalogView: View {
         }
     }
 
+    /// Único sitio del repo que se saltaba el coordinador y tragaba el error.
+    /// Ahora que el borrado por fin persiste entre arranques, vale la pena
+    /// protegerlo con una confirmación.
     private func deleteCatalogItem(_ catalogItem: ProductCatalogItem) {
         modelContext.delete(catalogItem)
-        try? modelContext.save()
+        do {
+            try ShoppingPersistenceCoordinator(context: modelContext).commitWithoutWidget()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     // MARK: - Colapso persistido

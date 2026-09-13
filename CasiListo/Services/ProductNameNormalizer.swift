@@ -20,6 +20,22 @@ nonisolated enum ProductNameNormalizer {
     }
 }
 
+/// Limpieza de las líneas que llegan pegadas desde WhatsApp, Notas o Mensajes.
+///
+/// Vivía como una expresión suelta dentro de `TextImporterSheet.parseText`, así
+/// que no había forma de probarla: una lista numerada («1. Leche») perdía el
+/// dígito pero conservaba el punto y el producto entraba llamándose «. Leche».
+nonisolated enum PastedListParser {
+    /// Alternancia, no clase de caracteres: `[-*•\d+\.]` borraba **un** carácter,
+    /// así que «1. Leche» conservaba el punto y «10. Pan» perdía solo el «1».
+    private static let bulletPattern = #"^\s*(?:[-*•]|\d+[.)])\s*"#
+
+    /// Quita la viñeta o numeración inicial de una línea pegada.
+    static func stripBullet(_ line: String) -> String {
+        line.replacingOccurrences(of: bulletPattern, with: "", options: .regularExpression)
+    }
+}
+
 /// La política de duplicados se aplica por nombre normalizado y supermercado.
 enum DuplicatePolicy {
     static func key(named name: String, store: Store) -> String {

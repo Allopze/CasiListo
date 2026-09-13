@@ -1,6 +1,17 @@
 import Foundation
 import SwiftData
 
+enum CatalogError: LocalizedError {
+    case noActiveList
+
+    var errorDescription: String? {
+        switch self {
+        case .noActiveList:
+            return "Crea una lista de compra antes de añadir productos del catálogo."
+        }
+    }
+}
+
 /// Operaciones entre el catálogo de productos y la lista de compra activa.
 @MainActor
 enum CatalogService {
@@ -14,6 +25,12 @@ enum CatalogService {
         activeItems: [ShoppingItem],
         context: ModelContext
     ) throws -> ShoppingItem? {
+        // Sin lista destino el producto quedaba con `listID == nil`: invisible
+        // en todas las pantallas y en el widget, y fuera de `activeItems`, así
+        // que el control de duplicados tampoco lo veía y cada toque del «+»
+        // creaba otra copia fantasma. Un servicio no debe poder hacer eso.
+        guard let activeList else { throw CatalogError.noActiveList }
+
         guard !DuplicatePolicy.isDuplicate(
             named: catalogItem.name,
             store: catalogItem.store,
@@ -22,7 +39,7 @@ enum CatalogService {
 
         let item = ShoppingItem(
             name: catalogItem.name,
-            listID: activeList?.id,
+            listID: activeList.id,
             category: catalogItem.category,
             sortOrder: nextSortOrder(for: catalogItem.category, in: activeItems),
             store: catalogItem.store
@@ -31,9 +48,7 @@ enum CatalogService {
         catalogItem.timesAdded += 1
         catalogItem.lastAddedAt = .now
 
-        if let activeList {
-            ShoppingListLifecycleService.updateActiveListCounters(activeList, items: activeItems + [item])
-        }
+        ShoppingListLifecycleService.updateActiveListCounters(activeList, items: activeItems + [item])
         try ShoppingPersistenceCoordinator(context: context).commit()
         return item
     }

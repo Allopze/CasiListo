@@ -23,7 +23,12 @@ struct WidgetSnapshot: Codable, Sendable {
         return decoded
     }
 
-    var isPlaceholder: Bool { updatedAt == .distantPast }
+    // Antes se basaba en `updatedAt == .distantPast`, pero la app publica un
+    // snapshot real en todo arranque, incluido el primero: esa rama nunca se
+    // alcanzaba y el widget afirmaba "0 pendientes" a alguien que ni siquiera
+    // había creado una lista. El contenido es la señal correcta: sin nada
+    // pendiente ni comprado, no hay nada útil que mostrar.
+    var isPlaceholder: Bool { pendingCount == 0 && purchasedCount == 0 && topItems.isEmpty }
 }
 
 struct WidgetItemSnapshot: Codable, Identifiable, Sendable {

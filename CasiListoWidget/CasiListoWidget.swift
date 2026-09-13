@@ -1,5 +1,6 @@
 import WidgetKit
 import SwiftUI
+import UIKit
 
 // MARK: - Timeline Entry
 
@@ -52,31 +53,35 @@ struct SmallWidgetView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "cart.fill")
-                    .font(.system(size: 14, weight: .bold))
-                    .foregroundStyle(Color(red: 0.96, green: 0.77, blue: 0.09))
-                Text("CasiListo")
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .foregroundStyle(textColorPrimary)
-            }
+            WidgetHeader(textColor: textColorPrimary)
 
             Spacer()
 
-            Text("\(snapshot.pendingCount)")
-                .font(.system(size: 46, weight: .bold, design: .rounded))
-                .foregroundStyle(textColorPrimary)
-                .minimumScaleFactor(0.6)
+            if snapshot.isPlaceholder {
+                // Sin snapshot todavía, «0 pendientes» afirma algo falso: se ve
+                // igual que una compra terminada cuando en realidad la app
+                // nunca se ha abierto.
+                Text("Abre CasiListo para empezar")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(textColorSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+            } else {
+                Text("\(snapshot.pendingCount)")
+                    .font(.system(size: 46, weight: .bold, design: .rounded))
+                    .foregroundStyle(textColorPrimary)
+                    .minimumScaleFactor(0.6)
 
-            Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
-                .font(.system(size: 13, weight: .medium, design: .rounded))
-                .foregroundStyle(textColorSecondary)
+                Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
+                    .font(.system(size: 13, weight: .medium, design: .rounded))
+                    .foregroundStyle(textColorSecondary)
 
-            if snapshot.purchasedCount > 0 {
-                Label("\(snapshot.purchasedCount) comprados", systemImage: "checkmark.circle.fill")
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .foregroundStyle(Color.green)
-                    .lineLimit(1)
+                if snapshot.purchasedCount > 0 {
+                    Label("\(snapshot.purchasedCount) comprados", systemImage: "checkmark.circle.fill")
+                        .font(.system(size: 11, weight: .medium, design: .rounded))
+                        .foregroundStyle(WidgetPalette.purchased)
+                        .lineLimit(1)
+                }
             }
         }
         .padding(14)
@@ -109,17 +114,30 @@ struct MediumWidgetView: View {
     }
 
     var body: some View {
+        if snapshot.isPlaceholder {
+            VStack(alignment: .leading, spacing: 8) {
+                WidgetHeader(textColor: textColorPrimary)
+                Spacer()
+                Text("Abre CasiListo para empezar")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(textColorSecondary)
+                Text("Tus productos pendientes aparecerán aquí.")
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundStyle(textColorSecondary)
+                Spacer()
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        } else {
+            contentColumns
+        }
+    }
+
+    private var contentColumns: some View {
         HStack(alignment: .top, spacing: 0) {
             // Panel izquierdo: conteo
             VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 5) {
-                    Image(systemName: "cart.fill")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundStyle(Color(red: 0.96, green: 0.77, blue: 0.09))
-                    Text("CasiListo")
-                        .font(.system(size: 12, weight: .bold, design: .rounded))
-                        .foregroundStyle(textColorPrimary)
-                }
+                WidgetHeader(textColor: textColorPrimary)
 
                 Spacer()
 
@@ -134,7 +152,7 @@ struct MediumWidgetView: View {
                 if snapshot.purchasedCount > 0 {
                     Label("\(snapshot.purchasedCount)", systemImage: "checkmark.circle.fill")
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
-                        .foregroundStyle(Color.green)
+                        .foregroundStyle(WidgetPalette.purchased)
                 }
             }
             .padding(14)
@@ -174,6 +192,35 @@ struct MediumWidgetView: View {
     }
 }
 
+/// Cabecera común de los dos tamaños.
+private struct WidgetHeader: View {
+    let textColor: Color
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "cart.fill")
+                .font(.system(size: 13, weight: .bold))
+                .foregroundStyle(WidgetPalette.brand)
+            Text("CasiListo")
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(textColor)
+        }
+    }
+}
+
+/// El widget no comparte fuentes con la app, así que los colores viven aquí.
+/// `Color.green` del sistema rendía ~1.9:1 sobre el crema del fondo.
+private enum WidgetPalette {
+    static let brand = Color(red: 0.96, green: 0.77, blue: 0.09)
+    static let purchased = Color(
+        uiColor: UIColor { traits in
+            traits.userInterfaceStyle == .dark
+                ? UIColor(red: 0.44, green: 0.82, blue: 0.55, alpha: 1)
+                : UIColor(red: 0.11, green: 0.43, blue: 0.20, alpha: 1)
+        }
+    )
+}
+
 struct CasiListoWidgetEntryView: View {
     let entry: PendingItemsEntry
     @Environment(\.widgetFamily) private var family
@@ -189,13 +236,9 @@ struct CasiListoWidgetEntryView: View {
                 SmallWidgetView(snapshot: entry.snapshot)
             }
         }
-        if #available(iOS 18.0, *) {
-            content
-                .widgetAccentable()
-                .widgetURL(URL(string: "casilisto://list"))
-        } else {
-            content.widgetURL(URL(string: "casilisto://list"))
-        }
+        content
+            .widgetAccentable()
+            .widgetURL(URL(string: "casilisto://list"))
     }
 }
 

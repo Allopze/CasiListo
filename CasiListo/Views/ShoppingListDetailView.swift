@@ -88,8 +88,8 @@ struct ShoppingListDetailView: View {
             placement: .navigationBarDrawer(displayMode: .automatic),
             prompt: "Buscar en \(list.title)..."
         )
-        .adaptiveSearchToolbarBehavior()
-        .adaptiveSearchPresentationToolbarBehavior()
+        .searchToolbarBehavior(.minimize)
+        .searchPresentationToolbarBehavior(.avoidHidingContent)
         .toolbarBackground(Color.appBackground, for: .navigationBar)
         .toolbarBackground(.visible, for: .navigationBar)
         .sheet(item: $viewModel.presentedSheet) { sheetContent(for: $0) }
@@ -212,7 +212,7 @@ struct ShoppingListDetailView: View {
         } label: {
             Image(systemName: "ellipsis")
         }
-        .adaptiveGlassButtonStyle()
+        .buttonStyle(.glass)
         .accessibilityLabel("Opciones de lista")
         .accessibilityIdentifier("toolbar-options-menu")
     }

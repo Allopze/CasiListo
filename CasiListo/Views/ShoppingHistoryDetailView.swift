@@ -2,6 +2,27 @@ import SwiftUI
 import SwiftData
 import UIKit
 
+/// Agrupación de los productos ya archivados de una compra.
+///
+/// Vivía como una expresión suelta dentro de la vista y por eso nunca se probó.
+/// Agrupaba por `$0.category`, es decir por **identidad de objeto**, y
+/// `Category.fallback` devuelve una instancia nueva en cada acceso: los
+/// productos de «Varios» —el caso normal, porque `ShoppingItem.init` deja su
+/// relación en `nil` a propósito— formaban una sección de un elemento cada uno,
+/// todas con el mismo id en el `ForEach`.
+nonisolated enum PurchasedItemGrouping {
+    static func byCategory(_ items: [ShoppingItem]) -> [(category: Category, items: [ShoppingItem])] {
+        // Por nombre, como el resto de la app: es la clave estable, y además la
+        // que usa el `ForEach` como identidad.
+        let dict = Dictionary(grouping: items) { $0.category.name }
+        return dict.compactMap { _, group -> (category: Category, items: [ShoppingItem])? in
+            guard let category = group.first?.category else { return nil }
+            return (category: category, items: group.sorted { $0.name < $1.name })
+        }
+        .sorted { $0.category.displayName < $1.category.displayName }
+    }
+}
+
 /// Vista de detalle para una lista del historial de compras.
 /// Muestra los productos archivados agrupados por categoría con su estado final.
 struct ShoppingHistoryDetailView: View {
@@ -21,10 +42,7 @@ struct ShoppingHistoryDetailView: View {
     }
     
     private var groupedItems: [(category: Category, items: [ShoppingItem])] {
-        let items = listItems
-        let dict = Dictionary(grouping: items) { $0.category }
-        return dict.map { (category: $0.key, items: $0.value.sorted(by: { $0.name < $1.name })) }
-            .sorted { $0.category.displayName < $1.category.displayName }
+        PurchasedItemGrouping.byCategory(listItems)
     }
     
     var body: some View {
@@ -62,9 +80,16 @@ struct ShoppingHistoryDetailView: View {
         .background(Color.appBackground)
         .navigationTitle(list.title)
         .navigationBarTitleDisplayMode(.inline)
-        .onAppear {
-            guard let filename = list.receiptImageFilename else { return }
-            receiptImage = ReceiptImageStore.image(named: filename)
+        .task {
+            // Decodificar a resolución completa (hasta 24 MP en boletas de
+            // varias páginas) bloqueaba el hilo principal cada vez que se
+            // abría esta compra. La miniatura basta para la vista previa.
+            guard let filename = list.receiptImageFilename,
+                  let url = ReceiptImageStore.receiptURL(named: filename)
+            else { return }
+            receiptImage = await Task.detached(priority: .userInitiated) {
+                ReceiptImageStore.thumbnail(at: url)
+            }.value
         }
     }
     

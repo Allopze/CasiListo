@@ -18,7 +18,7 @@ struct CategoryPickerView: View {
     }
 
     var body: some View {
-        AdaptiveGlassEffectContainer(spacing: 10) {
+        GlassEffectContainer(spacing: 10) {
             LazyVGrid(columns: columns, spacing: 10) {
                 ForEach(categories) { category in
                     chipButton(for: category)
@@ -47,7 +47,8 @@ struct CategoryPickerView: View {
             .padding(.horizontal, chipPaddingHorizontal)
             .padding(.vertical, chipPaddingVertical)
             .frame(maxWidth: .infinity)
-            .foregroundStyle(isSelected ? Theme.accentYellow : Color.appTextPrimary)
+            // El amarillo de marca rinde 1.45:1 sobre crema: rellena, no escribe.
+            .foregroundStyle(isSelected ? Theme.accentInteractive : Color.appTextPrimary)
             .glassFilterSurface(cornerRadius: Theme.chipCornerRadius, interactive: true)
             .overlay(alignment: .trailing) {
                 if isSelected {

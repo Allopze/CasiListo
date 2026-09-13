@@ -10,7 +10,10 @@ struct WidgetItemSnapshot: Codable, Hashable, Sendable, Identifiable {
 /// y coalesce cambios consecutivos para respetar el presupuesto de WidgetKit.
 @MainActor
 enum WidgetDataBridge {
-    static let appGroupID = "group.com.allopze.CasiListo"
+    // El store SwiftData también lo necesita, y se resuelve antes de que
+    // exista nada aislado al MainActor: sin `nonisolated` habría que
+    // duplicar el identificador una quinta vez.
+    nonisolated static let appGroupID = "group.com.allopze.CasiListo"
     static let snapshotKey = "widgetSnapshot"
     static let widgetKind = "CasiListoWidget"
 

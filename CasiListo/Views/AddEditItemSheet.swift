@@ -243,7 +243,7 @@ struct AddEditItemSheet: View {
             selectedCategory = item.category
             selectedStore = item.store
             note = item.note
-            priceText = item.price.formattedPriceOrEmpty
+            priceText = PriceField.text(for: item.price)
             voiceNoteFilename = item.voiceNoteFilename
             initialVoiceNoteFilename = item.voiceNoteFilename
             hasExplicitCategorySelection = true
@@ -278,7 +278,7 @@ struct AddEditItemSheet: View {
                     category: selectedCategory,
                     note: note.trimmingCharacters(in: .whitespaces),
                     sortOrder: nextSortOrder(selectedCategory),
-                    price: Double(priceText.replacingOccurrences(of: ",", with: ".")),
+                    price: PriceField.value(from: priceText),
                     store: selectedStore,
                     voiceNoteFilename: promotedFilename
                 )
@@ -302,7 +302,7 @@ struct AddEditItemSheet: View {
                 item.category = selectedCategory
                 item.store = selectedStore
                 item.note = note.trimmingCharacters(in: .whitespaces)
-                item.price = Double(priceText.replacingOccurrences(of: ",", with: "."))
+                item.price = PriceField.value(from: priceText)
                 item.voiceNoteFilename = promotedFilename
                 if let activeList {
                     ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems)

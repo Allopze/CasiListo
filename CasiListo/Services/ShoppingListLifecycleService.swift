@@ -65,7 +65,9 @@ enum ShoppingListLifecycleService {
                 pendingCount: 0,
                 skippedCount: 0,
                 unavailableCount: 0,
-                totalSpent: storeItems.compactMap(\.price).reduce(0, +)
+                // `price` es unitario: sumarlo pelado archivaba «3 panes a
+                // $1.200» como $1.200 en cuanto la compra se cerraba sin boleta.
+                totalSpent: storeItems.map(\.lineTotal).reduce(0, +)
             )
             context.insert(completedList)
             for item in storeItems {
@@ -91,7 +93,7 @@ enum ShoppingListLifecycleService {
         list.purchasedCount = activeItems.filter { $0.status == .purchased }.count
         list.skippedCount = activeItems.filter { $0.status == .skipped }.count
         list.unavailableCount = activeItems.filter { $0.status == .unavailable }.count
-        list.totalSpent = activeItems.compactMap(\.price).reduce(0, +)
+        list.totalSpent = activeItems.map(\.lineTotal).reduce(0, +)
     }
 
     private static func assignOrphanItems(

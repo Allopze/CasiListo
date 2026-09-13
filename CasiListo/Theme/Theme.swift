@@ -92,109 +92,19 @@ enum Theme {
 // MARK: - Liquid Glass
 
 extension View {
-    @ViewBuilder
-    func glassActionSurface(
-        cornerRadius: CGFloat = Theme.controlCornerRadius,
-        interactive: Bool = true
-    ) -> some View {
-        let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
-        if #available(iOS 26, *) {
-            if interactive {
-                self.glassEffect(
-                    .regular.tint(Theme.accentYellow.opacity(0.18)).interactive(),
-                    in: shape
-                )
-            } else {
-                self.glassEffect(
-                    .regular.tint(Theme.accentYellow.opacity(0.12)),
-                    in: shape
-                )
-            }
-        } else {
-            self.background(.ultraThinMaterial, in: shape)
-                .background(Theme.accentYellow.opacity(interactive ? 0.12 : 0.08), in: shape)
-                .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
-        }
-    }
-
-    @ViewBuilder
+    /// Superficie de vidrio para chips y campos. Con el piso en iOS 26 ya no
+    /// hay rama de compatibilidad: se conserva como token del sistema de
+    /// diseño para que el radio y la interactividad se decidan en un solo sitio.
     func glassFilterSurface(
         cornerRadius: CGFloat = Theme.controlCornerRadius,
         interactive: Bool = false
     ) -> some View {
         let shape = RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-
-        if #available(iOS 26, *) {
-            if interactive {
-                self.glassEffect(.regular.interactive(), in: shape)
-            } else {
-                self.glassEffect(.regular, in: shape)
-            }
-        } else {
-            self.background(.ultraThinMaterial, in: shape)
-                .background(Color.appCardBackground.opacity(interactive ? 0.5 : 0.2), in: shape)
-                .shadow(color: .black.opacity(0.03), radius: 4, x: 0, y: 2)
-        }
+        return glassEffect(interactive ? .regular.interactive() : .regular, in: shape)
     }
 }
 
-// MARK: - Adaptive Containers & Styles
-
-/// Contenedor adaptativo para agrupar elementos con efecto glass.
-/// En iOS 26+ usa `GlassEffectContainer` nativo. En versiones anteriores, renderiza el contenido directamente.
-struct AdaptiveGlassEffectContainer<Content: View>: View {
-    let spacing: CGFloat
-    let content: Content
-
-    init(spacing: CGFloat = 0, @ViewBuilder content: () -> Content) {
-        self.spacing = spacing
-        self.content = content()
-    }
-
-    var body: some View {
-        if #available(iOS 26, *) {
-            GlassEffectContainer(spacing: spacing) {
-                content
-            }
-        } else {
-            content
-        }
-    }
-}
-
-/// Estilo de botón glass adaptativo (fallback para iOS < 26).
-struct AdaptiveGlassButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        let size = Theme.minimumTouchTarget
-        configuration.label
-            .frame(width: size, height: size)
-            .background(.ultraThinMaterial)
-            .background(Color.appCardBackground.opacity(0.4))
-            .clipShape(Circle())
-            .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
-            .opacity(configuration.isPressed ? 0.72 : 1.0)
-            .scaleEffect(configuration.isPressed ? 0.97 : 1.0)
-            .animation(Theme.quickAnimation, value: configuration.isPressed)
-    }
-}
-
-/// Estilo de botón glass prominente adaptativo (fallback para iOS < 26).
-struct AdaptiveGlassProminentButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .foregroundStyle(Color.appTextPrimary)
-            .background(Theme.accentYellow.opacity(0.85))
-            .background(.ultraThinMaterial)
-            .clipShape(Capsule())
-            .shadow(color: Theme.accentYellow.opacity(0.2), radius: 6, x: 0, y: 3)
-            .opacity(configuration.isPressed ? 0.8 : 1.0)
-            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
-            .animation(Theme.quickAnimation, value: configuration.isPressed)
-    }
-}
+// MARK: - Botón primario de marca
 
 /// Botón primario de marca: relleno amarillo con tinta oscura (10.7:1).
 ///
@@ -218,44 +128,6 @@ struct AccentProminentButtonStyle: ButtonStyle {
 
 extension ButtonStyle where Self == AccentProminentButtonStyle {
     static var accentProminent: AccentProminentButtonStyle { AccentProminentButtonStyle() }
-}
-
-extension View {
-    @ViewBuilder
-    func adaptiveGlassButtonStyle() -> some View {
-        if #available(iOS 26, *) {
-            self.buttonStyle(.glass)
-        } else {
-            self.buttonStyle(AdaptiveGlassButtonStyle())
-        }
-    }
-
-    @ViewBuilder
-    func adaptiveGlassProminentButtonStyle() -> some View {
-        if #available(iOS 26, *) {
-            self.buttonStyle(.glassProminent)
-        } else {
-            self.buttonStyle(AdaptiveGlassProminentButtonStyle())
-        }
-    }
-
-    @ViewBuilder
-    func adaptiveSearchToolbarBehavior() -> some View {
-        if #available(iOS 26.0, *) {
-            self.searchToolbarBehavior(.minimize)
-        } else {
-            self
-        }
-    }
-
-    @ViewBuilder
-    func adaptiveSearchPresentationToolbarBehavior() -> some View {
-        if #available(iOS 17.1, *) {
-            self.searchPresentationToolbarBehavior(.avoidHidingContent)
-        } else {
-            self
-        }
-    }
 }
 
 // MARK: - Haptics

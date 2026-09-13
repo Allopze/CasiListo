@@ -80,7 +80,7 @@ struct ListsOverviewView: View {
                 } label: {
                     Label("Nueva lista", systemImage: "plus")
                 }
-                .adaptiveGlassButtonStyle()
+                .buttonStyle(.glass)
                 .accessibilityLabel("Crear nueva lista")
             }
         }

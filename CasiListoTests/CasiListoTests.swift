@@ -68,6 +68,20 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(draft.quantity, "")
     }
 
+    /// La barra rápida y el archivado tienen que leer el mismo string igual:
+    /// «3 unidades coca cola» se guardaba bien y se cobraba como una sola.
+    func testQuickAddQuantitiesAreUnderstoodByTheSameRuleThatChargesThem() {
+        let vm = ShoppingListViewModel()
+        XCTAssertEqual(vm.quickAddDraft(from: "3 unidades coca cola").quantity, "3 unidades")
+        XCTAssertEqual(QuantitySemantics.unitCount(of: "3 unidades"), 3)
+        XCTAssertEqual(vm.quickAddDraft(from: "2 u coca cola").quantity, "2 u")
+        XCTAssertEqual(QuantitySemantics.unitCount(of: "2 u"), 2)
+        XCTAssertEqual(vm.quickAddDraft(from: "tomates 1 kg").quantity, "1 kg")
+        XCTAssertEqual(QuantitySemantics.unitCount(of: "1 kg"), 1)
+        XCTAssertEqual(vm.quickAddDraft(from: "aceite 500ml").quantity, "500ml")
+        XCTAssertEqual(QuantitySemantics.unitCount(of: "500ml"), 1)
+    }
+
     // MARK: - Counts and summary
 
     func testItemCounts() {
@@ -187,16 +201,20 @@ final class CasiListoTests: XCTestCase {
         let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
         let item = ShoppingItem(name: "Pan", category: category)
 
+        // Una lista de 1 producto queda por debajo del umbral de auto-colapso.
         viewModel.updateDerivedState(items: [item], categories: [category])
-        XCTAssertTrue(viewModel.isCategoryCollapsed(category))
-
-        viewModel.toggleCategoryCollapse(category)
         XCTAssertFalse(viewModel.isCategoryCollapsed(category))
 
         viewModel.toggleCategoryCollapse(category)
         XCTAssertTrue(viewModel.isCategoryCollapsed(category))
+
+        viewModel.toggleCategoryCollapse(category)
+        XCTAssertFalse(viewModel.isCategoryCollapsed(category))
     }
 
+    /// Colapsa explícitamente (en vez de depender del umbral de auto-colapso)
+    /// para probar solo lo que le compete a este test: que una carga masiva
+    /// posterior no reabre sola una categoría ya colapsada.
     func testBulkUpdatesDoNotAutoExpandCategories() {
         UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
         defer { UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames") }
@@ -206,6 +224,7 @@ final class CasiListoTests: XCTestCase {
         let existingItem = ShoppingItem(name: "Pan", category: category)
 
         viewModel.updateDerivedState(items: [existingItem], categories: [category])
+        viewModel.toggleCategoryCollapse(category)
         XCTAssertTrue(viewModel.isCategoryCollapsed(category))
 
         // Las cargas masivas (plantillas, importador, boleta) no expanden nada:
@@ -215,6 +234,35 @@ final class CasiListoTests: XCTestCase {
         XCTAssertTrue(viewModel.isCategoryCollapsed(category))
 
         viewModel.revealCategory(category)
+        XCTAssertFalse(viewModel.isCategoryCollapsed(category))
+    }
+
+    /// Por encima del umbral de auto-colapso, la primera carga sigue
+    /// arrancando colapsada — el fixture real de la app (355+ productos)
+    /// sigue viéndose igual que antes de introducir el umbral.
+    func testLargeListsStillAutoCollapseOnFirstLoad() {
+        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+        defer { UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames") }
+
+        let viewModel = ShoppingListViewModel()
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let manyItems = (1...45).map { ShoppingItem(name: "Producto \($0)", category: category) }
+
+        viewModel.updateDerivedState(items: manyItems, categories: [category])
+        XCTAssertTrue(viewModel.isCategoryCollapsed(category))
+    }
+
+    /// Por debajo del umbral, la primera carga deja todo expandido: importar
+    /// unos pocos productos no debe parecer una pantalla vacía.
+    func testSmallListsDoNotAutoCollapseOnFirstLoad() {
+        UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames")
+        defer { UserDefaults.standard.removeObject(forKey: "collapsedCategoryNames") }
+
+        let viewModel = ShoppingListViewModel()
+        let category = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 0)
+        let fewItems = (1...6).map { ShoppingItem(name: "Producto \($0)", category: category) }
+
+        viewModel.updateDerivedState(items: fewItems, categories: [category])
         XCTAssertFalse(viewModel.isCategoryCollapsed(category))
     }
 
@@ -322,14 +370,14 @@ final class CasiListoTests: XCTestCase {
 
         let first = ShoppingListViewModel()
         first.updateDerivedState(items: [item], categories: [category])
-        XCTAssertTrue(first.isCategoryCollapsed(category), "Primera vez: todo colapsado")
+        XCTAssertFalse(first.isCategoryCollapsed(category), "Una lista pequeña no se colapsa en la primera carga")
 
         first.toggleCategoryCollapse(category)
-        XCTAssertFalse(first.isCategoryCollapsed(category))
+        XCTAssertTrue(first.isCategoryCollapsed(category))
 
         let second = ShoppingListViewModel()
         second.updateDerivedState(items: [item], categories: [category])
-        XCTAssertFalse(second.isCategoryCollapsed(category), "El estado expandido sobrevive al relanzamiento")
+        XCTAssertTrue(second.isCategoryCollapsed(category), "El estado colapsado sobrevive al relanzamiento")
     }
 
     func testRevealCategoryExpandsAndPersists() {
@@ -341,6 +389,9 @@ final class CasiListoTests: XCTestCase {
 
         let vm = ShoppingListViewModel()
         vm.updateDerivedState(items: [item], categories: [category])
+        // Colapsada explícitamente: con una sola categoría por debajo del
+        // umbral de auto-colapso, la primera carga ya no la deja colapsada.
+        vm.toggleCategoryCollapse(category)
         XCTAssertTrue(vm.isCategoryCollapsed(category))
 
         vm.revealCategory(category)
@@ -384,6 +435,129 @@ final class CasiListoTests: XCTestCase {
         )
         XCTAssertNil(again)
         XCTAssertEqual(catalogItem.timesAdded, 1)
+    }
+
+    /// En instalación limpia no existe ninguna lista y el Catálogo igual muestra
+    /// sus 355 productos con un «+». Sin lista destino, cada toque insertaba un
+    /// producto con `listID == nil`: invisible en todas las pantallas y en el
+    /// widget, y sin quedar registrado en `activeItems`, así que el control de
+    /// duplicados tampoco lo veía y admitía copias infinitas.
+    func testCatalogAddWithoutActiveListDoesNotCreateOrphans() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
+        let catalogItem = ProductCatalogItem(name: "Cerveza", category: category, store: .jumbo)
+        context.insert(category)
+        context.insert(catalogItem)
+
+        for _ in 0..<3 {
+            XCTAssertThrowsError(
+                try CatalogService.addToActiveList(
+                    catalogItem,
+                    activeList: nil,
+                    activeItems: [],
+                    context: context
+                ),
+                "Sin lista activa el servicio debe negarse, no crear un huérfano"
+            )
+        }
+
+        let orphans = try context.fetch(FetchDescriptor<ShoppingItem>())
+        XCTAssertTrue(orphans.isEmpty, "Se crearon \(orphans.count) productos sin lista")
+    }
+
+    /// El sembrado corría en cada aparición de la vista y sin deduplicar: creaba
+    /// 363 filas para 355 nombres —con la categoría ganadora variando entre
+    /// instalaciones, porque itera un diccionario— y resucitaba lo que la
+    /// persona había borrado a mano.
+    func testCatalogSeedingIsIdempotentAndRespectsDeletions() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        try CategoryBootstrapService.bootstrap(context: context)
+
+        // Suite propia: el esquema corre los tests en paralelo y este toca la
+        // marca de «catálogo ya sembrado».
+        let suiteName = "test.catalog.seeding.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+
+        try SuggestedProducts.seedCatalogItems(in: context, defaults: defaults)
+        let seeded = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+        let normalized = seeded.map { ProductNameNormalizer.normalize($0.name) }
+        XCTAssertEqual(
+            normalized.count,
+            Set(normalized).count,
+            "El catálogo sembrado trae nombres repetidos: " +
+            "\(Dictionary(grouping: normalized, by: { $0 }).filter { $0.value.count > 1 }.keys.sorted())"
+        )
+
+        guard let victim = seeded.first(where: { $0.name == "Doritos" }) else {
+            return XCTFail("El fixture ya no incluye «Doritos»")
+        }
+        context.delete(victim)
+        try context.save()
+
+        // Segundo arranque de la app.
+        try SuggestedProducts.seedCatalogItems(in: context, defaults: defaults)
+
+        let afterRelaunch = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+        XCTAssertFalse(
+            afterRelaunch.contains { $0.name == "Doritos" },
+            "Un producto borrado por la persona volvió al relanzar"
+        )
+    }
+
+    /// Reproduce una instalación de una versión anterior a la protección
+    /// dentro del bucle: `existingNames` se calculaba una sola vez, fuera del
+    /// bucle, así que los siete productos que aparecen en dos categorías
+    /// (guisantes, albahaca, calamares...) se insertaban dos veces. El
+    /// sembrado de hoy ya no lo hace, pero no repara lo que una instalación
+    /// anterior dejó duplicado. `deduplicateCatalogItems` sí lo hace.
+    func testSeedingDeduplicatesExistingCatalogEntries() throws {
+        func seedLikeOldBuild(in context: ModelContext) throws {
+            let existingCatalog = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+            let existingNames = Set(existingCatalog.map { ProductNameNormalizer.normalize($0.name) })
+            let categories = try context.fetch(FetchDescriptor<CasiListo.Category>())
+            for (defaultCat, products) in SuggestedProducts.byCategory {
+                let realCategory = categories.first { $0.name == defaultCat.rawValue }
+                for productName in products where !existingNames.contains(ProductNameNormalizer.normalize(productName)) {
+                    context.insert(ProductCatalogItem(
+                        name: productName,
+                        category: realCategory,
+                        store: SuggestedProducts.suggestedStore(for: productName)
+                    ))
+                }
+            }
+            try context.save()
+        }
+
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        try CategoryBootstrapService.bootstrap(context: context)
+
+        let suiteName = "test.catalog.dedup.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suiteName)!
+        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+
+        // Instalación anterior: al menos un nombre queda repetido.
+        try seedLikeOldBuild(in: context)
+        let beforeNorm = try context.fetch(FetchDescriptor<ProductCatalogItem>()).map { ProductNameNormalizer.normalize($0.name) }
+        let dupsBefore = Dictionary(grouping: beforeNorm, by: { $0 }).filter { $0.value.count > 1 }
+        XCTAssertFalse(dupsBefore.isEmpty, "El fixture de sembrado antiguo debería producir al menos un duplicado")
+
+        // Se instala la versión con el fix encima.
+        try SuggestedProducts.seedCatalogItems(in: context, defaults: defaults)
+        try SuggestedProducts.deduplicateCatalogItems(in: context, defaults: defaults)
+
+        let afterNorm = try context.fetch(FetchDescriptor<ProductCatalogItem>()).map { ProductNameNormalizer.normalize($0.name) }
+        let dupsAfter = Dictionary(grouping: afterNorm, by: { $0 }).filter { $0.value.count > 1 }
+        XCTAssertTrue(dupsAfter.isEmpty, "Quedaron duplicados sin limpiar: \(dupsAfter.keys.sorted())")
+        XCTAssertEqual(afterNorm.count, Set(afterNorm).count)
+
+        // Arranques posteriores no vuelven a barrer nada (la clave lo apaga).
+        try SuggestedProducts.deduplicateCatalogItems(in: context, defaults: defaults)
+        let final = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+        XCTAssertEqual(final.count, afterNorm.count)
     }
 
     func testCatalogAddUsesNextSortOrderWithinCategory() throws {
@@ -509,6 +683,74 @@ final class CasiListoTests: XCTestCase {
         XCTAssertEqual(completed?.pendingCount, 0)
         XCTAssertEqual(completed?.skippedCount, 0)
         XCTAssertEqual(completed?.unavailableCount, 0)
+    }
+
+    /// `price` es unitario: sumarlo sin la cantidad, como hacía este servicio
+    /// antes de unificar `QuantitySemantics`, archivaba "3 panes a $1.500"
+    /// como $1.500 en cuanto la compra se cerraba sin boleta — ni siquiera un
+    /// entero desnudo multiplicaba aquí.
+    func testClosingAListWithoutReceiptChargesEveryUnit() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let activeList = ShoppingList(title: "Compra actual")
+        let purchased = ShoppingItem(
+            name: "Coca Cola",
+            listID: activeList.id,
+            quantity: "3 unidades",
+            status: .purchased,
+            price: 1_500,
+            store: .jumbo
+        )
+        context.insert(activeList)
+        context.insert(purchased)
+
+        try ShoppingListLifecycleService.archivePurchasedItems(
+            from: [purchased],
+            activeList: activeList,
+            context: context
+        )
+
+        let lists = try context.fetch(FetchDescriptor<ShoppingList>())
+        let completed = lists.first { $0.status == .completed }
+        XCTAssertEqual(completed?.totalSpent, 4_500)
+    }
+
+    /// El total en vivo de la lista activa tenía el mismo bug que su archivado.
+    func testActiveListRunningTotalChargesEveryUnit() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let activeList = ShoppingList(title: "Compra actual")
+        let item = ShoppingItem(
+            name: "Coca Cola",
+            listID: activeList.id,
+            quantity: "3 unidades",
+            status: .purchased,
+            price: 1_500,
+            store: .jumbo
+        )
+        context.insert(activeList)
+        context.insert(item)
+
+        ShoppingListLifecycleService.updateActiveListCounters(activeList, items: [item])
+
+        XCTAssertEqual(activeList.totalSpent, 4_500)
+    }
+
+    // MARK: - Category.isEditable
+
+    /// "Varios" no se puede renombrar: hacerlo dejaba al bootstrap sin
+    /// "Varios" que encontrar y creaba uno nuevo y vacío en el arranque
+    /// siguiente, duplicándola.
+    func testVariosCategoryIsNotEditable() {
+        let varios = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+        let otra = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0, isSystem: true)
+        let personalizada = Category(name: "Mascotas", sfSymbol: "pawprint.fill", sortIndex: 10, isSystem: false)
+
+        XCTAssertFalse(Category.isEditable(varios))
+        XCTAssertTrue(Category.isEditable(otra))
+        XCTAssertTrue(Category.isEditable(personalizada))
     }
 
     // MARK: - CategoryBootstrapService — reconciliación de sfSymbols
@@ -647,6 +889,72 @@ final class CasiListoTests: XCTestCase {
             formattedDecimal == "3,5" || formattedDecimal == "3.5",
             "Unexpected: \(formattedDecimal)"
         )
+    }
+
+    /// Editar un producto y volver a guardarlo no puede cambiarle el precio.
+    /// El campo se rellenaba con el formato de presentación —«1.500», con
+    /// separador de miles— y se releía con `Double(_:)`, que lee ese punto como
+    /// decimal: cualquier precio de $1.000 o más perdía tres ceros en silencio.
+    func testPriceSurvivesAnEditRoundTrip() {
+        for original in [999.0, 1_500.0, 2_990.0, 12_990.0, 199_990.0] {
+            let shown = PriceField.text(for: original)
+            XCTAssertEqual(
+                PriceField.value(from: shown),
+                original,
+                "El campo mostró «\(shown)» y se releyó como otro número"
+            )
+        }
+
+        // Un campo vacío limpia el precio; el cero también, porque un producto
+        // que costó $0 no es un dato que valga la pena guardar.
+        XCTAssertNil(PriceField.value(from: ""))
+        XCTAssertEqual(PriceField.text(for: nil), "")
+    }
+
+    /// Pegar una lista numerada desde WhatsApp es el caso de uso central del
+    /// importador. La expresión era una clase de caracteres, no una alternancia:
+    /// borraba un único carácter, así que «1. Leche» entraba como «. Leche».
+    func testPastedListStripsBulletsAndNumbering() {
+        let cases = [
+            ("- Leche", "Leche"),
+            ("* Pan", "Pan"),
+            ("• Huevos", "Huevos"),
+            ("1. Leche", "Leche"),
+            ("10. Pan", "Pan"),
+            ("2) Queso", "Queso"),
+            ("Tomates", "Tomates")
+        ]
+
+        for (raw, expected) in cases {
+            XCTAssertEqual(PastedListParser.stripBullet(raw), expected, "Entrada: «\(raw)»")
+        }
+    }
+
+    /// Los productos sin categoría propia comparten la sección «Varios». Agrupar
+    /// por identidad de objeto los partía en una sección por producto, porque
+    /// `Category.fallback` devuelve una instancia nueva en cada acceso.
+    func testHistoryGroupsUncategorizedItemsTogether() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let varios = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+        context.insert(varios)
+
+        let listID = UUID()
+        let items = ["Cosa A", "Cosa B", "Cosa C"].map {
+            ShoppingItem(name: $0, listID: listID, category: varios)
+        }
+        items.forEach { context.insert($0) }
+        try context.save()
+
+        let groups = PurchasedItemGrouping.byCategory(items)
+
+        XCTAssertEqual(groups.count, 1, "«Varios» se partió en \(groups.count) secciones")
+        XCTAssertEqual(groups.first?.items.count, 3)
+
+        // El `ForEach` del historial usa el nombre como id: si se repite, SwiftUI
+        // entra en comportamiento indefinido.
+        let ids = groups.map(\.category.rawValue)
+        XCTAssertEqual(ids.count, Set(ids).count, "Ids repetidos en el ForEach: \(ids)")
     }
 
     // MARK: - List Customization & Appearance Catalog

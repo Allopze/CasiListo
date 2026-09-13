@@ -199,7 +199,7 @@ struct TextImporterSheet: View {
 
         for line in lines {
             // Eliminar viñetas comunes ("- ", "* ", "1. ", "• ")
-            let cleanedLine = line.replacingOccurrences(of: #"^[-*•\d+\.]\s*"#, with: "", options: .regularExpression)
+            let cleanedLine = PastedListParser.stripBullet(line)
             let draft = viewModel.quickAddDraft(from: cleanedLine)
             guard !draft.name.isEmpty else { continue }
 

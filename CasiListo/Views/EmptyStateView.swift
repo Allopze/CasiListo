@@ -53,7 +53,7 @@ struct EmptyStateView: View {
             }
             .padding(.vertical, 4)
 
-            AdaptiveGlassEffectContainer(spacing: 12) {
+            GlassEffectContainer(spacing: 12) {
                 Button {
                     HapticFeedback.impact()
                     onAddTapped()
@@ -61,7 +61,7 @@ struct EmptyStateView: View {
                     Label("Añadir producto", systemImage: "plus")
                         .font(Theme.bodyBoldDynamic)
                 }
-                .adaptiveGlassProminentButtonStyle()
+                .buttonStyle(.glassProminent)
 
                 if let showTemplates = onShowTemplates {
                     Button {
@@ -71,7 +71,7 @@ struct EmptyStateView: View {
                         Label("Usar plantilla", systemImage: "square.grid.2x2")
                             .font(Theme.bodyBoldDynamic)
                     }
-                    .adaptiveGlassButtonStyle()
+                    .buttonStyle(.glass)
                     .accessibilityIdentifier("empty-state-templates")
                 }
 
@@ -83,7 +83,7 @@ struct EmptyStateView: View {
                         Label("Ver última compra", systemImage: "clock.arrow.circlepath")
                             .font(Theme.bodyBoldDynamic)
                     }
-                    .adaptiveGlassButtonStyle()
+                    .buttonStyle(.glass)
                 }
             }
             .padding(.top, 4)

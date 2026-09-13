@@ -23,7 +23,6 @@ enum CategoryBootstrapService {
             // Si la base de datos está vacía, sembrar las 15 iniciales
             if existingCategories.isEmpty {
                 logger.info("Base de datos de categorías vacía. Sembrando categorías iniciales...")
-                UserDefaults.standard.set(false, forKey: "hasSeededDefaultProducts")
                 for defaultCat in DefaultCategory.allCases {
                     let newCat = Category(
                         name: defaultCat.rawValue,

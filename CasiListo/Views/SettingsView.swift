@@ -6,6 +6,8 @@ struct SettingsView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var showsResetConfirmation = false
     @State private var resetErrorMessage: String?
+    @State private var exportFileURL: URL?
+    @State private var exportErrorMessage: String?
 
     var body: some View {
         NavigationStack {
@@ -42,6 +44,17 @@ struct SettingsView: View {
             } message: {
                 Text(resetErrorMessage ?? "Inténtalo nuevamente.")
             }
+            .alert(
+                "No se pudo exportar",
+                isPresented: Binding(
+                    get: { exportErrorMessage != nil },
+                    set: { if !$0 { exportErrorMessage = nil } }
+                )
+            ) {
+                Button("Entendido", role: .cancel) {}
+            } message: {
+                Text(exportErrorMessage ?? "Inténtalo nuevamente.")
+            }
         }
     }
 
@@ -65,6 +78,25 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         SettingsSection(title: "DATOS LOCALES") {
+            // Sin backend, el dispositivo es la única copia. El archivo se
+            // genera al tocar, no en cada render de esta pantalla.
+            if let exportFileURL {
+                ShareLink(item: exportFileURL) {
+                    SettingsCard {
+                        SettingsLinkRow(title: "Exportar mis datos", detail: "Descarga un respaldo de tus listas, historial y catálogo.", symbol: "square.and.arrow.up")
+                    }
+                }
+                .accessibilityLabel("Exportar mis datos")
+            } else {
+                Button { exportData() } label: {
+                    SettingsCard {
+                        SettingsLinkRow(title: "Exportar mis datos", detail: "Descarga un respaldo de tus listas, historial y catálogo.", symbol: "square.and.arrow.up")
+                    }
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Exportar mis datos")
+            }
+
             Button(role: .destructive) { showsResetConfirmation = true } label: {
                 SettingsCard {
                     SettingsLinkRow(title: "Borrar todos mis datos guardados", detail: "Elimina los datos locales de este dispositivo.", symbol: "trash.fill", destructive: true)
@@ -79,8 +111,19 @@ struct SettingsView: View {
         do {
             try ShoppingPersistenceCoordinator(context: modelContext).resetAllData()
             HapticFeedback.success()
+            // Un archivo exportado antes del borrado ya no refleja los datos
+            // actuales (ahora vacíos): que la persona vuelva a pedirlo.
+            exportFileURL = nil
         } catch {
             resetErrorMessage = error.localizedDescription
+        }
+    }
+
+    private func exportData() {
+        do {
+            exportFileURL = try DataExportService.exportFile(context: modelContext)
+        } catch {
+            exportErrorMessage = error.localizedDescription
         }
     }
 

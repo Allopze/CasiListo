@@ -164,9 +164,50 @@ extension Double {
     }
 }
 
-extension Optional where Wrapped == Double {
-    /// Formatea el precio si existe, o devuelve cadena vacía.
-    var formattedPriceOrEmpty: String {
-        self?.formattedPrice ?? ""
+extension ShoppingItem {
+    /// Lo que costó este producto en la compra: `price` es unitario, así que
+    /// sumarlo sin la cantidad subestima el total. Tres sitios lo calculaban
+    /// distinto —o lo ignoraban directamente—; ahora lo calcula este.
+    var lineTotal: Double {
+        guard let price else { return 0 }
+        return price * Double(QuantitySemantics.unitCount(of: quantity))
+    }
+}
+
+/// Las dos mitades del campo de precio editable, juntas a propósito.
+///
+/// Separarlas fue lo que rompió los precios: el campo se rellenaba con el
+/// formato de **presentación** (`1500` → «1.500», con separador de miles) y se
+/// releía con `Double(_:)`, que interpreta ese punto como decimal y devuelve
+/// 1,5. Cualquier producto de $1.000 o más perdía tres ceros al editarlo y
+/// volver a guardarlo, en silencio y sin vuelta atrás.
+///
+/// Mientras vivan en el mismo tipo, el test de ida y vuelta las cubre a las dos.
+enum PriceField {
+    /// Sin separador de miles: es justo lo que distingue este texto del de
+    /// presentación y lo que permite releerlo sin ambigüedad.
+    private static let editingFormatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.locale = .autoupdatingCurrent
+        formatter.numberStyle = .decimal
+        formatter.usesGroupingSeparator = false
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter
+    }()
+
+    /// Texto para mostrar dentro del `TextField` editable.
+    static func text(for price: Double?) -> String {
+        guard let price else { return "" }
+        return editingFormatter.string(from: NSNumber(value: price)) ?? ""
+    }
+
+    /// Lee de vuelta lo que la persona dejó escrito en el campo.
+    ///
+    /// Reutiliza la gramática de montos de las boletas, que ya distingue el
+    /// punto de miles del decimal y está cubierta por los tests de OCR. Un
+    /// campo vacío o un cero dejan el producto sin precio.
+    static func value(from text: String) -> Double? {
+        ReceiptAmount.value(text)
     }
 }

@@ -177,18 +177,39 @@ struct SuggestedProducts {
         try context.save()
     }
 
+    /// Siembra el catálogo sugerido. Es idempotente por nombre normalizado.
+    ///
+    /// Dos detalles que costaron caro: el conjunto de nombres ya presentes se
+    /// actualiza **dentro** del bucle —si no, los siete productos que aparecen
+    /// en dos categorías se insertaban dos veces— y se recorre
+    /// `DefaultCategory.allCases` en vez del diccionario, porque iterar un
+    /// diccionario hacía que la categoría ganadora de cada repetido cambiara
+    /// entre instalaciones.
+    /// Clave que marca el catálogo como ya sembrado. La borra el reseteo de
+    /// datos y el arranque de los tests de UI, que son los dos momentos en que
+    /// tiene sentido volver a poblarlo.
+    static let hasSeededCatalogKey = "hasSeededCatalogV1"
+
     @MainActor
-    static func seedCatalogItems(in context: ModelContext) throws {
+    static func seedCatalogItems(in context: ModelContext, defaults: UserDefaults = .standard) throws {
+        // Sembrar en cada arranque resucitaba lo que la persona había borrado
+        // del catálogo: el borrado no sobrevivía a cerrar la app.
+        guard !defaults.bool(forKey: hasSeededCatalogKey) else { return }
+
         let catalogDescriptor = FetchDescriptor<ProductCatalogItem>()
         let existingCatalog = try context.fetch(catalogDescriptor)
-        let existingNames = Set(existingCatalog.map { ProductNameNormalizer.normalize($0.name) })
-        
+        var existingNames = Set(existingCatalog.map { ProductNameNormalizer.normalize($0.name) })
+
         let catDescriptor = FetchDescriptor<Category>()
         let categories = try context.fetch(catDescriptor)
 
-        for (defaultCat, products) in byCategory {
+        for defaultCat in DefaultCategory.allCases {
+            guard let products = byCategory[defaultCat] else { continue }
             let realCategory = categories.first { $0.name == defaultCat.rawValue }
-            for productName in products where !existingNames.contains(ProductNameNormalizer.normalize(productName)) {
+            for productName in products {
+                guard existingNames.insert(ProductNameNormalizer.normalize(productName)).inserted else {
+                    continue
+                }
                 let catalogItem = ProductCatalogItem(
                     name: productName,
                     category: realCategory,
@@ -199,5 +220,37 @@ struct SuggestedProducts {
         }
 
         try context.save()
+        defaults.set(true, forKey: hasSeededCatalogKey)
     }
+
+    /// Clave de la limpieza defensiva de duplicados. `seedCatalogItems` ya
+    /// deduplica dentro de una sola ejecución, pero no repara duplicados que
+    /// ya existieran en la base —de una versión anterior a esa protección, o
+    /// de cualquier cambio futuro en la lógica de sembrado—. Ningún
+    /// `ShoppingItem` referencia `ProductCatalogItem` por relación, solo por
+    /// nombre, así que borrar una fila repetida no deja nada huérfano.
+    private static let hasDeduplicatedCatalogKey = "hasDeduplicatedCatalogV1"
+
+    @MainActor
+    static func deduplicateCatalogItems(in context: ModelContext, defaults: UserDefaults = .standard) throws {
+        guard !defaults.bool(forKey: hasDeduplicatedCatalogKey) else { return }
+        let all = try context.fetch(FetchDescriptor<ProductCatalogItem>())
+        var seen = Set<String>()
+        for item in all.sorted(by: { $0.createdAt < $1.createdAt }) {
+            let key = ProductNameNormalizer.normalize(item.name)
+            if !seen.insert(key).inserted {
+                context.delete(item)
+            }
+        }
+        try context.save()
+        defaults.set(true, forKey: hasDeduplicatedCatalogKey)
+    }
+
+    // Nota para quien añada productos nuevos en una futura versión:
+    // `hasSeededCatalogKey` apaga el sembrado para siempre tras la primera
+    // vez, así que un `byCategory` ampliado en 1.1 no llegaría a quien ya
+    // tiene la app instalada. Cuando eso ocurra, no basta con cambiar
+    // `byCategory` — hace falta una segunda clave versionada
+    // (`hasSeededCatalogV2`) que siembre solo los nombres nuevos del lote
+    // siguiente, dejando intacto lo que la persona ya borró del catálogo.
 }

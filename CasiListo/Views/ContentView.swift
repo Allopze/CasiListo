@@ -74,10 +74,7 @@ struct ContentView: View {
                 try CategoryBootstrapService.bootstrap(context: modelContext)
                 try ShoppingListLifecycleService.bootstrap(context: modelContext)
                 try SuggestedProducts.seedCatalogItems(in: modelContext)
-
-                // La lista parte vacía: el catálogo completo vive en su pestaña
-                // y como plantilla. Se limpia el flag del seed legado.
-                UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
+                try SuggestedProducts.deduplicateCatalogItems(in: modelContext)
 
                 // Normalización única: fija sortOrder al orden alfabético actual
                 // para que activar el reordenamiento manual no cambie nada visible.
@@ -106,6 +103,11 @@ struct ContentView: View {
         }
     }
 
+    /// El `.task` se vuelve a ejecutar cada vez que la pestaña Compra reaparece,
+    /// así que sin esta marca volver desde Catálogo o Ajustes borraba todo lo
+    /// creado mientras tanto. El reseteo es por lanzamiento, no por aparición.
+    @MainActor private static var didResetForUITests = false
+
     @discardableResult
     private func resetStorageForUITestsIfNeeded() -> Bool {
         let arguments = ProcessInfo.processInfo.arguments
@@ -117,6 +119,10 @@ struct ContentView: View {
         guard seedsListFixture || startsEmpty else {
             return false
         }
+        // Ya se reseteó en este lanzamiento: saltarse el bootstrap sigue siendo
+        // lo correcto, pero volver a borrar la base no.
+        guard !Self.didResetForUITests else { return true }
+        Self.didResetForUITests = true
 
         ShoppingListViewModel.removeAllCollapsedCategoryState()
         UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
@@ -138,7 +144,7 @@ struct ContentView: View {
             }
         }
 
-        UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
+        UserDefaults.standard.removeObject(forKey: SuggestedProducts.hasSeededCatalogKey)
         do {
             try CategoryBootstrapService.bootstrap(context: modelContext)
             // "-ui-testing-reset-empty" no crea lista: reproduce el primer arranque

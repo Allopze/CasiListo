@@ -9,8 +9,9 @@
 #
 # Uso:
 #   ci/capture-screenshots.sh                      # matriz por defecto (2 corridas)
-#   ci/capture-screenshots.sh --full               # + iPad y texto XXL (8 corridas)
-#   ci/capture-screenshots.sh --devices "iPhone 17 Pro,iPad Pro 11-inch (M5)"
+#   ci/capture-screenshots.sh --full               # + Pro Max y texto XXL (8 corridas)
+#   ci/capture-screenshots.sh --devices "iPhone 17 Pro"
+#   ci/capture-screenshots.sh --os 26.0            # verificar el piso declarado
 #   ci/capture-screenshots.sh --appearances light --text-sizes default
 #   ci/capture-screenshots.sh --out ~/Desktop/capturas
 #
@@ -24,6 +25,7 @@ readonly PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 OUTPUT_DIR="$PROJECT_ROOT/build/screenshots"
 DEVICES="iPhone 17 Pro"
+OS_VERSION="latest"
 APPEARANCES="light,dark"
 TEXT_SIZES="default"
 KEEP_GOING=0
@@ -37,10 +39,11 @@ while [[ $# -gt 0 ]]; do
     case "$1" in
         --out)         OUTPUT_DIR="$2"; shift 2 ;;
         --devices)     DEVICES="$2"; shift 2 ;;
+        --os)          OS_VERSION="$2"; shift 2 ;;
         --appearances) APPEARANCES="$2"; shift 2 ;;
         --text-sizes)  TEXT_SIZES="$2"; shift 2 ;;
         --full)
-            DEVICES="iPhone 17 Pro,iPad Pro 11-inch (M5)"
+            DEVICES="iPhone 17 Pro,iPhone 17 Pro Max"
             APPEARANCES="light,dark"
             TEXT_SIZES="default,xxl"
             shift ;;
@@ -86,16 +89,40 @@ split_csv "$APPEARANCES"; APPEARANCE_LIST=("${SPLIT[@]}")
 split_csv "$TEXT_SIZES";  TEXT_SIZE_LIST=("${SPLIT[@]}")
 
 AVAILABLE="$(xcrun simctl list devices available)"
+
+# `simctl list devices available` agrupa por runtime bajo cabeceras
+# «-- iOS 26.0 --». Buscar el nombre a secas ignora esa sección: con dos
+# runtimes instalados validaba un dispositivo que no existe en la versión
+# pedida, y más abajo booteaba el simulador equivocado mientras xcodebuild
+# arrancaba otro, dejando capturas en la apariencia contraria sin ningún error.
+runtime_section() {
+    if [[ "$OS_VERSION" == "latest" ]]; then
+        printf '%s\n' "$AVAILABLE"
+    else
+        awk -v want="-- iOS $OS_VERSION --" '
+            /^-- / { inside = ($0 == want); next }
+            inside { print }
+        ' <<< "$AVAILABLE"
+    fi
+}
+
+SECTION="$(runtime_section)"
+if [[ -z "${SECTION//[[:space:]]/}" ]]; then
+    echo "error: no hay ningún simulador con iOS $OS_VERSION instalado." >&2
+    grep -oE "^-- iOS [0-9.]+" <<< "$AVAILABLE" | sed 's/^-- /  - /' >&2
+    exit 1
+fi
+
 MISSING=()
 for device in "${DEVICE_LIST[@]}"; do
-    grep -qF "    $device (" <<< "$AVAILABLE" || MISSING+=("$device")
+    grep -qF "    $device (" <<< "$SECTION" || MISSING+=("$device")
 done
 
 if [[ ${#MISSING[@]} -gt 0 ]]; then
-    echo "error: estos simuladores no están disponibles:" >&2
+    echo "error: estos simuladores no están disponibles en iOS $OS_VERSION:" >&2
     printf '  - %s\n' "${MISSING[@]}" >&2
     echo "Disponibles:" >&2
-    grep -oE "^    (iPhone|iPad)[^(]*" <<< "$AVAILABLE" | sed 's/^    /  - /; s/ $//' >&2
+    grep -oE "^    (iPhone|iPad)[^(]*" <<< "$SECTION" | sed 's/^    /  - /; s/ $//' >&2
     exit 1
 fi
 
@@ -110,24 +137,30 @@ for device in "${DEVICE_LIST[@]}"; do
     for appearance in "${APPEARANCE_LIST[@]}"; do
         for text_size in "${TEXT_SIZE_LIST[@]}"; do
             TOTAL=$((TOTAL + 1))
-            variant="$(slug "$device")/$appearance/$text_size"
+            variant="$(slug "$device")/ios-$(slug "$OS_VERSION")/$appearance/$text_size"
             variant_dir="$OUTPUT_DIR/$variant"
-            log_file="$LOG_DIR/$(slug "$device")-$appearance-$text_size.log"
+            log_file="$LOG_DIR/$(slug "$device")-ios-$(slug "$OS_VERSION")-$appearance-$text_size.log"
 
             rm -rf "$variant_dir"
             mkdir -p "$variant_dir"
 
-            echo "▶ $device · $appearance · texto $text_size"
+            echo "▶ $device · iOS $OS_VERSION · $appearance · texto $text_size"
 
             # La app fuerza su propio esquema, pero las hojas modales se presentan
             # fuera de esa jerarquía y siguen al sistema. Sin fijar también la
             # apariencia del simulador, salen con el modo de la corrida anterior.
-            udid="$(grep -F "    $device (" <<< "$AVAILABLE" | head -1 \
+            udid="$(grep -F "    $device (" <<< "$SECTION" | head -1 \
                     | grep -oE '[0-9A-F-]{36}')"
             if [[ -n "$udid" ]]; then
                 xcrun simctl boot "$udid" > /dev/null 2>&1
                 xcrun simctl bootstatus "$udid" -b > /dev/null 2>&1
                 xcrun simctl ui "$udid" appearance "$appearance" > /dev/null 2>&1
+            fi
+
+            if [[ "$OS_VERSION" == "latest" ]]; then
+                destination="platform=iOS Simulator,name=$device"
+            else
+                destination="platform=iOS Simulator,name=$device,OS=$OS_VERSION"
             fi
 
             # TEST_RUNNER_ es obligatorio: xcodebuild no propaga variables sueltas
@@ -138,7 +171,7 @@ for device in "${DEVICE_LIST[@]}"; do
                xcodebuild \
                    -project "$PROJECT_ROOT/CasiListo.xcodeproj" \
                    -scheme "$SCHEME" \
-                   -destination "platform=iOS Simulator,name=$device" \
+                   -destination "$destination" \
                    -only-testing:"$TEST_TARGET" \
                    test < /dev/null > "$log_file" 2>&1
             then

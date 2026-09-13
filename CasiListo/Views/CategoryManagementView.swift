@@ -94,6 +94,11 @@ struct CategoryManagementView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        // El resto de la fila ya avisa que "Varios" es del sistema, pero el
+        // botón seguía abriendo su sheet de edición: se podía renombrar, y el
+        // bootstrap creaba un "Varios" nuevo al no encontrar el original en
+        // el siguiente arranque.
+        .disabled(!Category.isEditable(category))
     }
 
     private func moveCategories(from source: IndexSet, to destination: Int) {

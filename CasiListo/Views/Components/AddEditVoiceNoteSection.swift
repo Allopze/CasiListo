@@ -13,6 +13,10 @@ struct AddEditVoiceNoteSection: View {
     @State private var recordingDuration = 0
     @State private var recordingDurationTask: Task<Void, Never>? = nil
     @State private var errorMessage: String?
+    /// El botón "Ir a Ajustes" solo tiene sentido para un permiso denegado:
+    /// ofrecerlo también para "sin espacio" o "falló la grabación" no lleva
+    /// a ninguna solución real.
+    @State private var erroredCase: VoiceNoteError?
     @Environment(VoiceNoteService.self) private var voiceNoteService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AccessibilityFocusState private var shouldFocusRecordButton: Bool
@@ -105,14 +109,18 @@ struct AddEditVoiceNoteSection: View {
             isRecording = false
             if let lastError = voiceNoteService.lastError {
                 errorMessage = lastError.errorDescription
+                erroredCase = lastError
             }
         }
         .alert(
             "No se pudo usar el micrófono",
             isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })
         ) {
-            Button("Intentar nuevamente") { startRecording() }
-            Button("Ir a Ajustes") { openAppSettings() }
+            if erroredCase == .permissionDenied {
+                Button("Ir a Ajustes") { openAppSettings() }
+            } else {
+                Button("Intentar nuevamente") { startRecording() }
+            }
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text(errorMessage ?? "Inténtalo nuevamente.")
@@ -126,24 +134,24 @@ struct AddEditVoiceNoteSection: View {
 
     @MainActor
     private func startRecording() {
-        if #available(iOS 17.0, *) {
-            Task {
-                let granted = await AVAudioApplication.requestRecordPermission()
-                guard granted else {
-                    errorMessage = VoiceNoteError.permissionDenied.errorDescription
-                    return
-                }
-                switch voiceNoteService.startRecording() {
-                case .success(let filename):
-                    HapticFeedback.selection()
-                    self.voiceNoteFilename = filename
-                    self.onRecorded(filename)
-                    self.isRecording = true
-                    self.recordingDuration = 0
-                    self.startRecordingDurationTask()
-                case .failure(let error):
-                    errorMessage = error.errorDescription
-                }
+        Task {
+            let granted = await AVAudioApplication.requestRecordPermission()
+            guard granted else {
+                errorMessage = VoiceNoteError.permissionDenied.errorDescription
+                erroredCase = .permissionDenied
+                return
+            }
+            switch voiceNoteService.startRecording() {
+            case .success(let filename):
+                HapticFeedback.selection()
+                self.voiceNoteFilename = filename
+                self.onRecorded(filename)
+                self.isRecording = true
+                self.recordingDuration = 0
+                self.startRecordingDurationTask()
+            case .failure(let error):
+                errorMessage = error.errorDescription
+                erroredCase = error
             }
         }
     }

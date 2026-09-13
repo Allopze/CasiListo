@@ -700,6 +700,63 @@ final class PurchaseHistoryTests: XCTestCase {
         XCTAssertEqual(summary.totalSpent, 1_490 + 3_600)
     }
 
+    /// La cantidad es texto libre y el propio formulario sugiere «500 g». Una
+    /// magnitud —"500 g" es medio kilo, no quinientos quesos— nunca multiplica;
+    /// un recuento —"3 unidades", "2 u"— sí, igual que un entero desnudo.
+    /// `QuantitySemantics` es la única fuente de verdad: antes de unificarla,
+    /// "3 unidades" se guardaba bien en el añadido rápido y se cobraba como
+    /// una sola unidad al archivar.
+    func testArchivedItemUsesQuantitySemanticsForItsLineTotal() throws {
+        let cases: [(quantity: String, expectedUnits: Double)] = [
+            ("500 g", 1),
+            ("1 kg", 1),
+            ("docena", 1),
+            ("", 1),
+            ("2", 2),
+            ("3 unidades", 3),
+            ("2 u", 2),
+            ("2u", 2)
+        ]
+
+        for testCase in cases {
+            let container = try makeInMemoryContainer()
+            let context = container.mainContext
+            let activeList = ShoppingList(title: "Compra actual")
+            let mergedItem = ShoppingItem(
+                name: "Queso",
+                listID: activeList.id,
+                quantity: testCase.quantity,
+                status: .purchased,
+                price: 3_000,
+                store: .jumbo
+            )
+            context.insert(activeList)
+            context.insert(mergedItem)
+
+            let summary = try ReceiptPurchaseService.register(
+                entries: [ReceiptPurchaseEntry(name: "Pan", price: 1_500)],
+                receiptImage: receiptImage(),
+                store: .jumbo,
+                activeList: activeList,
+                allItems: [mergedItem],
+                categories: [],
+                context: context,
+                archivingPurchased: true
+            )
+            defer {
+                if let filename = summary.list.receiptImageFilename {
+                    ReceiptImageStore.delete(named: filename)
+                }
+            }
+
+            XCTAssertEqual(
+                summary.totalSpent,
+                1_500 + 3_000 * testCase.expectedUnits,
+                "Cantidad «\(testCase.quantity)»"
+            )
+        }
+    }
+
     /// Sin lista activa, filtrar por `listID == nil` arrastraba productos
     /// huérfanos que no pertenecen a esta compra.
     func testClosingWithoutActiveListDoesNotArchiveOrphanItems() throws {
@@ -753,6 +810,73 @@ final class PurchaseHistoryTests: XCTestCase {
         }
 
         XCTAssertEqual(item.quantity, "")
+    }
+
+    /// Sobre una magnitud la boleta no tiene autoridad: "500 g" no compite
+    /// con "1 unidad" impresa en el papel, describe qué se compró, y borrarla
+    /// era pura pérdida de lo que la persona había escrito a mano.
+    func testAssociatedItemKeepsAWrittenMagnitudeWhenTheReceiptSaysOne() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let activeList = ShoppingList(title: "Compra actual")
+        let item = ShoppingItem(name: "Queso", listID: activeList.id, quantity: "500 g", status: .purchased, store: .jumbo)
+        context.insert(activeList)
+        context.insert(item)
+
+        let summary = try ReceiptPurchaseService.register(
+            entries: [ReceiptPurchaseEntry(name: "Queso", price: 3_500, associatedItemID: item.id)],
+            receiptImage: receiptImage(),
+            store: .jumbo,
+            activeList: activeList,
+            allItems: [item],
+            categories: [],
+            context: context
+        )
+        defer {
+            if let filename = summary.list.receiptImageFilename {
+                ReceiptImageStore.delete(named: filename)
+            }
+        }
+
+        XCTAssertEqual(item.quantity, "500 g")
+        XCTAssertEqual(summary.totalSpent, 3_500)
+    }
+
+    /// `price` es unitario y `quantity` lleva el multiplicador: si una línea
+    /// de boleta trae 3 unidades a $916,67, el ítem archivado debe reproducir
+    /// ese total ($2.750), no solo el precio unitario impreso.
+    func testArchivedAssociatedItemReproducesTheReceiptLineTotal() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let activeList = ShoppingList(title: "Compra actual")
+        let item = ShoppingItem(name: "Yogur", listID: activeList.id, status: .purchased, store: .jumbo)
+        context.insert(activeList)
+        context.insert(item)
+
+        let summary = try ReceiptPurchaseService.register(
+            entries: [ReceiptPurchaseEntry(
+                name: "Yogur",
+                price: 916.67,
+                quantity: 3,
+                associatedItemID: item.id,
+                printedLineTotal: 2_750
+            )],
+            receiptImage: receiptImage(),
+            store: .jumbo,
+            activeList: activeList,
+            allItems: [item],
+            categories: [],
+            context: context
+        )
+        defer {
+            if let filename = summary.list.receiptImageFilename {
+                ReceiptImageStore.delete(named: filename)
+            }
+        }
+
+        XCTAssertEqual(item.quantity, "3")
+        XCTAssertEqual(item.lineTotal, 2_750, accuracy: 1)
+        XCTAssertEqual(summary.totalSpent, 2_750, accuracy: 1)
     }
 
     // MARK: - Boletas reales: secciones y descuentos de supermercado
@@ -956,5 +1080,21 @@ final class PurchaseHistoryTests: XCTestCase {
             UIColor.white.setFill()
             context.cgContext.fill(CGRect(x: 0, y: 0, width: 20, height: 20))
         }
+    }
+
+    /// La miniatura del historial no debe decodificar la boleta a resolución
+    /// completa: sobre una imagen grande, el lado mayor debe quedar acotado.
+    func testReceiptThumbnailIsDownsampledToTheRequestedMaxPixelSize() throws {
+        let largeImage = UIGraphicsImageRenderer(size: CGSize(width: 3_000, height: 2_000)).image { context in
+            UIColor.white.setFill()
+            context.cgContext.fill(CGRect(x: 0, y: 0, width: 3_000, height: 2_000))
+        }
+        let filename = try ReceiptImageStore.save(largeImage)
+        defer { ReceiptImageStore.delete(named: filename) }
+
+        let url = try XCTUnwrap(ReceiptImageStore.receiptURL(named: filename))
+        let thumbnail = try XCTUnwrap(ReceiptImageStore.thumbnail(at: url, maxPixelSize: 300))
+
+        XCTAssertLessThanOrEqual(max(thumbnail.size.width, thumbnail.size.height) * thumbnail.scale, 300)
     }
 }

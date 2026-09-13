@@ -97,6 +97,14 @@ extension Category {
     var id: String { name }
     var rawValue: String { name }
 
+    /// "Varios" no se puede renombrar: la fila que la muestra ya avisa que es
+    /// del sistema, pero antes se podía abrir igual, y renombrarla dejaba al
+    /// bootstrap sin "Varios" que encontrar — creaba uno nuevo y vacío en el
+    /// siguiente arranque, duplicándola.
+    nonisolated static func isEditable(_ category: Category) -> Bool {
+        category.name != "Varios"
+    }
+
     /// Instancia no gestionada para uso de solo lectura (display).
     /// ⚠️ NO asignar a relaciones de SwiftData — usar `resolvedFallback(in:)` en su lugar.
     /// Cada acceso crea una nueva instancia para evitar problemas con SwiftData.

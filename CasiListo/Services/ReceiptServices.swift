@@ -141,6 +141,31 @@ enum ReceiptImageStore {
         return UIImage(contentsOfFile: url.path)
     }
 
+    /// Resuelve la ruta de una boleta guardada. Pasa por `LocalFileStore.shared`
+    /// (MainActor) pero solo construye una ruta, no decodifica nada: se separa
+    /// de `thumbnail(at:)` para que la parte cara pueda correr fuera del hilo
+    /// principal.
+    static func receiptURL(named filename: String) -> URL? {
+        try? LocalFileStore.shared.receiptURL(named: filename)
+    }
+
+    /// Miniatura decodificada con `ImageIO`, sin materializar la boleta a
+    /// resolución completa. Una boleta de varias páginas puede llegar a los
+    /// 24 MP que acepta `ReceiptImageComposer`; decodificarla entera solo para
+    /// mostrarla en el historial era un pico de memoria y un hitch visible en
+    /// el hilo principal cada vez que se abría esa compra. `nonisolated` a
+    /// propósito: pensada para llamarse desde un `Task.detached`.
+    nonisolated static func thumbnail(at url: URL, maxPixelSize: CGFloat = 1_200) -> UIImage? {
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, nil) else { return nil }
+        let options: [CFString: Any] = [
+            kCGImageSourceCreateThumbnailFromImageAlways: true,
+            kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
+            kCGImageSourceCreateThumbnailWithTransform: true
+        ]
+        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else { return nil }
+        return UIImage(cgImage: cgImage)
+    }
+
     static func delete(named filename: String) {
         try? LocalFileStore.shared.deleteReceipt(named: filename)
     }
@@ -803,9 +828,17 @@ enum ReceiptPurchaseService {
                 existingItem.store = store
                 existingItem.status = .purchased
                 existingItem.listID = completedList.id
-                // Se asigna siempre: si antes decía "2" y la boleta trae una
-                // unidad, dejar el valor viejo describe mal la compra.
-                existingItem.quantity = entry.quantity > 1 ? "\(entry.quantity)" : ""
+                // Sobre el recuento manda la boleta: si el papel dice una
+                // unidad, conservar un "2" viejo describiría mal la compra y
+                // duplicaría el producto en el detalle. Pero "500 g" no es un
+                // recuento —no compite con la boleta, describe qué se
+                // compró— y borrarlo era pura pérdida de lo que la persona
+                // había escrito a mano.
+                if entry.quantity > 1 {
+                    existingItem.quantity = QuantitySemantics.text(forCount: entry.quantity)
+                } else if case .count = QuantitySemantics.meaning(of: existingItem.quantity) {
+                    existingItem.quantity = ""
+                }
                 purchaseItems.append(existingItem)
                 continue
             }
@@ -860,7 +893,7 @@ enum ReceiptPurchaseService {
                     pendingCount: 0,
                     skippedCount: 0,
                     unavailableCount: 0,
-                    totalSpent: storeItems.map(lineTotal).reduce(0, +)
+                    totalSpent: storeItems.map(\.lineTotal).reduce(0, +)
                 )
                 context.insert(storeList)
                 for item in storeItems {
@@ -872,7 +905,7 @@ enum ReceiptPurchaseService {
 
         do {
             let entriesTotal = validEntries.map(\.lineTotal).reduce(0, +)
-            let mergedTotal = mergedPurchased.map(lineTotal).reduce(0, +)
+            let mergedTotal = mergedPurchased.map(\.lineTotal).reduce(0, +)
             completedList.purchasedCount = purchaseItems.count + mergedPurchased.count
             completedList.totalSpent = entriesTotal + mergedTotal
 
@@ -896,20 +929,9 @@ enum ReceiptPurchaseService {
         }
     }
 
-    /// Total de un producto ya archivado: el precio guardado es unitario, así
-    /// que sumarlo sin la cantidad subestima la compra.
-    private static func lineTotal(of item: ShoppingItem) -> Double {
-        guard let price = item.price else { return 0 }
-        let units = parseLeadingInteger(from: item.quantity) ?? 1
-        return price * Double(max(1, units))
-    }
-
-    /// Extrae el entero inicial de una cantidad libre: "2" → 2, "2 kg" → 2,
-    /// "500 g" → 500, "docena" → nil. Solo el primer token numérico cuenta.
-    private static func parseLeadingInteger(from quantity: String) -> Int? {
-        let trimmed = quantity.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return nil }
-        let firstToken = trimmed.split(separator: " ").first.map(String.init) ?? trimmed
-        return Int(firstToken)
-    }
+    // El total de línea y qué cuenta como "unidad" vive en `QuantitySemantics`
+    // y en `ShoppingItem.lineTotal`: antes esta era la única regla del repo y
+    // otros dos sitios (la barra de añadido rápido, el cierre de lista sin
+    // boleta) interpretaban "3 unidades" de otra forma, o directamente la
+    // ignoraban.
 }

@@ -29,14 +29,14 @@ xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo \
 
 bash ci/validate-privacy-manifests.sh artifacts   # plutil + greps; parte del CI
 ci/capture-screenshots.sh                         # iPhone 17 Pro, claro+oscuro (~6-8 min)
-ci/capture-screenshots.sh --full                  # + iPad Pro 11-inch (M5) y texto XXL (~30 min)
+ci/capture-screenshots.sh --full                  # + Pro Max y texto XXL (~30 min)
 cd privacy-site && npm run build                  # único script; sin deps ni lockfile, genera dist/
 ```
 
 - **`-resultBundlePath artifacts/X.xcresult` falla en la segunda corrida**: xcodebuild aborta si el bundle ya existe. En CI el runner arranca limpio; en local borra el path o omite el flag.
 - Solo hay **dos schemes**: `CasiListo` y `CasiListoWidget`; **`-scheme CasiListoTests` no existe**. No hay `.xctestplan`: se acota con `-only-testing` / `-skip-testing`. Ambos testables van con `parallelizable = "YES"` en el scheme versionado.
 - El CI ([ios.yml](.github/workflows/ios.yml)) usa `iPhone 16 Pro`, **que no está instalado aquí**, y corre unitarios y UI tests en un solo `xcodebuild test` sin `-only-testing`: un label en español roto no es un problema local, tumba el CI del PR.
-- `capture-screenshots.sh` acepta `--devices`, `--appearances`, `--text-sizes`, `--out`, `--keep-going`, `-h`; sale por defecto a `build/screenshots` (ignorado por git) y él mismo exporta `DEVELOPER_DIR` si no viene definido. Los nombres de dispositivo se comparan **literalmente** contra `simctl list devices available`: `iPad Pro 11-inch (M5)`, no `iPad Pro (M5)`.
+- `capture-screenshots.sh` acepta `--devices`, `--os`, `--appearances`, `--text-sizes`, `--out`, `--keep-going`, `-h`; sale por defecto a `build/screenshots` (ignorado por git) y él mismo exporta `DEVELOPER_DIR` si no viene definido. Los nombres de dispositivo se comparan **literalmente** contra `simctl list devices available`, y ahora **dentro de la sección del runtime pedido**: con dos runtimes instalados, el `grep` plano booteaba el simulador equivocado.
 - Xcode local es 27.0 (Swift 6.4); el CI fija Xcode 26.0 y solo valida `major >= 26`, así que nada avisa de la divergencia.
 - Release: [release-testflight.yml](.github/workflows/release-testflight.yml) es `workflow_dispatch`; **`gh` no está instalado en esta máquina** (dispáralo desde la pestaña Actions, o `brew install gh` y luego `gh workflow run release-testflight.yml --ref main`). Sube con `xcrun iTMSTransporter -m upload -assetFile artifacts/export/CasiListo.ipa`. Secretos que espera: `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_PRIVATE_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`; variables: `PUBLIC_SUPPORT_EMAIL`, `PUBLIC_POLICY_EFFECTIVE_DATE`.
 
@@ -48,7 +48,7 @@ cd privacy-site && npm run build                  # único script; sin deps ni l
 
 Todos usan **`PBXFileSystemSynchronizedRootGroup`**: poner un `.swift` en la carpeta lo agrega al target automáticamente; no se edita el pbxproj. La única `membershipException` es `Info.plist`. Corolario: app y widget **no comparten ningún archivo fuente** — de ahí los tipos duplicados del snapshot.
 
-`SWIFT_VERSION = 6.0`, `SWIFT_STRICT_CONCURRENCY = complete`, `IPHONEOS_DEPLOYMENT_TARGET = 17.0`. `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` **solo en app y widget**, no en los targets de test: por eso los tests anotan `@MainActor` a mano y el código de app anota `nonisolated`.
+`SWIFT_VERSION = 6.0`, `SWIFT_STRICT_CONCURRENCY = complete`, `IPHONEOS_DEPLOYMENT_TARGET = 26.0`, `TARGETED_DEVICE_FAMILY = 1` (solo iPhone). `SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor` **solo en app y widget**, no en los targets de test: por eso los tests anotan `@MainActor` a mano y el código de app anota `nonisolated`.
 
 Navegación real (el README dibuja otra):
 `CasiListoApp` → [MainTabView](CasiListo/Views/MainTabView.swift) (4 tabs) → **Compra**: [ContentView](CasiListo/Views/ContentView.swift) → [ListsOverviewView](CasiListo/Views/ListsOverviewView.swift) → `navigationDestination(for: UUID.self)` → [ShoppingListDetailView](CasiListo/Views/ShoppingListDetailView.swift) → [ShoppingListView](CasiListo/Views/ShoppingListView.swift) → [CategorySectionView](CasiListo/Views/CategorySectionView.swift) → [ItemRowView](CasiListo/Views/ItemRowView.swift). Los otros tabs ([CatalogView](CasiListo/Views/CatalogView.swift), [ShoppingHistoryView](CasiListo/Views/ShoppingHistoryView.swift), [SettingsView](CasiListo/Views/SettingsView.swift)) tienen su propio `NavigationStack`.
@@ -67,7 +67,7 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 
 **OCR de boletas.** [ReceiptDocumentCamera](CasiListo/Views/Components/ReceiptDocumentCamera.swift) (VisionKit) → [ReceiptServices.swift](CasiListo/Services/ReceiptServices.swift) `ReceiptTextRecognitionService` (Vision revisión 3, `usesLanguageCorrection = false` a propósito, off-main en `Task.detached`) → [ReceiptTextLine.swift](CasiListo/Services/ReceiptTextLine.swift) `ReceiptLineAssembler` (union-find sobre afinidad geométrica; el veto por solape horizontal >0.02 es lo que evita fusionar filas en fotos torcidas) → [ReceiptLineParser.swift](CasiListo/Services/ReceiptLineParser.swift) (gramática de montos CLP, ~15 regex, `classify()` ordenado y `walk()` como máquina de estados) → `ProductNameMatcher` (asignación 1:1 codiciosa, umbral 0.55) → [ReceiptCaptureSheet](CasiListo/Views/ReceiptCaptureSheet.swift) (revisión humana + conciliación con el TOTAL impreso) → `ReceiptPurchaseService.register`. La red de seguridad son las tres boletas reales de [ReceiptFixtures.swift](CasiListoTests/ReceiptFixtures.swift), que se auto-validan contra su propio total.
 
-**Vista y diseño.** [Theme.swift](CasiListo/Theme/Theme.swift) es la única fuente de colores, tipografías Dynamic Type, métricas, animaciones, `HapticFeedback`, wrappers de Liquid Glass con gating `#available(iOS 26, *)` y utilidades WCAG. [ListAppearanceCatalog](CasiListo/Models/ListAppearanceCatalog.swift) provee paleta/íconos por lista y `suggestAppearance(for:)`.
+**Vista y diseño.** [Theme.swift](CasiListo/Theme/Theme.swift) es la única fuente de colores, tipografías Dynamic Type, métricas, animaciones, `HapticFeedback`, `glassFilterSurface`, `AccentProminentButtonStyle` y utilidades WCAG (la capa `Adaptive*` con gating `#available` se eliminó al subir el piso a iOS 26). [ListAppearanceCatalog](CasiListo/Models/ListAppearanceCatalog.swift) provee paleta/íconos por lista y `suggestAppearance(for:)`.
 
 **Widget y notas de voz.** El widget **no abre la base de datos**: la app publica JSON en `UserDefaults(suiteName:)` del App Group desde [WidgetDataBridge](CasiListo/Services/WidgetDataBridge.swift) y [WidgetDataModel.swift](CasiListoWidget/WidgetDataModel.swift) lo lee con tipos **duplicados** (el contrato son los nombres de campos). [VoiceNoteService](CasiListo/Services/VoiceNoteService.swift) es el único servicio con estado: `@Observable final class` con singleton `VoiceNoteService.shared`, que además se inyecta por `.environment` a las vistas (el código no-vista lo usa vía `.shared`). Graba borradores `draft-*.m4a` en `Documents/VoiceNotes/.temporary` y los promueve a `voice-*.m4a` al guardar.
 
@@ -99,7 +99,7 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 ## Gotchas e invariantes
 
 **Persistencia y datos**
-- Si el store persistente no abre, `CasiListoModelContainer.make()` cae **en silencio** a un container en memoria y marca `isUsingInMemoryFallback`, **que nadie lee**. La persona usa la app y pierde todo al cerrar sin ningún aviso. Cualquier "guardado exitoso" puede ser un guardado a RAM.
+- Si el store persistente no abre, `CasiListoModelContainer.make()` cae a un container en memoria y marca `isUsingInMemoryFallback`. **[MainTabView](CasiListo/Views/MainTabView.swift) lo lee y muestra un banner fijo** («CasiListo no puede guardar en este dispositivo»): sin él, la persona usaba la app un día entero creyendo que guardaba. El plan de migración sigue vacío, así que el primer cambio de `@Model` sin `VersionedSchema` puede caer aquí.
 - `CasiListoMigrationPlan.stages` está vacío. Un cambio de `@Model` sin su `VersionedSchema` + `MigrationStage` puede romper la apertura del store, y ese fallo cae exactamente en el fallback silencioso de arriba.
 - **`ShoppingItem` guarda la categoría dos veces**: `@Relationship categoryRelation: Category?` y la sombra `categoryRawValue: String`. Solo el setter de la computada `category` mantiene ambas en sync — asignar `categoryRelation` directo las desincroniza. Además `categoryRelation` es `nil` para «Varios» ([ShoppingItem.swift:96](CasiListo/Models/ShoppingItem.swift)), que es el caso normal.
 - **`status` tiene dos fuentes de verdad**: `statusRawValue: String?` y `@Attribute(originalName: "isPurchased") storedIsPurchased: Bool`. El getter cae a `storedIsPurchased` cuando el raw es `nil` (filas viejas).
@@ -109,7 +109,7 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 - El barrido de huérfanos solo conoce `ShoppingItem.voiceNoteFilename` y `ShoppingList.receiptImageFilename` ([ShoppingPersistenceCoordinator.swift:163-164](CasiListo/Services/ShoppingPersistenceCoordinator.swift)). Un modelo nuevo que guarde un nombre de archivo y no se registre ahí verá sus archivos borrados al siguiente arranque.
 - `removeUnreferencedFiles` usa `.skipsHiddenFiles`: eso es lo único que evita que el barrido borre la carpeta `.temporary` de notas de voz. Renombrarla a `temporary` rompe la grabación. `cleanupUnreferencedFiles` la barre con `keeping: []` en cada arranque.
 - En `resetAllData()` los archivos se borran **al final**, después de `commit()`: si `resetAllFiles()` lanza, la base ya quedó reseteada y con categorías, y los blobs sueltos los barre `cleanupUnreferencedFiles` al siguiente arranque. No reordenes eso.
-- `seedCatalogItems` calcula `existingNames` una sola vez antes del loop e itera un `Dictionary` sin orden: los nombres presentes en dos categorías generan filas duplicadas y no deterministas (363 inserciones para 355 nombres únicos).
+- `seedCatalogItems` siembra **una sola vez** (clave `SuggestedProducts.hasSeededCatalogKey`), deduplica dentro del bucle e itera `DefaultCategory.allCases`: 355 filas únicas y deterministas. Antes corría en cada arranque y resucitaba lo que la persona borraba del catálogo. `resetAllData()` borra la clave y vuelve a sembrar.
 - Undo restaura un **registro distinto**: `ShoppingItem.init` siempre asigna `id` y `createdAt` nuevos. Es una sola ranura global, no una cola: borrar un segundo ítem finaliza el primero y borra su nota de voz definitivamente.
 
 **Widget y deep link**
@@ -125,7 +125,7 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 - `ShoppingListDetailView` no declara `.navigationTitle` a propósito (usa `ToolbarItem(.principal)`); añadirlo duplica el título.
 - `CategorySectionView` es una `Section`: fuera de una `List` pierde en silencio estilos y swipe actions.
 - Ventana de gracia: `beginGracePeriod` mantiene un ítem visible 2 s tras marcarlo comprado cuando `showPurchased == false`, y `graceItemIDs` participa en el snapshot derivado.
-- Claves de `UserDefaults` como literales repetidos sin enum central. `hasSeededDefaultProducts` es **clave muerta**: solo se hace `removeObject` o `set(false)`, nadie la lee.
+- Claves de `UserDefaults` como literales repetidos sin enum central. `hasSeededDefaultProducts` es **clave muerta**: solo se hace `removeObject` o `set(false)`, nadie la lee. La que sí manda es `SuggestedProducts.hasSeededCatalogKey`.
 
 **OCR**
 - El piso de 100 pesos (`bareAmountFloor`) existe para que gramajes («500 GR») no se lean como precio: un producto real bajo 100 sin `$` ni columna propia se descarta en silencio.
@@ -136,7 +136,7 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 - Cualquier salida temprana después de `ReceiptImageStore.save` debe borrar el JPEG o deja un huérfano en `Application Support/Receipts`.
 
 **Tests y arnés**
-- Launch arguments: `-ui-testing-reset` (siembra el fixture de 363 productos + lista activa), `-ui-testing-reset-empty` (primer arranque sin lista). Ambos hacen `return` **antes** de todo el bootstrap.
+- Launch arguments: `-ui-testing-reset` (siembra el fixture de 363 productos + lista activa), `-ui-testing-reset-empty` (primer arranque sin lista). Ambos hacen `return` **antes** de todo el bootstrap, y el borrado ocurre **una sola vez por lanzamiento** (`ContentView.didResetForUITests`): el `.task` se reejecuta cada vez que la pestaña Compra reaparece, así que sin esa marca volver desde otra pestaña borraba lo creado mientras tanto y ningún test multi-pestaña era fiable.
 - Las variables del arnés de capturas deben exportarse con prefijo **`TEST_RUNNER_`** (xcodebuild lo quita al reenviarlas): `TEST_RUNNER_SCREENSHOT_DIR`, `_APPEARANCE`, `_TEXT_SIZE`. Sin prefijo caen a `/tmp` en silencio.
 - `capture()` escribe con `try?` ([ScreenshotCaptureTests.swift:311](CasiListoUITests/ScreenshotCaptureTests.swift)): si el directorio destino no existe, **no se genera ninguna imagen y la suite igual da verde**. `capture-screenshots.sh` hace `mkdir -p` antes de cada variante, así que esto solo muerde al invocar `xcodebuild` a mano con un `TEST_RUNNER_SCREENSHOT_DIR` inexistente. Crea la carpeta primero, y no leas «tests en verde» como «hay capturas».
 - La apariencia se fuerza **dos veces**: launch argument para la jerarquía de la app + `xcrun simctl ui <udid> appearance` para los sheets, que se presentan fuera de ella.
@@ -157,11 +157,13 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 
 ## Docs desactualizados y trabajo en curso
 
-- **[README.md](README.md) no es un mapa fiable.** Lista archivos inexistentes (`Services/AppSettings.swift`, `Views/SettingsSheet.swift`), presenta `ContentView` como raíz (es `MainTabView`) y omite el tab bar, el OCR, el catálogo, plantillas, importador, multi-lista, historial/CSV, el widget, el App Group y el deep link. Dice «Swift 5.9+» (es 6.0 estricto) y «~290 productos» (son 363 entradas / 355 únicos).
-- **[AUDITORIA_LANZAMIENTO_APP_STORE_2026-08-12.md](AUDITORIA_LANZAMIENTO_APP_STORE_2026-08-12.md) es un snapshot histórico mayormente resuelto** (20 hallazgos F-01..F-20). Cita `safeSave()`, `AppSettings.swift`, `GeofenceService.swift` y «Modo Compra», **ninguno existe**; toda la geolocalización fue eliminada (cero `CoreLocation` en el árbol). No uses sus números de línea. Siguen vigentes **F-09** (la sugerencia automática de categoría pisa la elección manual: no existe ningún `isCategoryManuallyChosen`) y **F-20** (el archive/upload de release nunca se validó). F-12, F-14, F-15 y F-19 no fueron reverificados.
+- **[README.md](README.md) está al día** (mapa de archivos correcto, `MainTabView` como raíz, OCR/catálogo/plantillas/widget documentados, piso iOS 26 y solo iPhone). La advertencia anterior de que no era fiable ya no aplica.
+- **[AUDITORIA_LANZAMIENTO_APP_STORE_2026-08-12.md](AUDITORIA_LANZAMIENTO_APP_STORE_2026-08-12.md) es un snapshot histórico mayormente resuelto** (20 hallazgos F-01..F-20). Cita `safeSave()`, `AppSettings.swift`, `GeofenceService.swift` y «Modo Compra», **ninguno existe**; toda la geolocalización fue eliminada (cero `CoreLocation` en el árbol). No uses sus números de línea. **F-09 está resuelto**: `AddEditItemSheet.hasExplicitCategorySelection` protege la elección manual. Sigue vigente **F-20** (el archive/upload de release nunca se validó). F-12, F-14, F-15 y F-19 no fueron reverificados.
 - **[docs/VALIDACION_LANZAMIENTO.md](docs/VALIDACION_LANZAMIENTO.md)** es la referencia real de secretos/variables de CI y del checklist manual. Está **modificado sin commitear**.
-- **En vuelo**: [ReceiptServices.swift](CasiListo/Services/ReceiptServices.swift) tiene cambios sin commitear en `ProductNameMatcher`. La regla es **medida**, no «token con dígitos»: `isMeasurementToken` reconoce número + unidad opcional (`500`, `500GR`, `1KG`, `3L`, `1,5L`) contra `measurementUnits`, e `isDescriptiveWord` acepta cualquier token con letras que no sea una medida. Importa la distinción: la regla ingenua «contiene un dígito» descartaba marcas como `7UP` y anulaba la señal de prefijos del nombre.
-
-  Además `similarity` penaliza el prefijo (×0.85) cuando **ambos** nombres declaran medidas y no coinciden, para que una variante de tamaño no empate en 1.0 con el nombre exacto y le gane el desempate de la asignación 1:1. Solo cuando ambos lados traen medida: la boleta suele traer el gramaje (`champinon 500gr`) y el catálogo no (`champinones`), y ese caso debe seguir calzando.
-
-  Verificado: `PurchaseHistoryTests` + `ReceiptRecognitionFixtureTests` en verde (74 tests), incluido `testMatcherRecognizesTypicalReceiptAbbreviations`.
+- **Trabajo reciente (auditoría de release)**: se cerraron los seis bloqueadores y los P1. Lo relevante para navegar el código hoy:
+  - **Dinero**: `PriceField` en [ShoppingItem.swift](CasiListo/Models/ShoppingItem.swift) es el único punto que formatea y relee el campo de precio editable; parsea con `ReceiptAmount.value`. No volver a usar el formato de presentación como formato de edición: eso dividía por mil todo precio ≥ 1.000.
+  - **Cantidades**: `ReceiptPurchaseService.unitCount` solo trata como multiplicador un entero desnudo. «500 g» es una magnitud, no 500 unidades.
+  - **Catálogo**: `CatalogService.addToActiveList` lanza `CatalogError.noActiveList`; [CatalogView](CasiListo/Views/CatalogView.swift) crea la lista destino al primer «+» y muestra a cuál añade.
+  - **Historial**: [ShoppingHistoryView](CasiListo/Views/ShoppingHistoryView.swift) permite borrar una compra (ítems + boleta). Agrupar en el detalle va por `category.name` vía `PurchasedItemGrouping`, nunca por identidad de objeto.
+  - **Plataforma**: piso iOS 26, solo iPhone, cero `#available` en el árbol. `ci/capture-screenshots.sh --os <version>` filtra por runtime.
+  - **Fototeca**: `ReceiptPhotoLibraryPicker` usa `PHPickerViewController`; el binario ya no declara `NSPhotoLibraryUsageDescription`.

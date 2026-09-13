@@ -20,7 +20,7 @@
 | **Context menu** | Menú contextual con acciones rápidas en cada producto |
 | **Persistencia local** | Datos guardados automáticamente con SwiftData |
 | **Modo claro/oscuro** | Paleta adaptativa que sigue la configuración del sistema |
-| **Liquid Glass** | Efectos glassmorphism nativos en iOS 26+ con fallback elegante para versiones anteriores |
+| **Liquid Glass** | Efectos glassmorphism nativos de iOS 26 en toda la interfaz |
 | **Feedback háptico** | Vibraciones sutiles en cada interacción |
 | **Accesibilidad** | Labels, hints y acciones accesibles en todos los elementos interactivos |
 | **Filtro por Supermercado** | Asignación de cada producto a un supermercado (Jumbo o Líder) con filtro rápido en la cabecera. |
@@ -99,7 +99,7 @@ CasiListo utiliza un sistema de diseño centralizado en `Theme.swift`:
 - **Color de acento**: Amarillo cálido `#F5C518`
 - **Tipografía**: System Rounded en múltiples pesos
 - **Animaciones**: Springs con damping personalizado
-- **Superficies**: Efectos glass adaptativos (iOS 26 nativo / `ultraThinMaterial` fallback)
+- **Superficies**: `glassEffect` nativo de iOS 26
 - **Colores adaptativos**: Definidos programáticamente con variantes light/dark
 
 ---
@@ -108,11 +108,11 @@ CasiListo utiliza un sistema de diseño centralizado en `Theme.swift`:
 
 | Requisito | Versión |
 |---|---|
-| **iOS** | 17.0+ |
+| **iOS** | 26.0+ (solo iPhone) |
 | **Xcode** | 26.0+ para archivar y subir a App Store Connect |
 | **Swift** | 6.0 (`SWIFT_STRICT_CONCURRENCY = complete`) |
 
-> Los efectos Liquid Glass nativos (`glassEffect`) requieren **iOS 26+**. En versiones anteriores se aplica un fallback visual con `ultraThinMaterial`.
+> El piso es **iOS 26.0**: la capa de compatibilidad con versiones anteriores se eliminó porque nunca llegó a ejecutarse en ninguna de ellas, y mantenerla sin verificar era peor que no tenerla. iPad queda fuera de 1.0.
 
 ---
 
@@ -133,7 +133,7 @@ CasiListo utiliza un sistema de diseño centralizado en `Theme.swift`:
 
    > Si usas Swift Package Manager o un `.xcworkspace`, ajusta según corresponda.
 
-3. **Selecciona un simulador o dispositivo** con iOS 17+.
+3. **Selecciona un simulador o dispositivo** iPhone con iOS 26+.
 
 4. **Ejecuta** con `⌘R`.
 
@@ -147,9 +147,9 @@ No se requieren dependencias externas — el proyecto utiliza únicamente framew
 
 ```bash
 ci/capture-screenshots.sh                 # iPhone, claro + oscuro (~8 min)
-ci/capture-screenshots.sh --full          # + iPad y texto XXL (~30 min)
+ci/capture-screenshots.sh --full          # + Pro Max y texto XXL (~30 min)
 ci/capture-screenshots.sh --out ~/Desktop/capturas
-ci/capture-screenshots.sh --devices "iPad Pro 11-inch (M5)" --appearances dark
+ci/capture-screenshots.sh --os 26.0       # verificar el piso declarado
 ```
 
 Cubre el menú general de listas (vacío, con una y con varias), el sheet de personalización con paleta e iconos, el detalle en sus estados de categoría, el cierre con boleta, plantillas, importador, catálogo, historial y ajustes.

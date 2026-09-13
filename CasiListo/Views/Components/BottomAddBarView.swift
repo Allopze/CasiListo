@@ -23,7 +23,7 @@ struct BottomAddBarView: View {
 
 
     var body: some View {
-        AdaptiveGlassEffectContainer(spacing: 8) {
+        GlassEffectContainer(spacing: 8) {
             VStack(spacing: 6) {
                 if !text.isEmpty && !suggestions.isEmpty {
                     ScrollView(.horizontal, showsIndicators: false) {

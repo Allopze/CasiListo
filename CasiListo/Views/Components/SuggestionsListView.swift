@@ -7,7 +7,7 @@ struct SuggestionsListView: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            AdaptiveGlassEffectContainer(spacing: 8) {
+            GlassEffectContainer(spacing: 8) {
                 HStack(spacing: 8) {
                     ForEach(suggestions.prefix(8), id: \.self) { suggestion in
                         Button {

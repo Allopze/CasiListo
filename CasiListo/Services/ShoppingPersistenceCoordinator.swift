@@ -182,7 +182,7 @@ final class ShoppingPersistenceCoordinator {
             for catalogItem in try context.fetch(FetchDescriptor<ProductCatalogItem>()) { context.delete(catalogItem) }
 
             try context.save()
-            UserDefaults.standard.removeObject(forKey: "hasSeededDefaultProducts")
+            UserDefaults.standard.removeObject(forKey: SuggestedProducts.hasSeededCatalogKey)
             UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
             UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
             ShoppingListViewModel.removeAllCollapsedCategoryState()
@@ -192,6 +192,9 @@ final class ShoppingPersistenceCoordinator {
             UserDefaults(suiteName: WidgetDataBridge.appGroupID)?.removeObject(forKey: WidgetDataBridge.snapshotKey)
 
             try CategoryBootstrapService.bootstrap(context: context)
+            // Borrar todo deja la app como recién instalada, y eso incluye el
+            // catálogo sugerido: sin esto quedaba vacío hasta el próximo arranque.
+            try SuggestedProducts.seedCatalogItems(in: context)
             try commit()
 
             // Los archivos se borran al final, con la base ya reseteada y con

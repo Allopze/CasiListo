@@ -134,7 +134,9 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
 
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default)
+            // Sin `duckOthers`, reproducir tres segundos de nota mataba la
+            // música que la persona venía escuchando en el supermercado.
+            try session.setCategory(.playback, mode: .default, options: [.duckOthers])
             try session.setActive(true)
             audioPlayer = try AVAudioPlayer(contentsOf: fileURL)
             audioPlayer?.delegate = self

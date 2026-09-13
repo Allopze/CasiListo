@@ -1,5 +1,6 @@
 import SwiftUI
 import SwiftData
+import PhotosUI
 import UIKit
 
 /// Flujo de captura, revisión y guardado de una boleta de compra.
@@ -64,18 +65,15 @@ struct ReceiptCaptureSheet: View {
         activeItems.filter { $0.status == .purchased }
     }
 
-    /// Índice de precios anteriores: se arma una vez por pantalla en lugar de
-    /// recorrer todo el historial en cada redibujo de cada fila.
-    private var priceIndex: ReceiptPriceIndex {
-        ReceiptPriceIndex(allItems: allItems, completedLists: completedLists)
-    }
+    /// Índice de precios anteriores. Antes era una `var` computada: cualquier
+    /// cambio de cualquier `@State` del sheet —incluida cada pulsación al
+    /// editar un precio— la reconstruía recorriendo todo el historial. El
+    /// sheet es modal y estos datos no cambian durante su sesión, así que se
+    /// arman una sola vez en `.task`.
+    @State private var priceIndex = ReceiptPriceIndex(allItems: [], completedLists: [])
 
     /// Vocabulario propio de la persona para corregir lo que leyó el OCR.
-    private var vocabulary: [String] {
-        var names = Set(allItems.map(\.name))
-        names.formUnion(SuggestedProducts.byCategory.values.flatMap { $0 })
-        return Array(names)
-    }
+    @State private var vocabulary: [String] = []
 
     /// Diferencia entre lo que suman las líneas revisadas y el TOTAL impreso.
     private var totalMismatch: Double? {
@@ -165,8 +163,13 @@ struct ReceiptCaptureSheet: View {
                         applyScannedPages(pages)
                     }
                     .ignoresSafeArea()
-                case .camera, .photoLibrary:
-                    ReceiptImagePicker(sourceType: source.uiKitSource) { image in
+                case .camera:
+                    ReceiptImagePicker { image in
+                        applyScannedPages([image])
+                    }
+                    .ignoresSafeArea()
+                case .photoLibrary:
+                    ReceiptPhotoLibraryPicker { image in
                         applyScannedPages([image])
                     }
                     .ignoresSafeArea()
@@ -176,6 +179,12 @@ struct ReceiptCaptureSheet: View {
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
         .interactiveDismissDisabled(isSaving)
+        .task {
+            priceIndex = ReceiptPriceIndex(allItems: allItems, completedLists: completedLists)
+            var names = Set(allItems.map(\.name))
+            names.formUnion(SuggestedProducts.byCategory.values.flatMap { $0 })
+            vocabulary = Array(names)
+        }
         .onDisappear { recognitionTask?.cancel() }
     }
 
@@ -953,17 +962,56 @@ private enum ReceiptImageSource: String, Identifiable {
     case photoLibrary
 
     var id: String { rawValue }
+}
 
-    var uiKitSource: UIImagePickerController.SourceType {
-        switch self {
-        case .camera, .documentCamera: .camera
-        case .photoLibrary: .photoLibrary
+/// Selector de la fototeca sin permiso.
+///
+/// `UIImagePickerController` con `.photoLibrary` dispara el diálogo de acceso a
+/// **toda** la fototeca; `PHPickerViewController` corre fuera del proceso y
+/// entrega solo la foto elegida, sin pedir nada. Era el único punto de la app
+/// que no aplicaba mínimo privilegio.
+private struct ReceiptPhotoLibraryPicker: UIViewControllerRepresentable {
+    let onImagePicked: (UIImage) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
+    }
+
+    func makeUIViewController(context: Context) -> PHPickerViewController {
+        var configuration = PHPickerConfiguration()
+        configuration.filter = .images
+        configuration.selectionLimit = 1
+        let picker = PHPickerViewController(configuration: configuration)
+        picker.delegate = context.coordinator
+        return picker
+    }
+
+    func updateUIViewController(_ uiViewController: PHPickerViewController, context: Context) {}
+
+    final class Coordinator: NSObject, PHPickerViewControllerDelegate {
+        private let parent: ReceiptPhotoLibraryPicker
+
+        init(parent: ReceiptPhotoLibraryPicker) {
+            self.parent = parent
+        }
+
+        func picker(_ picker: PHPickerViewController, didFinishPicking results: [PHPickerResult]) {
+            parent.dismiss()
+            guard let provider = results.first?.itemProvider,
+                  provider.canLoadObject(ofClass: UIImage.self)
+            else { return }
+
+            provider.loadObject(ofClass: UIImage.self) { object, _ in
+                guard let image = object as? UIImage else { return }
+                Task { @MainActor in self.parent.onImagePicked(image) }
+            }
         }
     }
 }
 
+/// Cámara clásica para los dispositivos donde VisionKit no está disponible.
 private struct ReceiptImagePicker: UIViewControllerRepresentable {
-    let sourceType: UIImagePickerController.SourceType
     let onImagePicked: (UIImage) -> Void
     @Environment(\.dismiss) private var dismiss
 
@@ -973,7 +1021,7 @@ private struct ReceiptImagePicker: UIViewControllerRepresentable {
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
-        picker.sourceType = sourceType
+        picker.sourceType = .camera
         picker.allowsEditing = false
         picker.delegate = context.coordinator
         return picker
