@@ -14,7 +14,7 @@ struct ReceiptCaptureSheet: View {
     let completedLists: [ShoppingList]
     let categories: [Category]
     var closesPurchase: Bool = false
-    var onShowHistory: (() -> Void)? = nil
+    var onShowHistory: (() -> Void)?
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss

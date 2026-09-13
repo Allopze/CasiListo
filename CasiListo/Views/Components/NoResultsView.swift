@@ -7,11 +7,10 @@ struct NoResultsView: View {
     let searchText: String
     var catalogMatches: [ProductCatalogItem] = []
     /// Añade el texto buscado directamente (hereda el parser de cantidades).
-    var onQuickAddSearch: (() -> Void)? = nil
+    var onQuickAddSearch: (() -> Void)?
     /// Abre el formulario completo con el texto precargado.
-    var onAddSearch: (() -> Void)? = nil
-    var onAddCatalogItem: ((ProductCatalogItem) -> Void)? = nil
-
+    var onAddSearch: (() -> Void)?
+    var onAddCatalogItem: ((ProductCatalogItem) -> Void)?
 
     private var isSearching: Bool {
         !searchText.trimmingCharacters(in: .whitespaces).isEmpty

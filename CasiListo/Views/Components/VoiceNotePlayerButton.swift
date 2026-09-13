@@ -3,7 +3,7 @@ import SwiftUI
 /// Botón reutilizable para reproducir y detener notas de voz de forma interactiva con un waveform animado.
 struct VoiceNotePlayerButton: View {
     let filename: String
-    
+
     @State private var waveAnimation = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -11,10 +11,10 @@ struct VoiceNotePlayerButton: View {
     @State private var errorMessage: String?
     @AccessibilityFocusState private var shouldFocusPlaybackButton: Bool
     private let waveBarHeights: [CGFloat] = [8, 16, 11, 18]
-    
+
     var body: some View {
         let isPlaying = voiceNoteService.currentlyPlayingFilename == filename
-        
+
         Button {
             HapticFeedback.selection()
             if isPlaying {

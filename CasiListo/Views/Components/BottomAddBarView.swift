@@ -21,7 +21,6 @@ struct BottomAddBarView: View {
     @ScaledMetric(relativeTo: .body) private var actionButtonSize: CGFloat = Theme.minimumTouchTarget
     @ScaledMetric(relativeTo: .body) private var bottomPadding: CGFloat = 8
 
-
     var body: some View {
         GlassEffectContainer(spacing: 8) {
             VStack(spacing: 6) {

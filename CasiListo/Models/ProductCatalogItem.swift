@@ -52,4 +52,3 @@ final class ProductCatalogItem {
         self.createdAt = createdAt
     }
 }
-

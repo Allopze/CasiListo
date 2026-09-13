@@ -15,7 +15,7 @@ struct CategorySectionView: View {
     let onDelete: (ShoppingItem) -> Void
     let onMarkStatus: (ShoppingItem, ShoppingItemStatus) -> Void
     /// Mueve el ítem dentro de la categoría (-1 sube, +1 baja); nil deshabilita.
-    var onMove: ((ShoppingItem, Int) -> Void)? = nil
+    var onMove: ((ShoppingItem, Int) -> Void)?
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var headerPaddingVertical: CGFloat = 12
@@ -29,7 +29,6 @@ struct CategorySectionView: View {
     @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 13
     @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
     @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 56
-
 
     var body: some View {
         Section {

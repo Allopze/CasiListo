@@ -65,4 +65,3 @@ struct CategoryPickerView: View {
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
-

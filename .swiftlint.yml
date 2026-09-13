@@ -1,0 +1,76 @@
+# Config calibrada contra el código real del repo (ver comentarios). El
+# objetivo es que un PR que introduce algo genuinamente descuidado falle en
+# CI, sin convertir esto en una reescritura forzada de lo que ya existe.
+#
+# Reglas de tamaño deshabilitadas a propósito: CLAUDE.md documenta que la
+# regla de 100 líneas del README nunca se aplicó y que archivos grandes son
+# una característica aceptada del repo (46 de 75 archivos la exceden;
+# ReceiptCaptureSheet.swift con 1000+ líneas es el caso extremo). Imponer un
+# límite de tamaño —aunque generoso— reintroduciría exactamente lo que el
+# proyecto ya decidió no exigir.
+disabled_rules:
+  - file_length
+  - type_body_length
+  - function_body_length
+  - cyclomatic_complexity
+  # Falso positivo sobre CasiListoUITestsLaunchTests: `override class var
+  # runsForEachTargetApplicationUIConfiguration` es una API de XCTestCase que
+  # exige `class`, no `static` — anularla con `static` no compila.
+  - static_over_final_class
+
+# Umbrales con margen sobre el máximo real medido al calibrar esta config
+# (septiembre 2026), para que hoy no haya ningún error nuevo — el código
+# existente pasa en warning cuando corresponde, nunca en rojo.
+line_length:
+  warning: 150
+  error: 350   # máximo real ~319 (líneas largas de UI declarativa)
+  ignores_urls: true
+  ignores_comments: true
+
+large_tuple:
+  warning: 3
+  error: 12   # máximo real: 11 (ShoppingListViewModel.deletedItemUndoBuffer)
+
+function_parameter_count:
+  warning: 6
+  error: 9   # máximo real: 7 (ReceiptPurchaseService.register)
+
+identifier_name:
+  min_length: 1
+  excluded:
+    # Componentes de color/luminancia (Theme.swift): r, g, b, a y sus pares
+    # "foreground"/"background" en fórmulas de contraste WCAG.
+    - r
+    - g
+    - b
+    - a
+    - la
+    - lb
+    - fr
+    - fg
+    - fb
+    - fa
+    - br
+    - bg
+    - bb
+    - ba
+    # ProductNameMatcher.tokenPrefixScore (ReceiptServices.swift): índice y
+    # token, del lado escaneado ("s") y candidato ("c"); m = mejor match.
+    - si
+    - st
+    - ci
+    - ct
+    - m
+    # Índices de bucle e identificadores cortos ya establecidos en el repo.
+    - i
+    - j
+    - id
+    - p1
+    - p2
+    - vm
+    - f
+
+# Ambas violaciones reales de force_try viven en PreviewSupport.swift, bajo
+# #if DEBUG — nunca llegan al binario de release. Se marcan inline con
+# swiftlint:disable:next en vez de excluir el archivo entero, para no perder
+# la señal si alguna vez se añade código fuera de ese bloque.

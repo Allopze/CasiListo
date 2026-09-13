@@ -21,7 +21,7 @@ struct AddEditListSheet: View {
     private var activeLists: [ShoppingList]
 
     let mode: Mode
-    var onListCreated: ((ShoppingList) -> Void)? = nil
+    var onListCreated: ((ShoppingList) -> Void)?
 
     @State private var name: String = ""
     @State private var selectedSymbol: String = ListAppearanceCatalog.defaultSymbol

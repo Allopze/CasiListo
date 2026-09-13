@@ -28,6 +28,7 @@ enum PreviewFixtures {
 
     static func modelContainer(seed items: [ShoppingItem] = []) -> ModelContainer {
         let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
+        // swiftlint:disable:next force_try
         let container = try! ModelContainer(
             for: ShoppingItem.self,
             ShoppingList.self,
@@ -37,6 +38,7 @@ enum PreviewFixtures {
         )
 
         let context = container.mainContext
+        // swiftlint:disable:next force_try
         try! CategoryBootstrapService.bootstrap(context: context)
 
         for item in items {

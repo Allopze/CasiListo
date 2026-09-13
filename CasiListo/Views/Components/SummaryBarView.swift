@@ -6,11 +6,10 @@ struct SummaryBarView: View {
     let pendingCount: Int
     let purchasedCount: Int
     @Binding var showPurchased: Bool
-    var onArchivePurchased: (() -> Void)? = nil
+    var onArchivePurchased: (() -> Void)?
 
     @ScaledMetric(relativeTo: .caption) private var scaledSpacing: CGFloat = 10
     @ScaledMetric(relativeTo: .caption) private var progressHeight: CGFloat = 5
-
 
     private var totalCount: Int { pendingCount + purchasedCount }
 

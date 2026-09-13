@@ -104,7 +104,7 @@ struct ListsOverviewView: View {
                 deleteList(list)
             }
             Button("Cancelar", role: .cancel) {}
-        } message: { list in
+        } message: { _ in
             Text("Se eliminarán la lista y los productos asociados permanentemente.")
         }
         .alert(

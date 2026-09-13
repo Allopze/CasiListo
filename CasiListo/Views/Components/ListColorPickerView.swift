@@ -4,7 +4,7 @@ import SwiftUI
 /// Muestra una cuadrícula adaptativa con la paleta curada de CasiListo.
 struct ListColorPickerView: View {
     @Binding var selectedColorHex: String
-    var onColorSelected: (() -> Void)? = nil
+    var onColorSelected: (() -> Void)?
 
     @ScaledMetric(relativeTo: .body) private var circleSize: CGFloat = 34
 

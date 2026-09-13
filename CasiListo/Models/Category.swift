@@ -154,5 +154,3 @@ extension Category {
         )
     }
 }
-
-

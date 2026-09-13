@@ -10,8 +10,8 @@ struct ItemRowView: View {
     let onEdit: () -> Void
     let onDelete: () -> Void
     let onMarkStatus: (ShoppingItemStatus) -> Void
-    var onMoveUp: (() -> Void)? = nil
-    var onMoveDown: (() -> Void)? = nil
+    var onMoveUp: (() -> Void)?
+    var onMoveDown: (() -> Void)?
 
     @ScaledMetric(relativeTo: .body) private var checkboxSize: CGFloat = 26
     @ScaledMetric(relativeTo: .body) private var scaledPaddingVertical: CGFloat = 8

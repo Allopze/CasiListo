@@ -14,12 +14,12 @@ enum CategoryBootstrapService {
             // 1. Asegurar la existencia de las categorías por defecto
             let categoryDescriptor = FetchDescriptor<Category>()
             let existingCategories = try context.fetch(categoryDescriptor)
-            
+
             var categoryMap: [String: Category] = [:]
             for category in existingCategories {
                 categoryMap[category.name] = category
             }
-            
+
             // Si la base de datos está vacía, sembrar las 15 iniciales
             if existingCategories.isEmpty {
                 logger.info("Base de datos de categorías vacía. Sembrando categorías iniciales...")
@@ -57,14 +57,14 @@ enum CategoryBootstrapService {
                     logger.info("sfSymbols de categorías actualizados a las definiciones más recientes.")
                 }
             }
-            
+
             // 2. Curar ShoppingItems que no tengan la relación `categoryRelation` establecida
             let itemDescriptor = FetchDescriptor<ShoppingItem>()
             let allItems = try context.fetch(itemDescriptor)
             var itemsCured = 0
-            
+
             let fallbackCat = categoryMap["Varios"] ?? Category.resolvedFallback(in: context)
-            
+
             for item in allItems {
                 if item.categoryRelation == nil {
                     // Buscar coincidencia por categoryRawValue
@@ -74,12 +74,12 @@ enum CategoryBootstrapService {
                     itemsCured += 1
                 }
             }
-            
+
             // 3. Curar ProductCatalogItems que no tengan la relación `categoryRelation` establecida
             let catalogDescriptor = FetchDescriptor<ProductCatalogItem>()
             let allCatalog = try context.fetch(catalogDescriptor)
             var catalogCured = 0
-            
+
             for catalogItem in allCatalog {
                 if catalogItem.categoryRelation == nil {
                     let match = categoryMap[catalogItem.categoryRawValue] ?? fallbackCat
@@ -88,12 +88,12 @@ enum CategoryBootstrapService {
                     catalogCured += 1
                 }
             }
-            
+
             if itemsCured > 0 || catalogCured > 0 {
                 try context.save()
                 logger.info("Relaciones curadas: \(itemsCured) ítems de compras y \(catalogCured) ítems de catálogo vinculados.")
             }
-            
+
         } catch {
             logger.error("Error durante el bootstrap de categorías: \(error.localizedDescription)")
             throw error

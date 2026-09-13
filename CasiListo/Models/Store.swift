@@ -5,18 +5,18 @@ import SwiftUI
 enum Store: String, CaseIterable, Codable, Identifiable {
     case jumbo = "Jumbo"
     case lider = "Líder"
-    
+
     var id: String { rawValue }
-    
+
     var displayName: String { rawValue }
-    
+
     var sfSymbol: String {
         switch self {
         case .jumbo: return "cart.fill"
         case .lider: return "basket.fill"
         }
     }
-    
+
     var color: Color {
         switch self {
         case .jumbo: return Color(red: 0.0, green: 0.6, blue: 0.2)   // Verde Jumbo

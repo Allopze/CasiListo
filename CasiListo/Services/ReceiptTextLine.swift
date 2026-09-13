@@ -9,13 +9,6 @@ nonisolated struct ReceiptTextFragment: Sendable, Equatable {
     let minX: Double
     let maxX: Double
     let confidence: Double
-
-    init(text: String, minX: Double, maxX: Double, confidence: Double) {
-        self.text = text
-        self.minX = minX
-        self.maxX = maxX
-        self.confidence = confidence
-    }
 }
 
 /// Una fila visual de la boleta, ya reconstruida a partir de sus fragmentos.

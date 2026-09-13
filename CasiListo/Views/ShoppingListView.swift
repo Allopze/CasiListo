@@ -9,7 +9,7 @@ struct ShoppingListView: View {
     @Bindable var viewModel: ShoppingListViewModel
     let onEdit: (ShoppingItem) -> Void
     let onAddTapped: () -> Void
-    var onArchivePurchased: (() -> Void)? = nil
+    var onArchivePurchased: (() -> Void)?
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
 

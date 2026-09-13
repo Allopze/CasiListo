@@ -7,7 +7,7 @@ enum AppRoute: Equatable {
     init?(url: URL) {
         guard url.scheme?.lowercased() == "casilisto",
               url.host?.lowercased() == "list",
-              (url.path.isEmpty || url.path == "/"),
+              url.path.isEmpty || url.path == "/",
               url.query == nil,
               url.fragment == nil
         else {

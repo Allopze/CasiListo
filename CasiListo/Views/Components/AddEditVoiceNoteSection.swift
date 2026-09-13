@@ -7,11 +7,11 @@ struct AddEditVoiceNoteSection: View {
     @Binding var voiceNoteFilename: String?
     var onRecorded: (String) -> Void = { _ in }
     var onRemoved: (String) -> Void = { _ in }
-    
+
     @State private var isRecording = false
     @State private var recordingPulse = false
     @State private var recordingDuration = 0
-    @State private var recordingDurationTask: Task<Void, Never>? = nil
+    @State private var recordingDurationTask: Task<Void, Never>?
     @State private var errorMessage: String?
     /// El botón "Ir a Ajustes" solo tiene sentido para un permiso denegado:
     /// ofrecerlo también para "sin espacio" o "falló la grabación" no lleva
@@ -20,7 +20,6 @@ struct AddEditVoiceNoteSection: View {
     @Environment(VoiceNoteService.self) private var voiceNoteService
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AccessibilityFocusState private var shouldFocusRecordButton: Bool
-
 
     var body: some View {
         Section {
@@ -34,7 +33,7 @@ struct AddEditVoiceNoteSection: View {
                             .animation(reduceMotion ? nil : Animation.easeInOut(duration: 0.6).repeatForever(autoreverses: true), value: recordingPulse)
                             .onAppear { recordingPulse = !reduceMotion }
                             .onDisappear { recordingPulse = false }
-                        
+
                         Text("Grabando... \(recordingDuration)s")
                             .font(Theme.bodyBoldDynamic)
                             .foregroundStyle(.red)
@@ -52,7 +51,7 @@ struct AddEditVoiceNoteSection: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Detener grabación de nota de voz")
-                    
+
                 } else if let filename = voiceNoteFilename {
                     Image(systemName: "waveform")
                         .font(.system(size: 16))
@@ -75,7 +74,7 @@ struct AddEditVoiceNoteSection: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityLabel("Eliminar nota de voz")
-                    
+
                 } else {
                     Image(systemName: "mic.fill")
                         .font(.system(size: 16))
@@ -155,7 +154,7 @@ struct AddEditVoiceNoteSection: View {
             }
         }
     }
-    
+
     @MainActor
     private func stopRecording() {
         HapticFeedback.selection()
@@ -191,7 +190,7 @@ struct AddEditVoiceNoteSection: View {
             }
         }
     }
-    
+
     private func deleteVoiceNote() {
         if let filename = voiceNoteFilename {
             onRemoved(filename)

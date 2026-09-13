@@ -22,6 +22,26 @@ jobs:
           xcodebuild -version
           major="$(xcodebuild -version | awk '/Xcode/{split($2, v, "."); print v[1]}')"
           test "$major" -ge 26
+      - name: Lint with SwiftLint
+        shell: bash
+        env:
+          # Fijada a propósito: los umbrales de .swiftlint.yml están
+          # calibrados contra las reglas de esta versión. Con la que traiga el
+          # runner, una regla nueva por defecto pondría en rojo un PR que no
+          # tiene nada que ver. Subirla es un cambio deliberado: recalibrar
+          # primero en local con `swiftlint lint --config .swiftlint.yml`.
+          SWIFTLINT_VERSION: '0.65.1'
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /tmp/swiftlint.zip \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          unzip -q -o /tmp/swiftlint.zip -d /tmp/swiftlint
+          /tmp/swiftlint/swiftlint version
+          # Falla solo por violaciones de severidad "error": el código
+          # existente pasa en warning, nunca en rojo. Un PR que introduce algo
+          # claramente descuidado sí tumba este paso.
+          /tmp/swiftlint/swiftlint lint --config .swiftlint.yml --reporter github-actions-logging \
+            CasiListo CasiListoShared CasiListoWidget CasiListoTests CasiListoUITests
       - name: Build and run unit/UI tests
         shell: bash
         run: |

@@ -6,7 +6,7 @@ struct ListIconPickerView: View {
     let tintColor: Color
     /// Hex del color seleccionado: hace falta para calcular el contraste del icono.
     let tintColorHex: String
-    var onIconSelected: (() -> Void)? = nil
+    var onIconSelected: (() -> Void)?
 
     @ScaledMetric(relativeTo: .body) private var iconSize: CGFloat = 38
 

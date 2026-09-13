@@ -29,22 +29,21 @@ struct ShoppingHistoryDetailView: View {
     let list: ShoppingList
     let allItems: [ShoppingItem]
     @State private var receiptImage: UIImage?
-    
+
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
     @ScaledMetric(relativeTo: .body) private var sectionSpacing: CGFloat = 16
     @ScaledMetric(relativeTo: .body) private var itemSpacing: CGFloat = 12
     @ScaledMetric(relativeTo: .body) private var statusIconSize: CGFloat = 18
     @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 9
 
-    
     private var listItems: [ShoppingItem] {
         allItems.filter { $0.listID == list.id }
     }
-    
+
     private var groupedItems: [(category: Category, items: [ShoppingItem])] {
         PurchasedItemGrouping.byCategory(listItems)
     }
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: sectionSpacing) {
@@ -57,7 +56,7 @@ struct ShoppingHistoryDetailView: View {
                     receiptCard(receiptImage)
                         .padding(.horizontal, cardPadding)
                 }
-                
+
                 if listItems.isEmpty {
                     ContentUnavailableView(
                         "Sin productos",
@@ -92,7 +91,7 @@ struct ShoppingHistoryDetailView: View {
             }.value
         }
     }
-    
+
     private var summaryCard: some View {
         VStack(spacing: 12) {
             HStack {
@@ -113,9 +112,9 @@ struct ShoppingHistoryDetailView: View {
                             .foregroundStyle(Color.appTextSecondary)
                     }
                 }
-                
+
                 Spacer()
-                
+
                 if let store = list.storeScope {
                     HStack(spacing: 6) {
                         Image(systemName: store.sfSymbol)
@@ -129,30 +128,30 @@ struct ShoppingHistoryDetailView: View {
                     .clipShape(Capsule())
                 }
             }
-            
+
             Divider().background(Color.appSeparator)
-            
+
             HStack(spacing: 16) {
                 statIndicator(singular: "Comprado", plural: "Comprados", count: list.purchasedCount, icon: "checkmark.circle.fill", color: .green)
-                
+
                 if list.skippedCount > 0 {
                     statIndicator(singular: "Pospuesto", plural: "Pospuestos", count: list.skippedCount, icon: "clock.fill", color: .orange)
                 }
-                
+
                 if list.unavailableCount > 0 {
                     statIndicator(singular: "No encontrado", plural: "No encontrados", count: list.unavailableCount, icon: "exclamationmark.triangle.fill", color: .red)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
-            
+
             if let completedAt = list.completedAt {
                 Divider().background(Color.appSeparator)
-                
+
                 HStack {
                     Image(systemName: "calendar")
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
-                    
+
                     Text("Finalizada el \(AppDateFormatting.longWithTime(completedAt))")
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
@@ -182,7 +181,7 @@ struct ShoppingHistoryDetailView: View {
         .background(Color.appCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
     }
-    
+
     /// - Parameters:
     ///   - singular: etiqueta para `count == 1`; evita el «1 Comprados».
     private func statIndicator(
@@ -203,7 +202,7 @@ struct ShoppingHistoryDetailView: View {
         .font(Theme.captionDynamic)
         .accessibilityElement(children: .combine)
     }
-    
+
     private func categorySection(_ category: Category, items: [ShoppingItem]) -> some View {
         VStack(alignment: .leading, spacing: 10) {
             // Header de la Categoría
@@ -219,7 +218,7 @@ struct ShoppingHistoryDetailView: View {
             }
             .font(Theme.bodyBoldDynamic)
             .padding(.horizontal, 4)
-            
+
             // Fila de Productos
             VStack(spacing: 1) {
                 ForEach(items) { item in
@@ -231,11 +230,11 @@ struct ShoppingHistoryDetailView: View {
             .shadow(color: .black.opacity(0.02), radius: 4, x: 0, y: 2)
         }
     }
-    
+
     private func itemRow(_ item: ShoppingItem) -> some View {
         HStack(spacing: 12) {
             statusIcon(for: item.status)
-            
+
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(item.name)
@@ -243,7 +242,7 @@ struct ShoppingHistoryDetailView: View {
                         .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : Color.appTextPrimary)
                         .strikethrough(item.status == .purchased, color: Color.appTextPurchased)
                         .lineLimit(1)
-                    
+
                     if !item.quantity.isEmpty {
                         Text(item.quantity)
                             .font(Theme.captionDynamic)
@@ -253,14 +252,14 @@ struct ShoppingHistoryDetailView: View {
                             .background(Color.appSeparator)
                             .clipShape(Capsule())
                     }
-                    
+
                     if let price = item.price {
                         Text(price.formattedPriceWithSymbol)
                             .font(Theme.captionDynamic)
                             .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : .green)
                     }
                 }
-                
+
                 if !item.note.isEmpty {
                     Text(item.note)
                         .font(Theme.captionDynamic)
@@ -268,9 +267,9 @@ struct ShoppingHistoryDetailView: View {
                         .lineLimit(1)
                 }
             }
-            
+
             Spacer()
-            
+
             // Tag del supermercado si difiere de la lista
             if item.store != list.storeScope {
                 Text(item.store.displayName)
@@ -285,7 +284,7 @@ struct ShoppingHistoryDetailView: View {
         .padding(.vertical, 10)
         .padding(.horizontal, 12)
     }
-    
+
     @ViewBuilder
     private func statusIcon(for status: ShoppingItemStatus) -> some View {
         switch status {

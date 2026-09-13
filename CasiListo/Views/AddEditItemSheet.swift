@@ -30,7 +30,7 @@ struct AddEditItemSheet: View {
     let checkDuplicate: (String, Store, UUID?) -> ShoppingItem?
     /// Notifica un ítem recién creado para que la lista expanda su categoría
     /// y se desplace hasta él.
-    var onItemAdded: ((ShoppingItem) -> Void)? = nil
+    var onItemAdded: ((ShoppingItem) -> Void)?
 
     @Query(sort: \Category.sortIndex) private var categories: [Category]
 
@@ -41,8 +41,8 @@ struct AddEditItemSheet: View {
     @State private var note: String = ""
     @State private var priceText: String = ""
     @State private var showSuggestions: Bool = false
-    @State private var voiceNoteFilename: String? = nil
-    @State private var initialVoiceNoteFilename: String? = nil
+    @State private var voiceNoteFilename: String?
+    @State private var initialVoiceNoteFilename: String?
     @State private var recordedVoiceNoteFilenames: Set<String> = []
     @State private var didSave: Bool = false
     @State private var hasExplicitCategorySelection = false

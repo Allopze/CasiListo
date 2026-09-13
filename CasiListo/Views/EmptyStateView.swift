@@ -3,9 +3,9 @@ import SwiftUI
 struct EmptyStateView: View {
     let onAddTapped: () -> Void
     var hasHistory: Bool = false
-    var onShowHistory: (() -> Void)? = nil
-    var onQuickAdd: ((String) -> Void)? = nil
-    var onShowTemplates: (() -> Void)? = nil
+    var onShowHistory: (() -> Void)?
+    var onQuickAdd: ((String) -> Void)?
+    var onShowTemplates: (() -> Void)?
 
     @ScaledMetric(relativeTo: .body) private var logoSize: CGFloat = 80
     @ScaledMetric(relativeTo: .body) private var mainSpacing: CGFloat = 20
