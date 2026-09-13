@@ -65,11 +65,11 @@ struct ContentView: View {
             let persistence = ShoppingPersistenceCoordinator(context: modelContext)
             do {
                 // Limpieza única de preferencias heredadas (geofencing, logros).
-                if !UserDefaults.standard.bool(forKey: "hasCleanedLegacyDefaultsV1") {
-                    UserDefaults.standard.removeObject(forKey: "geofencing_enabled")
-                    UserDefaults.standard.removeObject(forKey: "user_stats")
-                    UserDefaults.standard.removeObject(forKey: "accessibilityTextSizeScale")
-                    UserDefaults.standard.set(true, forKey: "hasCleanedLegacyDefaultsV1")
+                if !UserDefaults.standard.bool(forKey: AppDefaultsKeys.hasCleanedLegacyDefaultsV1) {
+                    UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.geofencingEnabled)
+                    UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.userStats)
+                    UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.accessibilityTextSizeScale)
+                    UserDefaults.standard.set(true, forKey: AppDefaultsKeys.hasCleanedLegacyDefaultsV1)
                 }
                 try CategoryBootstrapService.bootstrap(context: modelContext)
                 try ShoppingListLifecycleService.bootstrap(context: modelContext)
@@ -78,7 +78,7 @@ struct ContentView: View {
 
                 // Normalización única: fija sortOrder al orden alfabético actual
                 // para que activar el reordenamiento manual no cambie nada visible.
-                if !UserDefaults.standard.bool(forKey: "hasNormalizedSortOrderV1") {
+                if !UserDefaults.standard.bool(forKey: AppDefaultsKeys.hasNormalizedSortOrderV1) {
                     let allStoredItems = try modelContext.fetch(FetchDescriptor<ShoppingItem>())
                     let groupsByListAndCategory = Dictionary(grouping: allStoredItems) {
                         "\($0.listID?.uuidString ?? "none")|\($0.category.name)"
@@ -92,7 +92,7 @@ struct ContentView: View {
                         }
                     }
                     try modelContext.save()
-                    UserDefaults.standard.set(true, forKey: "hasNormalizedSortOrderV1")
+                    UserDefaults.standard.set(true, forKey: AppDefaultsKeys.hasNormalizedSortOrderV1)
                 }
 
                 try persistence.cleanUnreferencedFiles()
@@ -125,7 +125,7 @@ struct ContentView: View {
         Self.didResetForUITests = true
 
         ShoppingListViewModel.removeAllCollapsedCategoryState()
-        UserDefaults.standard.removeObject(forKey: "catalogCollapsedCategoryNames")
+        UserDefaults.standard.removeObject(forKey: CatalogView.collapseKey)
 
         for item in allItems {
             modelContext.delete(item)

@@ -25,7 +25,7 @@ struct AddEditCategorySheet: View {
     @State private var selectedSymbol: String = "tag.fill"
     @State private var autoAssignSymbol: Bool = true
     @State private var errorMessage: String?
-    
+
     @FocusState private var isNameFocused: Bool
 
     @ScaledMetric(relativeTo: .body) private var iconSelectorSize: CGFloat = 36
@@ -45,10 +45,10 @@ struct AddEditCategorySheet: View {
     private var isValid: Bool {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return false }
-        
+
         // No permitir duplicados de nombre (comparar ignorando mayúsculas y diacríticos)
         let normalizedNew = trimmed.folding(options: .diacriticInsensitive, locale: .current).lowercased()
-        
+
         for category in allCategories {
             // Si estamos editando, ignorar la categoría actual
             if let originalCategory, category.id == originalCategory.id {
@@ -59,7 +59,7 @@ struct AddEditCategorySheet: View {
                 return false
             }
         }
-        
+
         return true
     }
 
@@ -79,12 +79,12 @@ struct AddEditCategorySheet: View {
                             Circle()
                                 .fill(Theme.accentYellow.opacity(0.12))
                                 .frame(width: 60, height: 60)
-                            
+
                             Image(systemName: selectedSymbol)
                                 .font(.system(size: previewIconSize, weight: .semibold))
                                 .foregroundStyle(Theme.accentInteractive)
                         }
-                        
+
                         VStack(alignment: .leading, spacing: 4) {
                             TextField("Nombre de categoría, ej: Juguetes", text: $name)
                                 .focused($isNameFocused)
@@ -99,7 +99,7 @@ struct AddEditCategorySheet: View {
                                         }
                                     }
                                 }
-                            
+
                             if autoAssignSymbol && !name.isEmpty {
                                 Text("Icono auto-asignado inteligentemente")
                                     .font(Theme.captionDynamic)
@@ -113,7 +113,7 @@ struct AddEditCategorySheet: View {
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                 }
-                
+
                 Section {
                     LazyVGrid(columns: columns, spacing: 10) {
                         ForEach(CategoryIconMapper.popularSymbols, id: \.self) { symbol in
@@ -217,7 +217,7 @@ struct AddEditCategorySheet: View {
             let oldName = category.name
             category.name = trimmedName
             category.sfSymbol = selectedSymbol
-            
+
             // Si el nombre cambió, actualizamos categoryRawValue en cascada
             if oldName != trimmedName {
                 if let items = category.items {
@@ -230,6 +230,11 @@ struct AddEditCategorySheet: View {
                         item.categoryRawValue = trimmedName
                     }
                 }
+                // El colapso se guarda por nombre, no por identidad: sin esto,
+                // una categoría colapsada reaparecía expandida en cada lista
+                // justo después de renombrarla.
+                ShoppingListViewModel.renameCollapsedCategory(from: oldName, to: trimmedName)
+                CatalogView.renameCollapsedCategory(from: oldName, to: trimmedName)
             }
         } else {
             // Crear nueva categoría
@@ -242,7 +247,7 @@ struct AddEditCategorySheet: View {
             )
             modelContext.insert(newCategory)
         }
-        
+
         try ShoppingPersistenceCoordinator(context: modelContext).commitWithoutWidget()
     }
 }

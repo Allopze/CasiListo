@@ -401,6 +401,35 @@ final class CasiListoTests: XCTestCase {
         XCTAssertFalse(stored.contains("Bebidas"))
     }
 
+    /// Renombrar una categoría colapsada no debe dejarla huérfana: el nombre
+    /// nuevo tiene que heredar el estado colapsado del nombre viejo, tanto en
+    /// la clave por lista como en la global.
+    func testRenameCollapsedCategoryMigratesEveryStoredKey() throws {
+        let suiteName = "test.renameCollapsed.\(UUID().uuidString)"
+        let suite = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+
+        suite.set(["Bebidas", "Carnes"], forKey: "collapsedCategoryNames")
+        suite.set(["Bebidas"], forKey: "collapsedCategoryNames-\(UUID().uuidString)")
+
+        ShoppingListViewModel.renameCollapsedCategory(from: "Bebidas", to: "Líquidos", in: suite)
+
+        XCTAssertEqual(Set(suite.stringArray(forKey: "collapsedCategoryNames") ?? []), ["Líquidos", "Carnes"])
+        let perListKey = try XCTUnwrap(suite.dictionaryRepresentation().keys.first { $0.hasPrefix("collapsedCategoryNames-") })
+        XCTAssertEqual(suite.stringArray(forKey: perListKey), ["Líquidos"])
+    }
+
+    func testRenameCollapsedCategoryMigratesTheCatalogKey() throws {
+        let suiteName = "test.renameCollapsedCatalog.\(UUID().uuidString)"
+        let suite = try XCTUnwrap(UserDefaults(suiteName: suiteName))
+        defer { UserDefaults.standard.removeSuite(named: suiteName) }
+
+        suite.set(["Bebidas", "Varios"], forKey: "catalogCollapsedCategoryNames")
+        CatalogView.renameCollapsedCategory(from: "Bebidas", to: "Líquidos", in: suite)
+
+        XCTAssertEqual(Set(suite.stringArray(forKey: "catalogCollapsedCategoryNames") ?? []), ["Líquidos", "Varios"])
+    }
+
     // MARK: - CatalogService
 
     func testCatalogAddToActiveListCreatesItemAndCountsUsage() throws {

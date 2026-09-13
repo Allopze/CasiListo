@@ -41,13 +41,13 @@ final class ShoppingListViewModel {
             }
         }
     }
-    var selectedStore: Store? = nil
+    var selectedStore: Store?
     var presentedSheet: ShoppingListSheetDestination?
     var quickAddText: String = ""
     var showUndoToast: Bool = false
     var persistenceErrorMessage: String?
-    @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, categoryName: String, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)? = nil
-    @ObservationIgnored private var undoTimerTask: Task<Void, Never>? = nil
+    @ObservationIgnored var deletedItemUndoBuffer: (name: String, quantity: String, categoryName: String, store: Store, note: String, isPurchased: Bool, status: ShoppingItemStatus, sortOrder: Int, price: Double?, voiceNoteFilename: String?, listID: UUID?)?
+    @ObservationIgnored private var undoTimerTask: Task<Void, Never>?
     /// Categorías que la persona usuaria ha contraído. Se persiste entre
     /// lanzamientos para respetar el contexto del usuario.
     /// Debe permanecer observable: la vista consulta este estado para decidir
@@ -85,6 +85,20 @@ final class ShoppingListViewModel {
         for key in defaults.dictionaryRepresentation().keys
         where key == collapsedCategoriesKeyPrefix || key.hasPrefix("\(collapsedCategoriesKeyPrefix)-") {
             defaults.removeObject(forKey: key)
+        }
+    }
+
+    /// Migra un nombre de categoría dentro de todas las claves de colapso
+    /// persistidas (una por lista, más la global histórica). Sin esto,
+    /// renombrar una categoría colapsada la dejaba huérfana: reaparecía
+    /// expandida en cada lista porque la clave guardada seguía teniendo el
+    /// nombre viejo, y el nuevo nombre nunca estaba en ningún `Set` colapsado.
+    static func renameCollapsedCategory(from oldName: String, to newName: String, in defaults: UserDefaults = .standard) {
+        guard oldName != newName else { return }
+        for key in defaults.dictionaryRepresentation().keys
+        where key == collapsedCategoriesKeyPrefix || key.hasPrefix("\(collapsedCategoriesKeyPrefix)-") {
+            guard let stored = defaults.stringArray(forKey: key), stored.contains(oldName) else { continue }
+            defaults.set(stored.map { $0 == oldName ? newName : $0 }, forKey: key)
         }
     }
 

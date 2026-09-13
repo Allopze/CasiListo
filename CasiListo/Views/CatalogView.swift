@@ -25,7 +25,10 @@ struct CatalogView: View {
     @ScaledMetric(relativeTo: .body) private var iconTileSize: CGFloat = 30
     @ScaledMetric(relativeTo: .body) private var rowVerticalPadding: CGFloat = 10
 
-    private static let collapseKey = "catalogCollapsedCategoryNames"
+    // No `private`: `ShoppingPersistenceCoordinator.resetAllData` y el
+    // bootstrap de `ContentView` necesitan borrar esta misma clave, y antes
+    // la repetían como literal suelto en ambos sitios.
+    static let collapseKey = "catalogCollapsedCategoryNames"
 
     private var activeList: ShoppingList? {
         ActiveListSelection.resolve(from: allLists, storedID: selectedActiveListID)
@@ -390,5 +393,17 @@ struct CatalogView: View {
             Array(collapsedCategories).sorted(),
             forKey: Self.collapseKey
         )
+    }
+
+    /// Migra un nombre de categoría dentro del colapso del catálogo, que vive
+    /// en una única clave global. Mismo motivo que
+    /// `ShoppingListViewModel.renameCollapsedCategory`: sin esto, renombrar
+    /// una categoría colapsada la dejaba huérfana en el catálogo también.
+    static func renameCollapsedCategory(from oldName: String, to newName: String, in defaults: UserDefaults = .standard) {
+        guard oldName != newName,
+              let stored = defaults.stringArray(forKey: collapseKey),
+              stored.contains(oldName)
+        else { return }
+        defaults.set(stored.map { $0 == oldName ? newName : $0 }, forKey: collapseKey)
     }
 }
