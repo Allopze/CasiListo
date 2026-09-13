@@ -10,3 +10,11 @@ build/
 # `git rm --cached main IMG_0406.png IMG_0412.png IMG_0413.png`.
 /main
 /IMG_*.png
+
+# Claves privadas. La .p8 de App Store Connect se descarga una sola vez y
+# vale para firmar y subir builds en nombre del equipo: si entra al repo,
+# rotarla es el unico arreglo. Vive en GitHub Secrets, nunca aqui.
+*.p8
+*.p12
+*.mobileprovision
+AuthKey_*
