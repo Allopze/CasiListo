@@ -28,6 +28,7 @@ xcodebuild test -project CasiListo.xcodeproj -scheme CasiListo \
 bash ci/validate-privacy-manifests.sh artifacts   # plutil + greps; parte del CI
 ci/capture-screenshots.sh                         # iPhone 17 Pro, claro+oscuro (~6-8 min)
 ci/capture-screenshots.sh --full                  # + Pro Max y texto XXL (~30 min)
+ci/record-app-tour.sh                             # Graba video MP4 del recorrido de todas las pantallas (~3 min)
 cd privacy-site && npm run build                  # único script; sin deps ni lockfile, genera dist/
 ```
 
