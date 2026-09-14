@@ -140,7 +140,7 @@ struct AddEditVoiceNoteSection: View {
                 erroredCase = .permissionDenied
                 return
             }
-            switch voiceNoteService.startRecording() {
+            switch await voiceNoteService.startRecording() {
             case .success(let filename):
                 HapticFeedback.selection()
                 self.voiceNoteFilename = filename

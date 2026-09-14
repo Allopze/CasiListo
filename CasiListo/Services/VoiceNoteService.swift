@@ -11,9 +11,13 @@ enum VoiceNoteError: LocalizedError, Equatable {
     case fileMissing
     case recordingFailed
     case playbackFailed
+    /// La persona detuvo o volvió a iniciar antes de que la sesión de audio
+    /// terminara de activarse. No es un fallo que mostrar: sin mensaje.
+    case superseded
 
     var errorDescription: String? {
         switch self {
+        case .superseded: return nil
         case .permissionDenied: return "CasiListo necesita permiso de micrófono para grabar una nota de voz."
         case .recordingUnavailable: return "La grabación de audio no está disponible en este momento."
         case .sessionInterrupted: return "El audio fue interrumpido. Puedes intentarlo nuevamente."
@@ -36,6 +40,15 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     @ObservationIgnored private var audioRecorder: AVAudioRecorder?
     @ObservationIgnored private var audioPlayer: AVAudioPlayer?
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    /// Última operación encolada sobre `AVAudioSession`. Cada nueva operación
+    /// espera a la anterior antes de tocar la sesión, así activar y desactivar
+    /// llegan al sistema en el orden en que se pidieron aunque corran fuera
+    /// del hilo principal.
+    @ObservationIgnored private var lastSessionOperation: Task<Void, any Error>?
+    /// Se incrementa en cada inicio/detención. Sirve para descartar una
+    /// activación que terminó después de que la persona ya detuvo o volvió
+    /// a iniciar, y no dejar un grabador o reproductor huérfano en marcha.
+    @ObservationIgnored private var sessionGeneration = 0
 
     var isRecording = false
     var currentlyPlayingFilename: String?
@@ -61,9 +74,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
 
     // MARK: - Grabación
 
-    func startRecording() -> Result<String, VoiceNoteError> {
-        let session = AVAudioSession.sharedInstance()
-
+    func startRecording() async -> Result<String, VoiceNoteError> {
         // Verificar permiso de micrófono antes de intentar grabar.
         switch AVAudioApplication.shared.recordPermission {
         case .denied:
@@ -81,9 +92,14 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
             break
         }
 
+        sessionGeneration += 1
+        let generation = sessionGeneration
+
         do {
-            try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
-            try session.setActive(true)
+            try await activateSession(category: .playAndRecord, options: [.defaultToSpeaker])
+            // Si mientras se activaba la sesión la persona detuvo o volvió a
+            // iniciar, esta llamada ya no manda: la más reciente se encarga.
+            guard generation == sessionGeneration else { return .failure(.superseded) }
 
             let filename = "draft-\(UUID().uuidString).m4a"
             let fileURL = try LocalFileStore.shared.temporaryVoiceNoteURL(named: filename)
@@ -111,6 +127,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     }
 
     func stopRecording() {
+        sessionGeneration += 1
         audioRecorder?.stop()
         audioRecorder = nil
         isRecording = false
@@ -125,19 +142,21 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
 
     // MARK: - Reproducción
 
-    func startPlaying(filename: String) -> Result<Void, VoiceNoteError> {
+    func startPlaying(filename: String) async -> Result<Void, VoiceNoteError> {
         stopPlaying()
         guard let fileURL = getAudioURL(for: filename), FileManager.default.fileExists(atPath: fileURL.path) else {
             lastError = .fileMissing
             return .failure(.fileMissing)
         }
 
+        sessionGeneration += 1
+        let generation = sessionGeneration
+
         do {
-            let session = AVAudioSession.sharedInstance()
             // Sin `duckOthers`, reproducir tres segundos de nota mataba la
             // música que la persona venía escuchando en el supermercado.
-            try session.setCategory(.playback, mode: .default, options: [.duckOthers])
-            try session.setActive(true)
+            try await activateSession(category: .playback, options: [.duckOthers])
+            guard generation == sessionGeneration else { return .failure(.superseded) }
             audioPlayer = try AVAudioPlayer(contentsOf: fileURL)
             audioPlayer?.delegate = self
             audioPlayer?.prepareToPlay()
@@ -157,6 +176,7 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
     }
 
     func stopPlaying() {
+        sessionGeneration += 1
         audioPlayer?.stop()
         audioPlayer = nil
         currentlyPlayingFilename = nil
@@ -202,8 +222,41 @@ final class VoiceNoteService: NSObject, AVAudioPlayerDelegate {
         })
     }
 
+    // MARK: - Sesión de audio
+
+    /// `setActive` bloquea hasta que el sistema reconfigura el audio (con
+    /// audífonos Bluetooth, cientos de ms): Xcode lo marca como riesgo de
+    /// hang si se llama en el hilo principal. La API asíncrona nativa
+    /// (`activate(options:)`) es iOS 27+, y el piso es iOS 26, así que la
+    /// llamada síncrona se saca del main thread en una cola serial propia.
+    private func activateSession(category: AVAudioSession.Category, options: AVAudioSession.CategoryOptions) async throws {
+        try await performOnAudioSession {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(category, mode: .default, options: options)
+            try session.setActive(true)
+        }.value
+    }
+
     private func deactivateSession() {
-        try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        // Sin `await`: quien detiene no necesita esperar a que el sistema
+        // libere el audio. La cadena de operaciones garantiza que una
+        // activación pedida justo después no se adelante a esta desactivación.
+        performOnAudioSession {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+        }
+    }
+
+    @discardableResult
+    private func performOnAudioSession(_ operation: @escaping @Sendable () throws -> Void) -> Task<Void, any Error> {
+        let previous = lastSessionOperation
+        let task = Task.detached(priority: .userInitiated) {
+            // El resultado anterior se ignora a propósito: una desactivación
+            // fallida no debe impedir la siguiente activación.
+            _ = await previous?.result
+            try operation()
+        }
+        lastSessionOperation = task
+        return task
     }
 
     private func map(_ error: Error, fallback: VoiceNoteError) -> VoiceNoteError {

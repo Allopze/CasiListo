@@ -20,8 +20,10 @@ struct VoiceNotePlayerButton: View {
             if isPlaying {
                 voiceNoteService.stopPlaying()
             } else {
-                if case .failure(let error) = voiceNoteService.startPlaying(filename: filename) {
-                    errorMessage = error.errorDescription
+                Task {
+                    if case .failure(let error) = await voiceNoteService.startPlaying(filename: filename) {
+                        errorMessage = error.errorDescription
+                    }
                 }
             }
         } label: {
@@ -85,8 +87,10 @@ struct VoiceNotePlayerButton: View {
     }
 
     private func retryPlayback() {
-        if case .failure(let error) = voiceNoteService.startPlaying(filename: filename) {
-            errorMessage = error.errorDescription
+        Task {
+            if case .failure(let error) = await voiceNoteService.startPlaying(filename: filename) {
+                errorMessage = error.errorDescription
+            }
         }
     }
 }
