@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Barra de filtro horizontal por supermercado para la lista de compras.
 struct StoreFilterBar: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Binding var selectedStore: Store?
 
     var body: some View {
@@ -25,7 +26,7 @@ struct StoreFilterBar: View {
 
         Button {
             HapticFeedback.selection()
-            withAnimation(Theme.defaultAnimation) {
+            withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                 selectedStore = store
             }
         } label: {

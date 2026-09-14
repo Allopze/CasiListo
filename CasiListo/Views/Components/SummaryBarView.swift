@@ -3,6 +3,7 @@ import SwiftUI
 /// Resumen de progreso de la compra: recuentos, barra de avance y control
 /// para mostrar u ocultar los productos comprados.
 struct SummaryBarView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let pendingCount: Int
     let purchasedCount: Int
     @Binding var showPurchased: Bool
@@ -34,7 +35,7 @@ struct SummaryBarView: View {
 
                 Button {
                     HapticFeedback.selection()
-                    withAnimation(Theme.defaultAnimation) {
+                    withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                         showPurchased.toggle()
                     }
                 } label: {
@@ -78,7 +79,7 @@ struct SummaryBarView: View {
                     }
                 }
                 .frame(height: progressHeight)
-                .animation(Theme.defaultAnimation, value: progress)
+                .animation(Theme.defaultAnimation(reduceMotion: reduceMotion), value: progress)
                 .accessibilityElement()
                 .accessibilityLabel("Progreso de la compra")
                 .accessibilityValue("\(purchasedCount) de \(totalCount) productos comprados")

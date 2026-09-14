@@ -30,6 +30,8 @@ struct CategorySectionView: View {
     @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
     @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 56
 
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
         Section {
             sectionHeader
@@ -76,7 +78,7 @@ struct CategorySectionView: View {
                     .swipeActions(edge: .trailing) {
                         Button(role: .destructive) {
                             HapticFeedback.impact()
-                            withAnimation(Theme.defaultAnimation) {
+                            withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                                 onDelete(item)
                             }
                         } label: {
@@ -94,7 +96,7 @@ struct CategorySectionView: View {
                     .swipeActions(edge: .leading) {
                         Button {
                             HapticFeedback.selection()
-                            withAnimation(Theme.defaultAnimation) {
+                            withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                                 onTogglePurchased(item)
                             }
                         } label: {
@@ -103,7 +105,10 @@ struct CategorySectionView: View {
                                 systemImage: item.isPurchased ? "circle" : "checkmark.circle.fill"
                             )
                         }
-                        .tint(.green)
+                        // `.green` del sistema medía 2,22:1 sobre tarjeta
+                        // blanca —bajo el 3:1 que WCAG exige a un elemento
+                        // gráfico (CASI-015).
+                        .tint(Theme.statusPurchasedFill)
                     }
                     .transition(.asymmetric(
                         insertion: .move(edge: .trailing).combined(with: .opacity),
@@ -130,7 +135,7 @@ struct CategorySectionView: View {
     private var sectionHeader: some View {
         Button {
             HapticFeedback.selection()
-            withAnimation(Theme.defaultAnimation) {
+            withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                 onToggleCollapse()
             }
         } label: {
@@ -154,7 +159,7 @@ struct CategorySectionView: View {
                     .font(.system(size: chevronSize, weight: .semibold))
                     .foregroundStyle(Color.appTextSecondary)
                     .rotationEffect(.degrees(isCollapsed ? 0 : 180))
-                    .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isCollapsed)
+                    .animation(Theme.quickAnimation(reduceMotion: reduceMotion), value: isCollapsed)
             }
             .textCase(nil)
             .padding(.vertical, headerPaddingVertical)
@@ -187,8 +192,8 @@ struct CategorySectionView: View {
 
     private var pendingCount: Int { items.filter { !$0.isPurchased }.count }
     private var purchasedCount: Int { items.filter { $0.isPurchased }.count }
-    private var categoryAccent: Color { Category.accentColor(forName: category.name) }
-    private var categoryIcon: Color { Category.iconColor(forName: category.name) }
+    private var categoryAccent: Color { Category.accentColor(for: category) }
+    private var categoryIcon: Color { Category.iconColor(for: category) }
 
     /// Recuento discreto: texto secundario para pendientes; verde solo cuando
     /// la categoría está completa (estado con significado real).
@@ -201,7 +206,7 @@ struct CategorySectionView: View {
                 .monospacedDigit()
                 .padding(.horizontal, countPaddingHorizontal)
                 .padding(.vertical, countPaddingVertical)
-                .background(Color(hex: "2E7D42"))
+                .background(Theme.statusPurchasedFill)
                 .clipShape(Capsule())
         } else if purchasedCount > 0 {
             Text("\(purchasedCount) de \(items.count)")

@@ -113,7 +113,7 @@ struct ItemRowView: View {
 
             Button(role: .destructive) {
                 HapticFeedback.impact()
-                withAnimation(Theme.defaultAnimation) {
+                withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                     onDelete()
                 }
             } label: {
@@ -135,11 +135,11 @@ struct ItemRowView: View {
         }
         .accessibilityAction(named: "Eliminar") {
             HapticFeedback.impact()
-            withAnimation(Theme.defaultAnimation) {
+            withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                 onDelete()
             }
         }
-        .animation(reduceMotion ? nil : Theme.quickAnimation, value: item.isPurchased)
+        .animation(Theme.quickAnimation(reduceMotion: reduceMotion), value: item.isPurchased)
     }
 
     private var rowContent: some View {
@@ -231,7 +231,7 @@ struct ItemRowView: View {
             Divider()
             Button(role: .destructive) {
                 HapticFeedback.impact()
-                withAnimation(Theme.defaultAnimation) {
+                withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                     onDelete()
                 }
             } label: {
@@ -285,14 +285,14 @@ struct ItemRowView: View {
 
     private func toggleItem() {
         HapticFeedback.selection()
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
             onToggle()
         }
     }
 
     private func markStatus(_ status: ShoppingItemStatus) {
         HapticFeedback.selection()
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
             onMarkStatus(status)
         }
     }

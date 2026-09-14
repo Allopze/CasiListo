@@ -83,10 +83,41 @@ enum Theme {
 
     private static let logger = Logger(subsystem: "com.casilisto.app", category: "Theme")
 
+    // MARK: - Estados de producto
+
+    /// Los colores de estado del sistema no sirven sobre superficies claras:
+    /// `.green` mide 2,22:1 y `.orange` similar sobre tarjeta blanca —bajo el
+    /// 3:1 que WCAG exige a un elemento gráfico (CASI-015). Estos tres pares
+    /// ya vivían repetidos como literales en `Store.labelColor`,
+    /// `ItemRowView.metaChips` y `SettingsCard`; aquí existen una sola vez.
+    ///
+    /// Medidos sobre tarjeta clara (#FFFFFF) / fondo oscuro (#2A2928).
+    static let statusPurchased = Color(light: UIColor(hex: "1B6E33"), dark: UIColor(hex: "6FD08C"))
+    static let statusSkipped = Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D"))
+    static let statusUnavailable = Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078"))
+
+    /// Verde de **relleno**, no de tinta: aquí el color es fondo y la
+    /// etiqueta va en blanco encima. El token de arriba, pensado para texto
+    /// sobre blanco, daría un relleno demasiado oscuro para una cápsula.
+    static let statusPurchasedFill = Color(hex: "2E7D42")
+
     // MARK: - Animaciones
 
     static let defaultAnimation = Animation.spring(response: 0.35, dampingFraction: 0.75)
     static let quickAnimation = Animation.easeOut(duration: 0.2)
+
+    /// Reduce Motion se honra pasando `nil`. Centralizado para que ninguna
+    /// vista tenga que recordar el ternario —y para que olvidarlo se note al
+    /// leer (CASI-010). No `nonisolated`: `defaultAnimation`/`quickAnimation`
+    /// son propiedades aisladas a `@MainActor` (por defecto en este target) y
+    /// solo se llaman desde Views/ViewModels, ya en ese contexto.
+    static func defaultAnimation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : defaultAnimation
+    }
+
+    static func quickAnimation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : quickAnimation
+    }
 }
 
 // MARK: - Liquid Glass
@@ -128,6 +159,32 @@ struct AccentProminentButtonStyle: ButtonStyle {
 
 extension ButtonStyle where Self == AccentProminentButtonStyle {
     static var accentProminent: AccentProminentButtonStyle { AccentProminentButtonStyle() }
+}
+
+/// Botón secundario de marca: relleno de tarjeta, borde y etiqueta de acento.
+///
+/// Existe porque `.bordered` compone la etiqueta con el tint sobre un relleno
+/// **del mismo tint** al ~20%: "Elegir una foto" en la boleta medía 3,60:1,
+/// bajo el 4,5:1 que este proyecto exige al texto (CASI-016). Con el relleno
+/// de tarjeta el mismo acento rinde 5,07:1 en claro y 8,91:1 en oscuro.
+struct AccentBorderedButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(Theme.bodyBoldDynamic)
+            .foregroundStyle(Theme.accentInteractive)
+            .frame(minHeight: Theme.minimumTouchTarget)
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
+            .background(Color.appCardBackground, in: Capsule())
+            .overlay { Capsule().strokeBorder(Theme.accentInteractive, lineWidth: 1.5) }
+            .opacity(configuration.isPressed ? 0.85 : 1.0)
+            .scaleEffect(configuration.isPressed ? 0.98 : 1.0)
+            .animation(Theme.quickAnimation, value: configuration.isPressed)
+    }
+}
+
+extension ButtonStyle where Self == AccentBorderedButtonStyle {
+    static var accentBordered: AccentBorderedButtonStyle { AccentBorderedButtonStyle() }
 }
 
 // MARK: - Haptics

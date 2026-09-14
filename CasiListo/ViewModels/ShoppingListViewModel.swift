@@ -110,6 +110,20 @@ final class ShoppingListViewModel {
     /// Inyectable para acelerar los tests.
     @ObservationIgnored var graceDuration: Duration = .seconds(2)
 
+    /// Reduce Motion se resuelve en la vista —`@Environment` no existe fuera
+    /// de una View— y se inyecta aquí, mismo patrón que `graceDuration`
+    /// (CASI-010). `@ObservationIgnored` a propósito: nadie la lee desde un
+    /// `body`, y escribirla en un `onChange` de una propiedad observada
+    /// dispararía el aviso de "modificar estado durante la actualización de
+    /// la vista".
+    @ObservationIgnored var reduceMotion: Bool = false
+
+    /// Animación de los cambios de contenido de la lista. Única fuente de
+    /// verdad: las seis llamadas a `withAnimation` de este archivo pasan por
+    /// aquí, así que la decisión de honrar Reduce Motion es comprobable sin
+    /// poder observar `withAnimation` directamente.
+    var contentAnimation: Animation? { reduceMotion ? nil : Theme.defaultAnimation }
+
     // MARK: - Snapshot derivado
 
     /// Grupos cacheados — actualizados explícitamente desde la vista para no
@@ -227,7 +241,7 @@ final class ShoppingListViewModel {
         } catch {
             presentPersistenceError(error)
         }
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(contentAnimation) {
             rederiveFilters()
         }
     }
@@ -380,7 +394,7 @@ final class ShoppingListViewModel {
         graceTasks[id] = nil
         guard graceItemIDs.contains(id) else { return }
         graceItemIDs.remove(id)
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(contentAnimation) {
             rederiveFilters()
         }
     }
@@ -489,7 +503,7 @@ final class ShoppingListViewModel {
 
         deletedItemUndoBuffer = buffer
 
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(contentAnimation) {
             showUndoToast = true
         }
 
@@ -528,7 +542,7 @@ final class ShoppingListViewModel {
             return
         }
 
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(contentAnimation) {
             showUndoToast = false
             deletedItemUndoBuffer = nil
         }
@@ -578,7 +592,7 @@ final class ShoppingListViewModel {
             sortOrder: nextSortOrder(for: category, in: allItems),
             store: store
         )
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(contentAnimation) {
             context.insert(newItem)
             if let activeList {
                 ShoppingListLifecycleService.updateActiveListCounters(activeList, items: allItems + [newItem])
@@ -626,7 +640,7 @@ final class ShoppingListViewModel {
         if let filename = deletedItemUndoBuffer?.voiceNoteFilename {
             try? LocalFileStore.shared.deleteVoiceNote(named: filename)
         }
-        withAnimation(Theme.defaultAnimation) {
+        withAnimation(contentAnimation) {
             showUndoToast = false
             deletedItemUndoBuffer = nil
         }

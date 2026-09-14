@@ -4,6 +4,7 @@ import SwiftData
 /// Pestaña de catálogo: los productos habituales, separados de la compra.
 /// Desde aquí se agregan productos a la lista activa con un toque.
 struct CatalogView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
@@ -182,16 +183,16 @@ struct CatalogView: View {
     private func categoryHeader(for category: Category, count: Int, isCollapsed: Bool) -> some View {
         Button {
             HapticFeedback.selection()
-            withAnimation(Theme.defaultAnimation) {
+            withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                 toggleCollapse(category)
             }
         } label: {
             HStack(spacing: 12) {
                 Image(systemName: category.sfSymbol)
                     .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Category.iconColor(forName: category.name))
+                    .foregroundStyle(Category.iconColor(for: category))
                     .frame(width: iconTileSize, height: iconTileSize)
-                    .background(Category.accentColor(forName: category.name).opacity(Category.badgeBackgroundOpacity))
+                    .background(Category.accentColor(for: category).opacity(Category.badgeBackgroundOpacity))
                     .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
 
                 Text(category.displayName)

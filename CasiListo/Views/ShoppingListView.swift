@@ -11,6 +11,7 @@ struct ShoppingListView: View {
     let onAddTapped: () -> Void
     var onArchivePurchased: (() -> Void)?
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
 
     /// Coincidencias del catálogo para la búsqueda actual que aún no están en la lista.
@@ -173,7 +174,7 @@ struct ShoppingListView: View {
             .padding(.top, 8)
             .background(Color.appBackground.ignoresSafeArea(edges: .bottom))
         }
-        .animation(Theme.defaultAnimation, value: viewModel.showPurchased)
+        .animation(Theme.defaultAnimation(reduceMotion: reduceMotion), value: viewModel.showPurchased)
         .onAppear {
             viewModel.bind(listID: activeList?.id)
             viewModel.updateDerivedState(items: allItems, categories: categories)
@@ -193,7 +194,7 @@ struct ShoppingListView: View {
             scrollTask = Task { @MainActor in
                 try? await Task.sleep(for: .milliseconds(80))
                 guard !Task.isCancelled else { return }
-                withAnimation(Theme.defaultAnimation) {
+                withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                     scrollProxy.scrollTo("item-row-\(target)", anchor: .center)
                 }
                 viewModel.clearScrollTarget()
