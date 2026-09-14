@@ -202,12 +202,16 @@ final class ShoppingPersistenceCoordinator {
 
             try context.save()
             UserDefaults.standard.removeObject(forKey: SuggestedProducts.hasSeededCatalogKey)
+            UserDefaults.standard.removeObject(forKey: SuggestedProducts.catalogSeedBatchKey)
             UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.geofencingEnabled)
             UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.accessibilityTextSizeScale)
             ShoppingListViewModel.removeAllCollapsedCategoryState()
             UserDefaults.standard.removeObject(forKey: ActiveListSelection.storageKey)
             UserDefaults.standard.removeObject(forKey: CatalogView.collapseKey)
             UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.userStats)
+            // Borrar todo deja la app como recién instalada, y eso incluye
+            // la guía de primer uso (CASI-011).
+            UserDefaults.standard.removeObject(forKey: AppDefaultsKeys.hasSeenOnboardingV1)
             UserDefaults(suiteName: WidgetContract.appGroupID)?.removeObject(forKey: WidgetContract.snapshotKey)
             // Los IDs encolados desde el widget apuntan a productos que
             // acaban de desaparecer: aplicarlos después no marcaría nada,

@@ -6,11 +6,13 @@ struct ShoppingHistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @State private var listPendingDeletion: ShoppingList?
     @State private var errorMessage: String?
-    /// `ShareLink(item:)` evalúa su valor en cada render, no solo al tocarlo:
-    /// exportar serializaba el historial completo cada vez que esta pestaña se
-    /// redibujaba, aunque nadie fuera a compartir nada. Se recalcula solo
-    /// cuando cambian los datos.
-    @State private var cachedCSV = ""
+    /// No es un caché: solo vive mientras el share sheet está presentado.
+    /// Antes se compartía un `String` cacheado en `.task(id: allItems)`, que
+    /// compara identidad de array, no contenido — editar el precio de un
+    /// producto del historial no lo regeneraba, y además un `String` no
+    /// ofrece "Guardar en Archivos" (CASI-005).
+    @State private var fileToShare: SharedFile?
+    @State private var exportErrorMessage: String?
 
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
@@ -81,16 +83,28 @@ struct ShoppingHistoryView: View {
             } message: {
                 Text(errorMessage ?? "Inténtalo nuevamente.")
             }
+            .alert(
+                "No se pudo exportar el historial",
+                isPresented: Binding(
+                    get: { exportErrorMessage != nil },
+                    set: { if !$0 { exportErrorMessage = nil } }
+                )
+            ) {
+                Button("Entendido", role: .cancel) {}
+            } message: {
+                Text(exportErrorMessage ?? "Inténtalo nuevamente.")
+            }
             .toolbar {
                 if !completedLists.isEmpty {
                     ToolbarItem(placement: .topBarTrailing) {
-                        ShareLink(item: cachedCSV, preview: SharePreview("Historial CasiListo.csv", image: Image(systemName: "tablecells"))) {
+                        Button { exportCSV() } label: {
                             Label("Exportar CSV", systemImage: "square.and.arrow.up")
                         }
+                        .accessibilityIdentifier("history-export-csv")
                     }
                 }
             }
-            .task(id: allItems) { cachedCSV = exportCSVText() }
+            .sheet(item: $fileToShare) { ShareSheet(url: $0.url) }
         }
     }
 
@@ -162,20 +176,14 @@ struct ShoppingHistoryView: View {
         }
     }
 
-    private func exportCSVText() -> String {
-        PerformanceSignpost.measure("Exportar CSV") {
-            let itemsByListID = Dictionary(grouping: allItems, by: \.listID)
-            var rows = [["Fecha", "Lista", "Supermercado", "Producto", "Cantidad", "Categoria", "Estado", "Precio"]]
-            for list in completedLists {
-                let dateStr = AppDateFormatting.numericWithTime(list.completedAt ?? list.createdAt)
-                let storeStr = list.storeScope?.displayName ?? "Todos"
-
-                for item in itemsByListID[list.id] ?? [] {
-                    let priceStr = item.price.map { String($0) } ?? ""
-                    rows.append([dateStr, list.title, storeStr, item.name, item.quantity, item.category.name, item.status.rawValue, priceStr])
-                }
+    private func exportCSV() {
+        do {
+            let url = PerformanceSignpost.measure("Exportar CSV") {
+                Result { try HistoryCSVExportService.exportFile(completedLists: completedLists, items: allItems) }
             }
-            return CSVSerializer.document(rows: rows)
+            fileToShare = SharedFile(url: try url.get())
+        } catch {
+            exportErrorMessage = error.localizedDescription
         }
     }
 }
