@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(xcodebuild -scheme CasiListo -destination 'generic/platform=iOS Simulator' -configuration Debug build)",
-      "Bash(xcrun simctl *)"
+      "Bash(xcrun simctl *)",
+      "Bash(xcodebuild test *)",
+      "Bash(echo \"EXIT=$?\")",
+      "Read(//tmp/**)"
     ]
   }
 }
