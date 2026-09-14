@@ -13,10 +13,12 @@ struct ShoppingListDetailView: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
     @State private var isEditingListSheetPresented = false
+    @AppStorage(AppDefaultsKeys.hasSeenOnboardingV1) private var hasSeenOnboarding = false
+    @State private var showsOnboarding = false
 
     private var activeItems: [ShoppingItem] {
         allItems.filter { $0.listID == list.id }
@@ -133,6 +135,21 @@ struct ShoppingListDetailView: View {
         } message: {
             Text(viewModel.persistenceErrorMessage ?? "Inténtalo nuevamente.")
         }
+        // `initial: true` cubre la aparición; el resto del `onChange` cubre
+        // que la persona active Reduce Motion con la app abierta. Sin la
+        // segunda mitad, el VM se quedaba con el valor del primer render
+        // hasta relanzar la app (CASI-010).
+        .onChange(of: reduceMotion, initial: true) { _, isReduced in
+            viewModel.reduceMotion = isReduced
+        }
+        .onAppear { presentOnboardingIfNeeded() }
+        .onChange(of: activeItems.isEmpty) { _, _ in presentOnboardingIfNeeded() }
+        // Cubre el flujo real más probable: lista vacía → "Usar plantilla" →
+        // se puebla → se cierra el sheet → aparece la guía.
+        .onChange(of: viewModel.presentedSheet?.id) { _, _ in presentOnboardingIfNeeded() }
+        .sheet(isPresented: $showsOnboarding, onDismiss: { hasSeenOnboarding = true }) {
+            OnboardingGuideSheet(onDismiss: { showsOnboarding = false })
+        }
     }
 
     // MARK: - Menú de Opciones
@@ -169,7 +186,7 @@ struct ShoppingListDetailView: View {
 
             Button {
                 HapticFeedback.selection()
-                withAnimation(Theme.defaultAnimation) {
+                withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
                     viewModel.showPurchased.toggle()
                 }
             } label: {
@@ -287,5 +304,22 @@ struct ShoppingListDetailView: View {
     private func presentAddItem() {
         HapticFeedback.impact()
         viewModel.presentAddItem()
+    }
+
+    /// La guía habla de marcar, editar y mantener presionado un producto:
+    /// aparece cuando hay productos que mirar, no antes (CASI-011). Ni al
+    /// primer arranque —competiría con los CTA de `ListsOverviewEmptyStateView`—
+    /// ni justo tras crear la lista —`EmptyStateView` todavía no tiene
+    /// ninguna fila que la guía pueda señalar. Y nunca encima de otro sheet:
+    /// el de plantillas es justo el camino más probable para poblar la
+    /// primera lista, y presentar mientras otro se cierra se descarta solo.
+    private func presentOnboardingIfNeeded() {
+        guard !hasSeenOnboarding,
+              !activeItems.isEmpty,
+              viewModel.presentedSheet == nil,
+              !isEditingListSheetPresented,
+              !showsClearPurchasedDialog
+        else { return }
+        showsOnboarding = true
     }
 }

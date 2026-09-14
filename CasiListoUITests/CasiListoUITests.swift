@@ -163,4 +163,67 @@ final class CasiListoUITests: XCTestCase {
         categoryCard.tap()
         XCTAssertEqual(categoryCard.value as? String, "Colapsada")
     }
+
+    /// El botón "+" de "Mis Listas" no tenía ningún test: los existentes
+    /// creaban listas por los atajos del estado vacío o por "Duplicar", que no
+    /// abren ninguna hoja (CASI-028). No usa `launchFreshApp()`: ese helper ya
+    /// entra al detalle de "Compra actual", y "Crear nueva lista" solo vive en
+    /// la toolbar de "Mis Listas".
+    @MainActor
+    func testCreateListFromToolbarButtonOpensSheetAndSaves() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing-reset"]
+        app.launch()
+
+        XCTAssertTrue(app.buttons["list-card-Compra actual"].waitForExistence(timeout: 10))
+        app.buttons["Crear nueva lista"].tap()
+
+        XCTAssertTrue(
+            app.navigationBars["Nueva lista"].waitForExistence(timeout: 10),
+            "La hoja de nueva lista no se presentó"
+        )
+        let nameField = app.textFields["list-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10))
+        nameField.tap()
+        nameField.typeText("Asado")
+
+        app.buttons["Guardar"].tap()
+
+        // Guardar entra directo al detalle de la lista recién creada
+        // (ListsOverviewView pasa onListCreated → onSelectList).
+        XCTAssertTrue(app.buttons["toolbar-options-menu"].waitForExistence(timeout: 10))
+
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(app.buttons["list-card-Asado"].waitForExistence(timeout: 10))
+    }
+
+    /// La guía de primer uso (CASI-011) debe aparecer una sola vez, al ver la
+    /// primera lista con productos, y no volver a mostrarse después de
+    /// cerrarla. `"-ui-testing-onboarding"` salta la supresión que aplica
+    /// `-ui-testing-reset` por defecto (ver `ContentView.resetStorageForUITestsIfNeeded`).
+    @MainActor
+    func testOnboardingGuideAppearsOnceOnTheFirstPopulatedList() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-ui-testing-reset", "-ui-testing-onboarding"]
+        app.launch()
+
+        let card = app.buttons["list-card-Compra actual"]
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+
+        XCTAssertTrue(
+            app.otherElements["onboarding-guide"].waitForExistence(timeout: 10)
+                || app.buttons["onboarding-dismiss"].waitForExistence(timeout: 10),
+            "La guía de primer uso no apareció al entrar a una lista con productos"
+        )
+        app.buttons["onboarding-dismiss"].tap()
+
+        // Volver a "Mis Listas" y reabrir la misma lista: la guía no vuelve.
+        app.navigationBars.buttons.firstMatch.tap()
+        XCTAssertTrue(card.waitForExistence(timeout: 10))
+        card.tap()
+        XCTAssertFalse(app.buttons["onboarding-dismiss"].waitForExistence(timeout: 3))
+    }
 }
