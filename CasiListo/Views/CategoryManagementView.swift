@@ -61,7 +61,16 @@ struct CategoryManagementView: View {
             Button("Cancelar", role: .cancel) {}
         } message: {
             if let category = categoryPendingDeletion {
-                Text("\(affectedItemCount(for: category)) producto(s) y \(affectedCatalogCount(for: category)) sugerencia(s) se reasignarán a «Varios». Esta acción no se puede deshacer.")
+                // CASI-008: además de la reasignación inmediata, borrar una
+                // categoría de sistema le hace perder para siempre su vínculo
+                // con la categorización automática — nada la resiembra.
+                Text(
+                    "\(affectedItemCount(for: category)) producto(s) y \(affectedCatalogCount(for: category)) sugerencia(s) se reasignarán a «Varios». "
+                    + (category.isSystem
+                        ? "CasiListo tampoco volverá a asignar productos a esta categoría automáticamente. "
+                        : "")
+                    + "Esta acción no se puede deshacer."
+                )
             }
         }
         .alert(

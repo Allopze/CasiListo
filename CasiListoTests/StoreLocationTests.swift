@@ -44,7 +44,7 @@ final class StoreLocationTests: XCTestCase {
             "Sin App Group disponible en este entorno de test"
         )
 
-        let schema = Schema(versionedSchema: CasiListoSchemaV1.self)
+        let schema = Schema(versionedSchema: CasiListoMigrationPlan.currentSchema)
         let implicit = ModelConfiguration(schema: schema)
         let explicit = ModelConfiguration(schema: schema, groupContainer: .identifier(WidgetContract.appGroupID))
 

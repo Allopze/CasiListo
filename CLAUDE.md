@@ -8,11 +8,9 @@ Toda la UI, los comentarios y los mensajes de commit están en **español**; ide
 
 ## Comandos
 
-`xcode-select` apunta a CommandLineTools en esta máquina: **sin `DEVELOPER_DIR` ningún `xcodebuild` funciona**.
+`xcode-select` ya apunta a `/Applications/Xcode.app/Contents/Developer` en esta máquina — no hace falta exportar `DEVELOPER_DIR` (CASI-027; la referencia anterior a `Xcode-beta.app` estaba desactualizada y ese path ya no existe).
 
 ```bash
-export DEVELOPER_DIR=/Applications/Xcode-beta.app/Contents/Developer
-
 # Suite completa. El scheme CasiListo corre unitarios Y UI tests (sus dos
 # TestableReference tienen skipped="NO"), incluido el arnés de capturas:
 # son +3-4 min y 23 PNG que caen en /tmp si no defines TEST_RUNNER_SCREENSHOT_DIR.
@@ -82,7 +80,7 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 - **Los raw values SON los textos de UI en español** (`case lider = "Líder"`, `case skipped = "Pospuesto"`). Renombrar un raw value por wording **es una migración de datos**.
 - Un raw value desconocido **se coacciona en silencio** con un `Logger(subsystem: "com.casilisto.app")`: `store` → `.jumbo`, `status` → `.active`, `iconName` → `"cart.fill"`. No lanza.
 - Para filtrar por estado en un `@Query`, usa el global `activeShoppingListStatusRawValue` ([ShoppingList.swift:9](CasiListo/Models/ShoppingList.swift)): `#Predicate` no evalúa `ShoppingListStatus.active.rawValue` en línea ni miembros estáticos.
-- **Comparación de nombres**: siempre `ProductNameNormalizer.normalize`; duplicados con `DuplicatePolicy.key(named:store:)`. Las categorías se comparan **por `name`**, nunca por identidad de objeto.
+- **Comparación de nombres**: siempre `ProductNameNormalizer.normalize`; duplicados con `DuplicatePolicy.key(named:store:)`. Las categorías se comparan **por `name`**, nunca por identidad de objeto. Para encontrar la categoría real de una `DefaultCategory` usa `Category.matching(_:in:)` (vínculo estable `defaultCategoryRawValue`, con caída a nombre), nunca `first { $0.name == defaultCat.rawValue }`: renombrar una categoría del sistema es válido y no rompe la categorización automática (CASI-008).
 - **Colores**: `accentYellow` **rellena**, `accentInteractive` **escribe** (el amarillo mide 1.45:1 sobre crema — calculado, ningún test lo fija; lo que sí asserta `testAccentTokensMeetContrastOnLightSurfaces` es `accentInteractive` ≥ 4.5:1 sobre crema y blanco, y `onAccent` ≥ 4.5:1 sobre el relleno). CTA primario `.buttonStyle(.accentProminent)`; `.borderedProminent` con tint amarillo está prohibido. Nada de literales `Color(...)`: usa `Theme.*` / `Color.app*`.
 - Comentarios en español que citan **la boleta o el bug concreto** que motivó la línea.
 - Los sheets add/edit comparten forma exacta: `enum Mode: Identifiable { case add; case edit(X) }`, `NavigationStack` + `Form(.grouped)`, toolbar "Cancelar"/"Guardar", `.presentationDetents` fuera del stack.
@@ -99,8 +97,8 @@ Datos: las **Views** poseen los `@Query` (no hay capa de repositorio) → pasan 
 ## Gotchas e invariantes
 
 **Persistencia y datos**
-- Si el store persistente no abre, `CasiListoModelContainer.make()` cae a un container en memoria y marca `isUsingInMemoryFallback`. **[MainTabView](CasiListo/Views/MainTabView.swift) lo lee y muestra un banner fijo** («CasiListo no puede guardar en este dispositivo»): sin él, la persona usaba la app un día entero creyendo que guardaba. El plan de migración sigue vacío, así que el primer cambio de `@Model` sin `VersionedSchema` puede caer aquí.
-- `CasiListoMigrationPlan.stages` está vacío. Un cambio de `@Model` sin su `VersionedSchema` + `MigrationStage` puede romper la apertura del store, y ese fallo cae exactamente en el fallback silencioso de arriba.
+- Si el store persistente no abre, `CasiListoModelContainer.make()` cae a un container en memoria y marca `isUsingInMemoryFallback`. **[MainTabView](CasiListo/Views/MainTabView.swift) lo lee y muestra un banner fijo** («CasiListo no puede guardar en este dispositivo»): sin él, la persona usaba la app un día entero creyendo que guardaba. Un cambio de `@Model` sin su versión de esquema puede caer aquí.
+- **Esquema versionado (V1→V2 desde CASI-008)**: las clases top-level son siempre la versión vigente; cada versión histórica es una copia congelada anidada en su enum (`CasiListoSchemaV1.Category`, …). Para V3, copia las clases vivas tal como están dentro de `CasiListoSchemaV2` y evoluciona las top-level; **nunca listes la misma clase viva en dos versiones** (checksums idénticos → `Duplicate version checksums detected`). `testSchemaInventoryIsFrozen` (vigente), `testV1InventoryIsFrozen` (copia congelada) y `testV1FixtureSurvivesTheCurrentMigrationPlan` (fixture real de la 1.0, no se regenera) son los guardianes; `testEverySchemaTransitionHasItsStage` exige N-1 etapas.
 - **`ShoppingItem` guarda la categoría dos veces**: `@Relationship categoryRelation: Category?` y la sombra `categoryRawValue: String`. Solo el setter de la computada `category` mantiene ambas en sync — asignar `categoryRelation` directo las desincroniza. Además `categoryRelation` es `nil` para «Varios» ([ShoppingItem.swift:96](CasiListo/Models/ShoppingItem.swift)), que es el caso normal.
 - **`status` tiene dos fuentes de verdad**: `statusRawValue: String?` y `@Attribute(originalName: "isPurchased") storedIsPurchased: Bool`. El getter cae a `storedIsPurchased` cuando el raw es `nil` (filas viejas).
 - `item.category` devuelve `Category.fallback` —**instancia nueva, no gestionada, en cada acceso**— siempre que `categoryRelation == nil`. Compárala por `name` y usa `Category.resolvedFallback(in:)` si el valor va a una relación.

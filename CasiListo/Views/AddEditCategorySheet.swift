@@ -112,6 +112,21 @@ struct AddEditCategorySheet: View {
                     Text("INFORMACIÓN DE CATEGORÍA")
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
+                } footer: {
+                    // CASI-008: la categorización automática ya no depende del
+                    // nombre sino del vínculo estable con `DefaultCategory`,
+                    // así que renombrar es seguro. Se deja dicho para que la
+                    // persona no dude; borrar sí sigue rompiéndolo, y eso lo
+                    // avisa el diálogo de borrado en CategoryManagementView.
+                    if let originalCategory, originalCategory.defaultCategory != nil {
+                        Label(
+                            "Es una categoría del sistema: puedes cambiarle el nombre y el icono, "
+                            + "y CasiListo seguirá asignándole productos automáticamente.",
+                            systemImage: "checkmark.seal"
+                        )
+                        .font(Theme.captionDynamic)
+                        .foregroundStyle(Color.appTextSecondary)
+                    }
                 }
 
                 Section {

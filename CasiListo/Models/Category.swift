@@ -77,6 +77,12 @@ final class Category: Identifiable, Hashable {
     var sfSymbol: String
     var sortIndex: Int
     var isSystem: Bool
+    /// Vínculo estable con `DefaultCategory` (CASI-008). Solo lo llevan las
+    /// categorías del sistema y nunca lo edita la persona: es lo que permite
+    /// renombrar "Carnes" a "Carnicería" sin que "Bistec" empiece a caer en
+    /// «Varios». Opcional porque los stores de la 1.0 no lo tienen; el
+    /// backfill de `CategoryBootstrapService` lo rellena en el primer arranque.
+    var defaultCategoryRawValue: String?
 
     @Relationship(deleteRule: .nullify, inverse: \ShoppingItem.categoryRelation)
     var items: [ShoppingItem]?
@@ -84,11 +90,18 @@ final class Category: Identifiable, Hashable {
     @Relationship(deleteRule: .nullify, inverse: \ProductCatalogItem.categoryRelation)
     var catalogItems: [ProductCatalogItem]?
 
-    init(name: String, sfSymbol: String, sortIndex: Int, isSystem: Bool = false) {
+    init(
+        name: String,
+        sfSymbol: String,
+        sortIndex: Int,
+        isSystem: Bool = false,
+        defaultCategory: DefaultCategory? = nil
+    ) {
         self.name = name
         self.sfSymbol = sfSymbol
         self.sortIndex = sortIndex
         self.isSystem = isSystem
+        self.defaultCategoryRawValue = defaultCategory?.rawValue
     }
 }
 
@@ -97,19 +110,36 @@ extension Category {
     var id: String { name }
     var rawValue: String { name }
 
+    /// `DefaultCategory` tipada, derivada de `defaultCategoryRawValue`. Un raw
+    /// value desconocido (una categoría del sistema retirada en el futuro) se
+    /// lee como "sin vínculo", no lanza.
+    var defaultCategory: DefaultCategory? {
+        get { defaultCategoryRawValue.flatMap(DefaultCategory.init(rawValue:)) }
+        set { defaultCategoryRawValue = newValue?.rawValue }
+    }
+
+    /// Resuelve la categoría real que representa a `defaultCategory`. Primero
+    /// por el vínculo estable; si nadie lo tiene todavía (instalación que aún
+    /// no pasó por el backfill, o container en memoria antes del bootstrap),
+    /// cae a la comparación por nombre de siempre.
+    nonisolated static func matching(_ defaultCategory: DefaultCategory, in categories: [Category]) -> Category? {
+        categories.first { $0.defaultCategoryRawValue == defaultCategory.rawValue }
+            ?? categories.first { $0.name == defaultCategory.rawValue }
+    }
+
     /// "Varios" no se puede renombrar: la fila que la muestra ya avisa que es
     /// del sistema, pero antes se podía abrir igual, y renombrarla dejaba al
     /// bootstrap sin "Varios" que encontrar — creaba uno nuevo y vacío en el
     /// siguiente arranque, duplicándola.
     nonisolated static func isEditable(_ category: Category) -> Bool {
-        category.name != "Varios"
+        category.name != "Varios" && category.defaultCategoryRawValue != DefaultCategory.varios.rawValue
     }
 
     /// Instancia no gestionada para uso de solo lectura (display).
     /// ⚠️ NO asignar a relaciones de SwiftData — usar `resolvedFallback(in:)` en su lugar.
     /// Cada acceso crea una nueva instancia para evitar problemas con SwiftData.
     nonisolated static var fallback: Category {
-        Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+        Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true, defaultCategory: .varios)
     }
 
     /// Busca "Varios" en el contexto, o la crea si no existe.
@@ -121,7 +151,7 @@ extension Category {
         if let existing = try? context.fetch(descriptor).first {
             return existing
         }
-        let newCat = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+        let newCat = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true, defaultCategory: .varios)
         context.insert(newCat)
         return newCat
     }
@@ -129,6 +159,13 @@ extension Category {
     nonisolated static func accentColor(forName name: String) -> Color {
         DefaultCategory.allCases.first { $0.rawValue == name }?.color
             ?? Color(hue: 0.13, saturation: 0.80, brightness: 0.95)
+    }
+
+    /// Igual que `accentColor(forName:)`, pero una categoría del sistema
+    /// renombrada conserva su color gracias al vínculo estable (CASI-008).
+    nonisolated static func accentColor(for category: Category) -> Color {
+        category.defaultCategoryRawValue.flatMap(DefaultCategory.init(rawValue:))?.color
+            ?? accentColor(forName: category.name)
     }
 
     /// Opacidad del fondo del badge de categoría. El icono se pinta encima, así
@@ -141,8 +178,15 @@ extension Category {
     /// quince categorías bajo 3:1 —«Lácteos y huevos» en 1.6:1, invisible—, así
     /// que se oscurece hasta 4.5:1 conservando el tono. En oscuro la mezcla es
     /// oscura y el color original ya contrasta.
+    nonisolated static func iconColor(for category: Category) -> Color {
+        iconColor(base: UIColor(accentColor(for: category)))
+    }
+
     nonisolated static func iconColor(forName name: String) -> Color {
-        let base = UIColor(accentColor(forName: name))
+        iconColor(base: UIColor(accentColor(forName: name)))
+    }
+
+    nonisolated private static func iconColor(base: UIColor) -> Color {
         let lightBadge = base.blended(alpha: badgeBackgroundOpacity, over: UIColor(hex: "FFFFFF"))
         let darkBadge = base.blended(alpha: badgeBackgroundOpacity, over: UIColor(hex: "2A2928"))
 

@@ -28,7 +28,8 @@ enum CategoryBootstrapService {
                         name: defaultCat.rawValue,
                         sfSymbol: defaultCat.sfSymbol,
                         sortIndex: defaultCat.sortIndex,
-                        isSystem: true
+                        isSystem: true,
+                        defaultCategory: defaultCat
                     )
                     context.insert(newCat)
                     categoryMap[newCat.name] = newCat
@@ -38,15 +39,30 @@ enum CategoryBootstrapService {
             } else {
                 // Asegurarse de que exista la categoría fallback "Varios"
                 if categoryMap["Varios"] == nil {
-                    let fallback = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
+                    let fallback = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true, defaultCategory: .varios)
                     context.insert(fallback)
                     categoryMap[fallback.name] = fallback
                     try context.save()
                 }
-                // Reconciliar sfSymbol con la definición actual de DefaultCategory
+                // Backfill del vínculo estable (CASI-008): los stores de la 1.0
+                // no lo tienen. Corre aquí y no en una MigrationStage custom a
+                // propósito: el bootstrap se ejecuta en cada arranque, cubre la
+                // instalación limpia, el container en memoria y el reseteo de
+                // los tests, y un bug tendría segunda oportunidad.
+                let linkedNow = backfillDefaultCategoryLinks(in: existingCategories)
+                if linkedNow > 0 {
+                    try context.save()
+                    logger.info("Vínculo con DefaultCategory rellenado en \(linkedNow) categorías del sistema.")
+                }
+
+                // Reconciliar sfSymbol con la definición actual de DefaultCategory.
+                // Se exige además que el nombre siga siendo el original: una
+                // categoría del sistema renombrada y re-simbolizada a propósito
+                // no debe ver su icono pisado en cada arranque.
                 var sfSymbolsUpdated = false
                 for category in existingCategories {
-                    if let match = DefaultCategory.allCases.first(where: { $0.rawValue == category.name }),
+                    if let match = category.defaultCategory,
+                       category.name == match.rawValue,
                        category.sfSymbol != match.sfSymbol {
                         category.sfSymbol = match.sfSymbol
                         sfSymbolsUpdated = true
@@ -98,5 +114,47 @@ enum CategoryBootstrapService {
             logger.error("Error durante el bootstrap de categorías: \(error.localizedDescription)")
             throw error
         }
+    }
+
+    /// Vincula con su `DefaultCategory` las categorías del sistema que aún no
+    /// lo están. Devuelve cuántas vinculó.
+    ///
+    /// 1. Por nombre exacto: es el caso de toda categoría del sistema que la
+    ///    persona no renombró antes de V2.
+    /// 2. Por `sfSymbol`, solo si exactamente una `DefaultCategory` todavía
+    ///    libre lleva ese símbolo: recupera las renombradas antes de V2 que
+    ///    conservaron su icono. Sin rastro se quedan sin vínculo, que es
+    ///    exactamente el comportamiento que tenían hasta ahora — nunca peor.
+    /// Una categoría creada por la persona (`isSystem == false`) no recibe
+    /// vínculo aunque se llame igual que una del sistema borrada.
+    @discardableResult
+    static func backfillDefaultCategoryLinks(in categories: [Category]) -> Int {
+        var taken = Set(categories.compactMap(\.defaultCategory))
+        var linked = 0
+
+        let unlinkedSystem = categories.filter { $0.isSystem && $0.defaultCategory == nil }
+        for category in unlinkedSystem {
+            if let byName = DefaultCategory(rawValue: category.name), !taken.contains(byName) {
+                category.defaultCategory = byName
+                taken.insert(byName)
+                linked += 1
+            }
+        }
+
+        // La ambigüedad se mira por los dos lados: una sola DefaultCategory
+        // libre con ese símbolo, y una sola categoría sin vínculo que lo lleve.
+        let stillUnlinked = unlinkedSystem.filter { $0.defaultCategory == nil }
+        let unlinkedBySymbol = Dictionary(grouping: stillUnlinked, by: \.sfSymbol)
+        for category in stillUnlinked {
+            guard unlinkedBySymbol[category.sfSymbol]?.count == 1 else { continue }
+            let bySymbol = DefaultCategory.allCases.filter {
+                $0.sfSymbol == category.sfSymbol && !taken.contains($0)
+            }
+            guard bySymbol.count == 1, let match = bySymbol.first else { continue }
+            category.defaultCategory = match
+            taken.insert(match)
+            linked += 1
+        }
+        return linked
     }
 }

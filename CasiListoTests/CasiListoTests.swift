@@ -308,8 +308,11 @@ final class CasiListoTests: XCTestCase {
 
     func testPublicSchemaBaselineContainsCurrentPersistentModels() {
         XCTAssertEqual(CasiListoSchemaV1.versionIdentifier, Schema.Version(1, 0, 0))
-        XCTAssertEqual(CasiListoMigrationPlan.schemas.count, 1)
-        XCTAssertTrue(CasiListoSchemaV1.models.contains { $0 == ShoppingItem.self })
+        // El conteo exacto de esquemas/etapas y su relación N/N-1 los cubre
+        // `SchemaMigrationTests` (CASI-003); aquí solo importa que V1 —la
+        // baseline pública— siga siendo parte del plan.
+        XCTAssertTrue(CasiListoMigrationPlan.schemas.contains { $0 == CasiListoSchemaV1.self })
+        XCTAssertTrue(CasiListoMigrationPlan.currentSchema.models.contains { $0 == ShoppingItem.self })
     }
 
     // MARK: - Ventana de gracia al ocultar comprados
@@ -788,9 +791,12 @@ final class CasiListoTests: XCTestCase {
         let container = try makeInMemoryContainer()
         let context = container.mainContext
 
-        // Sembrar categoría con sfSymbol incorrecto
-        let stale = Category(name: DefaultCategory.condimentos.rawValue, sfSymbol: "wrong.symbol", sortIndex: 0)
-        let varios = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999)
+        // Sembrar categoría del sistema con sfSymbol incorrecto. `isSystem: true`
+        // es la forma real de una fila sembrada por la 1.0; desde CASI-008 la
+        // reconciliación va por el vínculo con DefaultCategory, y una categoría
+        // creada por la persona nunca lo recibe aunque se llame igual.
+        let stale = Category(name: DefaultCategory.condimentos.rawValue, sfSymbol: "wrong.symbol", sortIndex: 0, isSystem: true)
+        let varios = Category(name: "Varios", sfSymbol: "bag.fill", sortIndex: 999, isSystem: true)
         context.insert(stale)
         context.insert(varios)
         try context.save()
@@ -850,6 +856,49 @@ final class CasiListoTests: XCTestCase {
         let items = try context.fetch(FetchDescriptor<ShoppingItem>())
         XCTAssertEqual(items.count, 1)
         XCTAssertEqual(items.first?.name, "Manzanas")
+    }
+
+    // MARK: - Reduce Motion (CASI-010)
+
+    func testContentAnimationIsNilWhenReduceMotionIsOn() {
+        let vm = ShoppingListViewModel()
+        XCTAssertEqual(vm.contentAnimation, Theme.defaultAnimation)
+        vm.reduceMotion = true
+        XCTAssertNil(vm.contentAnimation)
+    }
+
+    func testThemeAnimationHelpersHonorReduceMotion() {
+        XCTAssertNil(Theme.defaultAnimation(reduceMotion: true))
+        XCTAssertNil(Theme.quickAnimation(reduceMotion: true))
+        XCTAssertEqual(Theme.defaultAnimation(reduceMotion: false), Theme.defaultAnimation)
+        XCTAssertEqual(Theme.quickAnimation(reduceMotion: false), Theme.quickAnimation)
+    }
+
+    /// Con Reduce Motion, `withAnimation(nil)` sigue ejecutando el cuerpo: no
+    /// es "no hacer nada". Este test protege contra un refactor futuro que
+    /// se coma la lógica de borrar/deshacer al canalizarla por `contentAnimation`.
+    func testDeleteAndUndoStillWorkWithReduceMotion() throws {
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+
+        let vm = ShoppingListViewModel()
+        vm.reduceMotion = true
+        let item = ShoppingItem(name: "Peras", quantity: "1 kg", store: .jumbo)
+        context.insert(item)
+        try context.save()
+
+        vm.deleteItem(item, context: context)
+        XCTAssertTrue(vm.showUndoToast)
+        XCTAssertNotNil(vm.deletedItemUndoBuffer)
+        XCTAssertTrue(try context.fetch(FetchDescriptor<ShoppingItem>()).isEmpty)
+
+        vm.undoLastDelete(context: context)
+        XCTAssertFalse(vm.showUndoToast)
+        XCTAssertNil(vm.deletedItemUndoBuffer)
+
+        let items = try context.fetch(FetchDescriptor<ShoppingItem>())
+        XCTAssertEqual(items.count, 1)
+        XCTAssertEqual(items.first?.name, "Peras")
     }
 
     func testSecondDeleteReplacesTheSingleUndoBuffer() throws {
@@ -1145,6 +1194,50 @@ final class CasiListoTests: XCTestCase {
             UIColor(Theme.accentYellow).resolvedColor(with: light)
         )
         XCTAssertGreaterThanOrEqual(labelOnFill, 4.5, "onAccent sobre el relleno amarillo")
+    }
+
+    /// Reemplaza `.green`/`.orange`/`.red` del sistema en Historial y el swipe
+    /// "Comprado" (CASI-015): esos rendían 2,22:1 sobre tarjeta blanca, bajo
+    /// el 3:1 que WCAG exige a un elemento gráfico.
+    @MainActor
+    func testStatusTokensMeetContrastOnAppSurfaces() {
+        let light = UITraitCollection(userInterfaceStyle: .light)
+        let dark = UITraitCollection(userInterfaceStyle: .dark)
+        let lightSurfaces = [("crema", UIColor(hex: "F5F1EB")), ("tarjeta", UIColor(hex: "FFFFFF"))]
+        let darkSurfaces = [("fondo oscuro", UIColor(hex: "1C1B1A")), ("tarjeta oscura", UIColor(hex: "2A2928"))]
+
+        for (name, token) in [
+            ("statusPurchased", Theme.statusPurchased),
+            ("statusSkipped", Theme.statusSkipped),
+            ("statusUnavailable", Theme.statusUnavailable)
+        ] {
+            for (surfaceName, surface) in lightSurfaces {
+                let ratio = Theme.contrastRatio(UIColor(token).resolvedColor(with: light), surface)
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(name) claro sobre \(surfaceName): \(String(format: "%.2f", ratio)):1")
+            }
+            for (surfaceName, surface) in darkSurfaces {
+                let ratio = Theme.contrastRatio(UIColor(token).resolvedColor(with: dark), surface)
+                XCTAssertGreaterThanOrEqual(ratio, 4.5, "\(name) oscuro sobre \(surfaceName): \(String(format: "%.2f", ratio)):1")
+            }
+        }
+
+        // El relleno se mide al revés: la etiqueta blanca va encima.
+        let labelOnFill = Theme.contrastRatio(.white, UIColor(Theme.statusPurchasedFill).resolvedColor(with: light))
+        XCTAssertGreaterThanOrEqual(labelOnFill, 4.5, "blanco sobre statusPurchasedFill")
+
+        // Botón secundario (CASI-016): acento sobre relleno de tarjeta, no
+        // sobre relleno tintado como hacía `.bordered`.
+        let secondaryLight = Theme.contrastRatio(
+            UIColor(Theme.accentInteractive).resolvedColor(with: light),
+            UIColor(Color.appCardBackground).resolvedColor(with: light)
+        )
+        XCTAssertGreaterThanOrEqual(secondaryLight, 4.5, "accentBordered en claro")
+
+        let secondaryDark = Theme.contrastRatio(
+            UIColor(Theme.accentInteractive).resolvedColor(with: dark),
+            UIColor(Color.appCardBackground).resolvedColor(with: dark)
+        )
+        XCTAssertGreaterThanOrEqual(secondaryDark, 4.5, "accentBordered en oscuro")
     }
 
     // MARK: - Helpers
