@@ -18,3 +18,9 @@ build/
 *.p12
 *.mobileprovision
 AuthKey_*
+
+# Herramientas del entorno de agentes dentro de privacy-site: no son parte del sitio.
+privacy-site/.agents/
+privacy-site/.claude/
+privacy-site/agent/
+privacy-site/skills-lock.json

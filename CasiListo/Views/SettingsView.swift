@@ -29,6 +29,7 @@ struct SettingsView: View {
                 titleVisibility: .visible
             ) {
                 Button("Borrar todos mis datos", role: .destructive) { resetAllData() }
+                    versionFooter
                 Button("Cancelar", role: .cancel) {}
             } message: {
                 Text("Se eliminarán tus listas, historial, categorías personalizadas, catálogo, fotos de boletas y notas de voz de este dispositivo. Esta acción no se puede deshacer.")
@@ -138,3 +139,22 @@ struct SettingsView: View {
             .padding(.bottom, 8)
     }
 }
+
+    /// La página de soporte pide la versión al reportar un problema y dice que
+    /// está «al final de la pestaña Ajustes»: esta línea es lo que hace cierta
+    /// esa instrucción.
+    private var versionFooter: some View {
+        Text("CasiListo \(Self.marketingVersion) (\(Self.buildNumber))")
+            .font(Theme.captionDynamic)
+            .foregroundStyle(Color.appTextSecondary)
+            .padding(.bottom, 12)
+            .accessibilityLabel("Versión de CasiListo \(Self.marketingVersion), compilación \(Self.buildNumber)")
+    }
+
+    private static var marketingVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "—"
+    }
+
+    private static var buildNumber: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "—"
+    }

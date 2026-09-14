@@ -1,32 +1,262 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es-CL">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="robots" content="index,follow">
-    <title>Política de privacidad | CasiListo</title>
-    <link rel="stylesheet" href="/assets/site.css">
-  </head>
-  <body>
-    <main>
-      <p class="eyebrow">CasiListo</p>
-      <h1>Política de privacidad</h1>
-      <p>Vigente desde {{EFFECTIVE_DATE}}.</p>
-      <div class="card">
-        <p>CasiListo está diseñada para funcionar con datos guardados localmente en su dispositivo. No incorpora seguimiento publicitario, analítica de terceros ni venta de información personal.</p>
-      </div>
-      <h2>Datos que puede guardar la app</h2>
-      <p>La app guarda en el dispositivo sus listas, productos, categorías, historial de compras, precios y preferencias. El widget recibe un resumen mínimo de la lista mediante el App Group de Apple para poder mostrar los productos pendientes.</p>
-      <p>Si usted decide usar estas funciones, CasiListo también puede guardar localmente fotos de boletas y notas de voz asociadas a un producto. El reconocimiento de texto de boletas se realiza en el dispositivo.</p>
-      <h2>Permisos</h2>
-      <p>La cámara y la fototeca se solicitan solo cuando usted elige fotografiar o seleccionar una boleta. El micrófono se solicita solo cuando usted inicia una nota de voz. Puede revocar estos permisos en Ajustes de iOS; la app seguirá funcionando sin las funciones que dependan de ellos.</p>
-      <h2>Sin tracking ni publicidad</h2>
-      <p>No utilizamos identificadores para rastrearlo entre apps o sitios web, no mostramos publicidad y no enviamos sus listas, fotos, audios ni precios a nuestros servidores.</p>
-      <h2>Conservación y eliminación</h2>
-      <p>Los datos permanecen en su dispositivo hasta que usted los elimina. En Ajustes puede elegir “Borrar todos mis datos guardados”; esa opción elimina listas, historial, categorías personalizadas, catálogo, estadísticas, fotos de boletas, notas de voz y el resumen compartido con el widget. Después se crea una lista local vacía con las categorías de sistema.</p>
-      <h2>Contacto</h2>
-      <p>Para consultas de privacidad o soporte, escríbanos a <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a> o visite <a href="/support/">Soporte de CasiListo</a>.</p>
-      <footer>Esta política corresponde a CasiListo 1.0.</footer>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Política de privacidad — {{SITE_NAME}}</title>
+  <meta name="description" content="Qué guarda CasiListo en tu iPhone, qué no recopila el desarrollador, qué pasa con los respaldos de iCloud y cómo exportar o borrar todos tus datos.">
+  <link rel="canonical" href="{{CANONICAL_URL}}">
+
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png">
+  <meta name="theme-color" content="#F5C518" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1C1B1A" media="(prefers-color-scheme: dark)">
+
+  <meta property="og:type" content="article">
+  <meta property="og:title" content="Política de privacidad — {{SITE_NAME}}">
+  <meta property="og:description" content="Qué guarda CasiListo en tu iPhone, qué no recopila el desarrollador y cómo exportar o borrar todos tus datos.">
+  <meta property="og:image" content="{{SITE_URL}}/assets/images/appicon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:url" content="{{CANONICAL_URL}}">
+  <meta property="og:locale" content="es_CL">
+  <meta property="article:modified_time" content="{{POLICY_LAST_UPDATED_ISO}}">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="stylesheet" href="{{CSS_PATH}}">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
+  <header class="site-header">
+    <div class="site-container header-inner">
+      <a href="/" class="brand-link" aria-label="CasiListo, inicio">
+        <img src="/assets/icons/favicon.svg" alt="" class="brand-icon" width="40" height="40">
+        <span>{{SITE_NAME}}</span>
+      </a>
+      <nav aria-label="Navegación principal">
+        <ul class="nav-menu">
+          <li><a href="/" class="nav-link">Inicio</a></li>
+          <li><a href="/privacy/" class="nav-link active" aria-current="page">Privacidad</a></li>
+          <li><a href="/support/" class="nav-link">Soporte</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="site-container">
+
+      <article aria-labelledby="privacy-heading">
+        <header class="privacy-hero">
+          <h1 id="privacy-heading">Política de privacidad de CasiListo</h1>
+          <p class="privacy-meta">
+            Vigente desde el {{POLICY_EFFECTIVE_DATE}} · Última actualización: <time datetime="{{POLICY_LAST_UPDATED_ISO}}">{{POLICY_LAST_UPDATED}}</time> · Aplica a la versión {{APP_VERSION}}
+          </p>
+        </header>
+
+        <section class="summary-card" aria-labelledby="summary-title">
+          <h2 id="summary-title">En resumen</h2>
+          <ul class="summary-list">
+            <li>CasiListo no tiene servidor: el desarrollador no recibe, ve ni almacena tus listas.</li>
+            <li>No pide cuenta, correo, contraseña ni número de teléfono.</li>
+            <li>No incluye analítica, publicidad ni identificadores de seguimiento.</li>
+            <li>La lectura de boletas y las notas de voz se procesan en tu iPhone.</li>
+            <li>Si respaldas el iPhone en iCloud, los datos de la app viajan dentro de ese respaldo, cifrados por Apple.</li>
+            <li>Puedes exportar todo en JSON y CSV, o borrarlo con un toque desde Ajustes.</li>
+          </ul>
+        </section>
+
+        <nav id="toc" class="privacy-toc" aria-label="Secciones de la política">
+          <h2>Secciones</h2>
+          <ol class="toc-list">
+            <li><a href="#sec-1">Responsable</a></li>
+            <li><a href="#sec-2">Qué significa «sin servidor»</a></li>
+            <li><a href="#sec-3">Qué guarda la app en tu iPhone</a></li>
+            <li><a href="#sec-4">Respaldos de iCloud y traspaso de iPhone</a></li>
+            <li><a href="#sec-5">Qué no hace</a></li>
+            <li><a href="#sec-6">Permisos de iOS</a></li>
+            <li><a href="#sec-7">Lectura de boletas</a></li>
+            <li><a href="#sec-8">Widget</a></li>
+            <li><a href="#sec-9">Exportar tus datos</a></li>
+            <li><a href="#sec-10">Conservación y borrado</a></li>
+            <li><a href="#sec-11">Menores de edad</a></li>
+            <li><a href="#sec-12">Ley aplicable</a></li>
+            <li><a href="#sec-13">Cambios a esta política</a></li>
+            <li><a href="#sec-14">Contacto</a></li>
+          </ol>
+        </nav>
+
+        <section class="privacy-section" aria-labelledby="sec-1">
+          <h2 id="sec-1">1. Responsable</h2>
+          <p>
+            CasiListo la desarrolla y publica <strong>{{DEVELOPER_NAME}}</strong>, persona natural con residencia en {{DEVELOPER_COUNTRY}}, a título individual. Para cualquier consulta sobre esta política escribe a <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-2">
+          <h2 id="sec-2">2. Qué significa «sin servidor»</h2>
+          <p>
+            Conviene separar dos cosas que suelen confundirse:
+          </p>
+          <ul>
+            <li><strong>Lo que la app guarda en tu iPhone</strong> para funcionar: productos, cantidades, precios, fotos de boletas. Queda en el almacenamiento del teléfono.</li>
+            <li><strong>Lo que el desarrollador recopila</strong>: información que la app enviaría por internet a un servidor suyo o de un proveedor.</li>
+          </ul>
+          <p>
+            CasiListo hace lo primero y no hace lo segundo. La app no se conecta a ningún servidor propio, no tiene base de datos remota y no sincroniza tus compras con ningún servicio. En la ficha de la App Store esto se declara como «Datos no recopilados».
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-3">
+          <h2 id="sec-3">3. Qué guarda la app en tu iPhone</h2>
+          <ul>
+            <li><strong>Listas:</strong> título, fecha de creación y de cierre, supermercado (Jumbo o Líder), estado y total gastado.</li>
+            <li><strong>Productos:</strong> nombre, cantidad, nota escrita, categoría, precio y si ya lo compraste.</li>
+            <li><strong>Catálogo y categorías:</strong> las categorías que creas y los productos que la app va aprendiendo de tus listas para sugerirlos después.</li>
+            <li><strong>Fotos de boletas</strong> (solo si las tomas): la imagen en JPG, dentro del almacenamiento de la app.</li>
+            <li><strong>Notas de voz</strong> (solo si las grabas): audio en formato M4A de hasta 30 segundos, dentro del almacenamiento de la app.</li>
+            <li><strong>Preferencias:</strong> qué lista tenías abierta y qué categorías dejaste plegadas.</li>
+          </ul>
+          <p>
+            La base de datos usa el almacenamiento compartido entre la app y su widget (identificador <code>{{APP_GROUP_ID}}</code>), de modo que el widget pueda mostrar los pendientes sin abrir la app. Todo ese almacenamiento está protegido por el cifrado de archivos de iOS.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-4">
+          <h2 id="sec-4">4. Respaldos de iCloud y traspaso de iPhone</h2>
+          <p>
+            CasiListo no excluye sus archivos del respaldo del dispositivo. Eso significa que:
+          </p>
+          <ul>
+            <li>Si tienes activado <strong>Respaldo de iCloud</strong>, tus listas, boletas y notas de voz se copian a los servidores de Apple como parte del respaldo, cifradas por Apple y bajo la <a href="https://www.apple.com/legal/privacy/" rel="noopener">política de privacidad de Apple</a>. El desarrollador no tiene acceso a ese respaldo.</li>
+            <li>Si haces un respaldo cifrado en tu Mac o PC, o traspasas el contenido a un iPhone nuevo con Inicio rápido, los datos de la app se traspasan con el resto.</li>
+            <li>Si no quieres que la app forme parte del respaldo de iCloud, puedes excluirla en Ajustes de iOS → tu nombre → iCloud → Gestionar almacenamiento → Respaldos → este iPhone, o desactivar el respaldo por completo.</li>
+          </ul>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-5">
+          <h2 id="sec-5">5. Qué no hace</h2>
+          <ul>
+            <li><strong>No pide cuenta</strong> ni inicio de sesión.</li>
+            <li><strong>No incluye analítica ni telemetría</strong> de ningún proveedor.</li>
+            <li><strong>No usa el identificador publicitario</strong> de Apple ni pide permiso de rastreo.</li>
+            <li><strong>No muestra publicidad.</strong></li>
+            <li><strong>No vende ni comparte datos</strong>: no hay datos que compartir, porque ninguno llega al desarrollador.</li>
+            <li><strong>No accede a tu ubicación</strong>: la app no pide ese permiso y no incluye ningún componente de geolocalización.</li>
+          </ul>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-6">
+          <h2 id="sec-6">6. Permisos de iOS</h2>
+          <p>
+            La app pide dos permisos, cada uno la primera vez que usas la función que lo necesita. Si los niegas, el resto de la app sigue funcionando igual.
+          </p>
+
+          <div class="permission-box">
+            <p><strong>Cámara</strong></p>
+            <p class="permission-quote">«{{PERMISSION_CAMERA}}»</p>
+            <p>Se pide cuando eliges «Escanear boleta» al añadir la foto de una boleta. Sirve solo para fotografiar la boleta; la app no toma fotos por su cuenta.</p>
+          </div>
+
+          <div class="permission-box">
+            <p><strong>Micrófono</strong></p>
+            <p class="permission-quote">«{{PERMISSION_MICROPHONE}}»</p>
+            <p>Se pide cuando tocas «Grabar nota de voz» al añadir o editar un producto. La grabación la inicias tú y se detiene sola a los 30 segundos.</p>
+          </div>
+
+          <p>
+            <strong>Fototeca:</strong> si eliges «Elegir de Fotos», la app abre el selector de fotos de iOS. Ese selector corre fuera de la app y le entrega solo la imagen que eliges; CasiListo no pide ni tiene acceso al resto de tu fototeca.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-7">
+          <h2 id="sec-7">7. Lectura de boletas</h2>
+          <p>
+            El reconocimiento de texto lo hace el propio iOS, en tu iPhone y sin conexión. El flujo es:
+          </p>
+          <ol>
+            <li>Tomas o eliges la foto de la boleta.</li>
+            <li>iOS reconoce el texto impreso en el dispositivo.</li>
+            <li>CasiListo interpreta montos en pesos y productos, y los cruza con tu lista.</li>
+            <li>La app te muestra el resultado para que lo revises, corrijas o descartes. Nada se guarda en el historial sin ese paso.</li>
+          </ol>
+          <p>
+            La imagen no sale del teléfono en ningún punto del proceso.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-8">
+          <h2 id="sec-8">8. Widget</h2>
+          <p>
+            El widget de la pantalla de inicio lee un resumen que la app escribe en el almacenamiento compartido descrito en la sección 3. Ese resumen contiene solo el número de productos pendientes y comprados, y el nombre de hasta cinco pendientes. Al marcar uno como comprado desde el widget, la acción queda anotada ahí y la app la aplica la próxima vez que se abre. Nada de esto sale del teléfono.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-9">
+          <h2 id="sec-9">9. Exportar tus datos</h2>
+          <ul>
+            <li><strong>Copia completa en JSON:</strong> Ajustes → «Exportar mis datos». Incluye listas, productos, categorías y catálogo.</li>
+            <li><strong>Historial en CSV:</strong> Historial → «Exportar CSV». Columnas: Fecha, Lista, Supermercado, Producto, Cantidad, Categoria, Estado y Precio.</li>
+          </ul>
+          <p>
+            Ambas exportaciones las inicias tú y se entregan a la hoja de compartir de iOS. A partir de ahí el archivo queda bajo el cuidado de la app o servicio que elijas (Archivos, Mail, AirDrop, etc.).
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-10">
+          <h2 id="sec-10">10. Conservación y borrado</h2>
+          <ul>
+            <li><strong>Mientras uses la app,</strong> los datos permanecen en tu iPhone hasta que borres listas o compras individuales.</li>
+            <li><strong>«Borrar todos mis datos guardados»</strong> (en Ajustes) elimina listas, historial, categorías creadas, catálogo aprendido, fotos de boletas, notas de voz y preferencias, y deja la app como recién instalada.</li>
+            <li><strong>Al desinstalar,</strong> iOS elimina el almacenamiento de la app y del widget. Lo único que puede sobrevivir es una copia dentro de un respaldo de iCloud o de computador que hayas hecho antes (sección 4), o un archivo que hayas exportado (sección 9).</li>
+          </ul>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-11">
+          <h2 id="sec-11">11. Menores de edad</h2>
+          <p>
+            CasiListo no está dirigida a menores de 13 años y no recopila datos de ninguna persona, sea cual sea su edad. Como no hay cuenta ni servidor, no existe información de menores que el desarrollador pueda tratar.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-12">
+          <h2 id="sec-12">12. Ley aplicable</h2>
+          <p>
+            Esta política se rige por la legislación chilena sobre datos personales: la Ley N.º 19.628 sobre protección de la vida privada y, desde su entrada en vigor, la Ley N.º 21.719, que la reemplaza y crea la Agencia de Protección de Datos Personales. Los derechos de acceso, rectificación, cancelación y oposición que esas leyes reconocen los ejerces directamente en la app, porque el único lugar donde existen tus datos es tu iPhone.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-13">
+          <h2 id="sec-13">13. Cambios a esta política</h2>
+          <p>
+            Cualquier cambio se publica en esta misma dirección, con la fecha de actualización y la versión de la app a la que aplica. Si una versión nueva cambiara qué datos se guardan o cómo, las notas de esa versión en la App Store lo dirán.
+          </p>
+        </section>
+
+        <section class="privacy-section" aria-labelledby="sec-14">
+          <h2 id="sec-14">14. Contacto</h2>
+          <p>
+            {{DEVELOPER_NAME}}, {{DEVELOPER_COUNTRY}} · <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>
+          </p>
+          <p>
+            Para preguntas de uso o reportar un problema, la página de <a href="/support/">soporte</a> explica qué información incluir.
+          </p>
+        </section>
+
+      </article>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-container footer-inner">
+      <ul class="footer-links">
+        <li><a href="/">Inicio</a></li>
+        <li><a href="/support/">Soporte</a></li>
+      </ul>
+      <p class="footer-meta">© {{CURRENT_YEAR}} {{DEVELOPER_NAME}}</p>
+    </div>
+  </footer>
+</body>
 </html>

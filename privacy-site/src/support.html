@@ -1,21 +1,139 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es-CL">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Soporte | CasiListo</title>
-    <link rel="stylesheet" href="/assets/site.css">
-  </head>
-  <body>
-    <main>
-      <p class="eyebrow">CasiListo</p>
-      <h1>Soporte de CasiListo</h1>
-      <div class="card">
-        <p>¿Necesita ayuda con una lista, una boleta, una nota de voz o el widget? Escríbanos a <a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a>.</p>
-        <p>Al contactarnos, incluya la versión de CasiListo y una descripción del problema. No envíe fotos de boletas ni notas de voz si no son necesarias para explicar su consulta.</p>
-      </div>
-      <p><a href="/privacy/">Ver política de privacidad</a></p>
-      <footer>Soporte de CasiListo · {{EFFECTIVE_DATE}}</footer>
-    </main>
-  </body>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Soporte — {{SITE_NAME}}</title>
+  <meta name="description" content="Cómo escribir al desarrollador de CasiListo, qué incluir al reportar un problema y respuestas sobre respaldos, permisos y borrado de datos.">
+  <link rel="canonical" href="{{CANONICAL_URL}}">
+
+  <link rel="icon" href="/assets/icons/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/assets/images/apple-touch-icon.png">
+  <meta name="theme-color" content="#F5C518" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1C1B1A" media="(prefers-color-scheme: dark)">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Soporte — {{SITE_NAME}}">
+  <meta property="og:description" content="Cómo escribir al desarrollador de CasiListo y qué incluir al reportar un problema.">
+  <meta property="og:image" content="{{SITE_URL}}/assets/images/appicon-512.png">
+  <meta property="og:image:width" content="512">
+  <meta property="og:image:height" content="512">
+  <meta property="og:url" content="{{CANONICAL_URL}}">
+  <meta property="og:locale" content="es_CL">
+  <meta name="twitter:card" content="summary">
+
+  <link rel="stylesheet" href="{{CSS_PATH}}">
+</head>
+<body>
+  <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
+
+  <header class="site-header">
+    <div class="site-container header-inner">
+      <a href="/" class="brand-link" aria-label="CasiListo, inicio">
+        <img src="/assets/icons/favicon.svg" alt="" class="brand-icon" width="40" height="40">
+        <span>{{SITE_NAME}}</span>
+      </a>
+      <nav aria-label="Navegación principal">
+        <ul class="nav-menu">
+          <li><a href="/" class="nav-link">Inicio</a></li>
+          <li><a href="/privacy/" class="nav-link">Privacidad</a></li>
+          <li><a href="/support/" class="nav-link active" aria-current="page">Soporte</a></li>
+        </ul>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div class="site-container">
+
+      <section class="support-hero" aria-labelledby="support-heading">
+        <h1 id="support-heading">Soporte de CasiListo</h1>
+        <p class="support-intro">
+          CasiListo la mantiene una sola persona, así que el correo de abajo llega directo al desarrollador. Sirve para dudas, errores y sugerencias por igual.
+        </p>
+      </section>
+
+      <section class="contact-card" aria-labelledby="contact-heading">
+        <h2 id="contact-heading">Escribir al desarrollador</h2>
+        <p class="contact-email"><a href="mailto:{{SUPPORT_EMAIL}}">{{SUPPORT_EMAIL}}</a></p>
+        <a href="mailto:{{SUPPORT_EMAIL}}?subject=Soporte%20CasiListo%20{{APP_VERSION}}" class="btn btn-primary">Abrir un correo nuevo</a>
+        <p class="contact-note">No incluyas contraseñas ni datos bancarios: CasiListo no los usa y nunca te los va a pedir.</p>
+      </section>
+
+      <section class="card card-subtle" aria-labelledby="report-heading">
+        <h2 id="report-heading" class="card-title">Si reportas un problema</h2>
+        <p>Con estos cuatro datos casi siempre se puede reproducir a la primera:</p>
+        <ul>
+          <li><strong>Versión de CasiListo:</strong> aparece al final de la pestaña Ajustes de la app (por ejemplo, «CasiListo {{APP_VERSION}}»).</li>
+          <li><strong>Versión de iOS:</strong> en Ajustes de iOS → General → Información.</li>
+          <li><strong>Modelo de iPhone.</strong></li>
+          <li><strong>Qué hiciste, qué esperabas y qué pasó.</strong> Si es sobre una boleta que se leyó mal, una captura de la pantalla de revisión ayuda más que la foto de la boleta.</li>
+        </ul>
+      </section>
+
+      <section aria-labelledby="faq-heading">
+        <h2 id="faq-heading" class="faq-header">Preguntas frecuentes</h2>
+
+        <div class="faq-list">
+          <details class="faq-item">
+            <summary class="faq-question">¿Mis listas se sincronizan con otro iPhone o con iCloud?</summary>
+            <div class="faq-answer-content">
+              <p>No. CasiListo no tiene cuenta ni servidor, y no usa iCloud para sincronizar. Cada iPhone tiene su propia copia. Lo que sí ocurre es que, si tienes activado Respaldo de iCloud, la app se respalda junto con el resto del teléfono (ver <a href="/privacy/#sec-4">sección 4 de la política</a>).</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">¿Cómo respaldo o exporto mis compras?</summary>
+            <div class="faq-answer-content">
+              <ul>
+                <li><strong>Copia completa en JSON:</strong> Ajustes → «Exportar mis datos». Incluye listas, productos, categorías y catálogo.</li>
+                <li><strong>Historial en CSV:</strong> pestaña Historial → «Exportar CSV». Se abre en Numbers o Excel.</li>
+              </ul>
+              <p>Los dos se entregan a la hoja de compartir de iOS; desde ahí lo guardas en Archivos, lo mandas por Mail o por AirDrop.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">¿Qué pasa si cambio de iPhone o desinstalo la app?</summary>
+            <div class="faq-answer-content">
+              <p>Si pasas al iPhone nuevo con Inicio rápido o restauras un respaldo de iCloud o de computador, CasiListo llega con tus datos. Si desinstalas la app, iOS borra su almacenamiento y no hay copia en ningún servidor desde la que recuperarlo; antes de desinstalar, exporta el JSON.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">¿Por qué pide permiso de cámara o micrófono?</summary>
+            <div class="faq-answer-content">
+              <p>La cámara solo cuando eliges «Escanear boleta»; el micrófono solo cuando tocas «Grabar nota de voz» en un producto (máximo 30 segundos). Si niegas cualquiera de los dos, el resto de la app funciona igual.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">¿Cómo borro todo?</summary>
+            <div class="faq-answer-content">
+              <p>Ajustes → «Borrar todos mis datos guardados». Tras confirmar, se eliminan listas, historial, fotos de boletas, notas de voz y preferencias, y la app queda como recién instalada. No hay forma de deshacerlo.</p>
+            </div>
+          </details>
+
+          <details class="faq-item">
+            <summary class="faq-question">Una boleta se leyó mal, ¿qué hago?</summary>
+            <div class="faq-answer-content">
+              <p>En la pantalla de revisión puedes corregir nombres y montos antes de guardar, o descartar la lectura y anotar la compra a mano. Si la lectura falla siempre con boletas de un mismo local, mándale al desarrollador una captura de la pantalla de revisión: cada formato de boleta nuevo mejora el reconocimiento para todos.</p>
+            </div>
+          </details>
+        </div>
+      </section>
+
+    </div>
+  </main>
+
+  <footer class="site-footer">
+    <div class="site-container footer-inner">
+      <ul class="footer-links">
+        <li><a href="/">Inicio</a></li>
+        <li><a href="/privacy/">Política de privacidad</a></li>
+      </ul>
+      <p class="footer-meta">© {{CURRENT_YEAR}} {{DEVELOPER_NAME}}</p>
+    </div>
+  </footer>
+</body>
 </html>

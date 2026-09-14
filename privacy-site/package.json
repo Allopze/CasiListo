@@ -1,8 +1,17 @@
 {
-  "name": "casilisto-privacy-site",
-  "private": true,
+  "name": "casilisto-web",
   "version": "1.0.0",
+  "private": true,
+  "description": "Portada, política de privacidad y soporte de la app iOS CasiListo",
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
   "scripts": {
-    "build": "node scripts/build.mjs"
-  }
+    "build": "node scripts/build.mjs",
+    "test": "node scripts/test.mjs",
+    "dev": "node scripts/dev.mjs"
+  },
+  "author": "Alejandro López Zelaya",
+  "license": "UNLICENSED"
 }
