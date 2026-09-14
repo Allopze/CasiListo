@@ -58,4 +58,27 @@ final class QuantitySemanticsTests: XCTestCase {
         XCTAssertTrue(QuantitySemantics.isNumberWithUnit("2u"))
         XCTAssertFalse(QuantitySemantics.isNumberWithUnit("arroz"))
     }
+
+    // MARK: - breakdown (CASI-007)
+
+    func testBreakdownReportsExactMultipleWhenUnitPriceDividesEvenly() {
+        XCTAssertEqual(
+            QuantitySemantics.breakdown(unitPrice: 917, lineTotal: 2_751, count: 3),
+            .exactMultiple(count: 3, unitPrice: 917)
+        )
+    }
+
+    func testBreakdownFallsBackToCountWhenRoundingDoesNotDivideEvenly() {
+        // $2.750 / 3 = $916,67: redondeado a $917, 3 × 917 = 2.751 ≠ 2.750.
+        XCTAssertEqual(
+            QuantitySemantics.breakdown(unitPrice: 916.666_7, lineTotal: 2_750, count: 3),
+            .inexactMultiple(count: 3)
+        )
+    }
+
+    func testBreakdownIsSingleForOneUnitOrAMagnitude() {
+        XCTAssertEqual(QuantitySemantics.breakdown(unitPrice: 1_500, lineTotal: 1_500, count: 1), .single)
+        // Una magnitud ("500 g") siempre llega con count 1 desde unitCount(of:).
+        XCTAssertEqual(QuantitySemantics.breakdown(unitPrice: 990, lineTotal: 990, count: QuantitySemantics.unitCount(of: "500 g")), .single)
+    }
 }

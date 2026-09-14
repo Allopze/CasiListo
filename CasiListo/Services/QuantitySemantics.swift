@@ -102,4 +102,29 @@ nonisolated enum QuantitySemantics {
     private static func clamped(_ value: Int) -> Int {
         min(max(value, 1), maximumCount)
     }
+
+    /// Cómo se presenta una línea cuya cantidad multiplica el precio unitario.
+    /// La misma tensión de `ShoppingHistoryDetailView` (`price` es unitario,
+    /// pero el resumen de arriba suma `lineTotal`) y de `ReceiptEntryRow`
+    /// (revisar la boleta): una sola regla para las dos, en vez de que cada
+    /// pantalla decida por su cuenta qué mostrar (CASI-007).
+    enum LineBreakdown: Equatable {
+        /// Una pieza, o una magnitud: el precio guardado ya es el total.
+        case single
+        /// N piezas y el unitario redondeado reparte exacto: "N × unitario".
+        case exactMultiple(count: Int, unitPrice: Double)
+        /// N piezas pero el unitario redondeado no cuadra con el total: solo
+        /// "N unidades", porque "3 × $917" mentiría sobre lo que se archivó.
+        case inexactMultiple(count: Int)
+    }
+
+    /// Redondear el unitario y multiplicar no siempre devuelve el total de la
+    /// línea (3 piezas por $2.750 son $916,67 cada una): ahí "3 × $917" miente
+    /// sobre el total real.
+    static func breakdown(unitPrice: Double, lineTotal: Double, count: Int) -> LineBreakdown {
+        guard count > 1 else { return .single }
+        let rounded = unitPrice.rounded()
+        if abs(rounded * Double(count) - lineTotal) > 0.5 { return .inexactMultiple(count: count) }
+        return .exactMultiple(count: count, unitPrice: rounded)
+    }
 }

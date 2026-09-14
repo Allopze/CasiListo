@@ -232,8 +232,7 @@ struct ReceiptCaptureSheet: View {
                         Label("Elegir una foto", systemImage: "photo.on.rectangle")
                             .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.bordered)
-                    .controlSize(.large)
+                    .buttonStyle(.accentBordered)
                 }
                 .padding(.horizontal, 24)
 
@@ -548,8 +547,7 @@ struct ReceiptCaptureSheet: View {
                     Text("Listo")
                         .frame(maxWidth: .infinity)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.large)
+                .buttonStyle(.accentBordered)
             }
             .padding(.horizontal, 24)
             .padding(.bottom, 24)
@@ -755,12 +753,11 @@ private struct ReceiptEntryRow: View {
     /// Cuando el total impreso no se reparte en unidades exactas (3 por $2.750),
     /// mostrar «3 × $917» miente sobre el papel; se muestra el recuento a secas.
     private var quantityCaption: String? {
-        guard entry.quantity > 1 else { return nil }
-        let derived = entry.price.rounded() * Double(entry.quantity)
-        if abs(derived - entry.lineTotal) > 0.5 {
-            return "\(entry.quantity) unidades"
+        switch QuantitySemantics.breakdown(unitPrice: entry.price, lineTotal: entry.lineTotal, count: entry.quantity) {
+        case .single: return nil
+        case .inexactMultiple(let count): return "\(count) unidades"
+        case .exactMultiple(let count, let unitPrice): return "\(count) × \(unitPrice.formattedPriceWithSymbol)"
         }
-        return "\(entry.quantity) × \(entry.price.rounded().formattedPriceWithSymbol)"
     }
 
     private var comparisonColor: Color {

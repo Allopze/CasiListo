@@ -132,14 +132,14 @@ struct ShoppingHistoryDetailView: View {
             Divider().background(Color.appSeparator)
 
             HStack(spacing: 16) {
-                statIndicator(singular: "Comprado", plural: "Comprados", count: list.purchasedCount, icon: "checkmark.circle.fill", color: .green)
+                statIndicator(singular: "Comprado", plural: "Comprados", count: list.purchasedCount, icon: "checkmark.circle.fill", color: Theme.statusPurchased)
 
                 if list.skippedCount > 0 {
-                    statIndicator(singular: "Pospuesto", plural: "Pospuestos", count: list.skippedCount, icon: "clock.fill", color: .orange)
+                    statIndicator(singular: "Pospuesto", plural: "Pospuestos", count: list.skippedCount, icon: "clock.fill", color: Theme.statusSkipped)
                 }
 
                 if list.unavailableCount > 0 {
-                    statIndicator(singular: "No encontrado", plural: "No encontrados", count: list.unavailableCount, icon: "exclamationmark.triangle.fill", color: .red)
+                    statIndicator(singular: "No encontrado", plural: "No encontrados", count: list.unavailableCount, icon: "exclamationmark.triangle.fill", color: Theme.statusUnavailable)
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -231,6 +231,21 @@ struct ShoppingHistoryDetailView: View {
         }
     }
 
+    /// Mismo criterio que la revisión de la boleta (`ReceiptEntryRow`), vía
+    /// `QuantitySemantics.breakdown`.
+    private func lineBreakdownCaption(for item: ShoppingItem) -> String? {
+        guard let price = item.price else { return nil }
+        switch QuantitySemantics.breakdown(
+            unitPrice: price,
+            lineTotal: item.lineTotal,
+            count: QuantitySemantics.unitCount(of: item.quantity)
+        ) {
+        case .single: return nil
+        case .inexactMultiple(let count): return "\(count) unidades"
+        case .exactMultiple(let count, let unitPrice): return "\(count) × \(unitPrice.formattedPriceWithSymbol)"
+        }
+    }
+
     private func itemRow(_ item: ShoppingItem) -> some View {
         HStack(spacing: 12) {
             statusIcon(for: item.status)
@@ -243,7 +258,9 @@ struct ShoppingHistoryDetailView: View {
                         .strikethrough(item.status == .purchased, color: Color.appTextPurchased)
                         .lineLimit(1)
 
-                    if !item.quantity.isEmpty {
+                    // La cantidad se calla cuando el pie ya la lleva ("3 × $917"):
+                    // repetir el 3 en una píldora y en el pie era ruido.
+                    if !item.quantity.isEmpty, lineBreakdownCaption(for: item) == nil {
                         Text(item.quantity)
                             .font(Theme.captionDynamic)
                             .foregroundStyle(Color.appTextSecondary)
@@ -253,11 +270,21 @@ struct ShoppingHistoryDetailView: View {
                             .clipShape(Capsule())
                     }
 
-                    if let price = item.price {
-                        Text(price.formattedPriceWithSymbol)
+                    // `price` es **unitario** (invariante de QuantitySemantics),
+                    // pero el resumen de arriba suma `lineTotal`: mostrar aquí
+                    // el unitario hacía que varias filas de $917 no cuadraran
+                    // con el total del encabezado (CASI-007).
+                    if item.price != nil {
+                        Text(item.lineTotal.formattedPriceWithSymbol)
                             .font(Theme.captionDynamic)
-                            .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : .green)
+                            .foregroundStyle(item.status == .purchased ? Color.appTextPurchased : Theme.statusPurchased)
                     }
+                }
+
+                if let caption = lineBreakdownCaption(for: item) {
+                    Text(caption)
+                        .font(Theme.captionDynamic)
+                        .foregroundStyle(Color.appTextSecondary)
                 }
 
                 if !item.note.isEmpty {
@@ -291,15 +318,15 @@ struct ShoppingHistoryDetailView: View {
         case .purchased:
             Image(systemName: "checkmark.circle.fill")
                 .font(.system(size: statusIconSize, weight: .bold))
-                .foregroundStyle(.green)
+                .foregroundStyle(Theme.statusPurchased)
         case .skipped:
             Image(systemName: "clock.fill")
                 .font(.system(size: statusIconSize, weight: .bold))
-                .foregroundStyle(.orange)
+                .foregroundStyle(Theme.statusSkipped)
         case .unavailable:
             Image(systemName: "exclamationmark.triangle.fill")
                 .font(.system(size: statusIconSize, weight: .bold))
-                .foregroundStyle(.red)
+                .foregroundStyle(Theme.statusUnavailable)
         case .pending:
             Image(systemName: "circle")
                 .font(.system(size: statusIconSize, weight: .bold))
