@@ -1,0 +1,21 @@
+{
+  "name": "CasiListo",
+  "short_name": "CasiListo",
+  "description": "Lista de compras privada y rápida para iPhone.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F1EB",
+  "theme_color": "#F5C518",
+  "icons": [
+    {
+      "src": "/assets/icons/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/assets/images/appicon.png",
+      "sizes": "1024x1024",
+      "type": "image/png"
+    }
+  ]
+}
