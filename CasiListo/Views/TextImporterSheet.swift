@@ -244,6 +244,10 @@ struct TextImporterSheet: View {
             modelContext.insert(newItem)
             itemsWithNewEntries.append(newItem)
             insertedItems.append(newItem)
+            // A diferencia del añadido rápido y del sheet completo, este
+            // camino no alimentaba el catálogo (CASI-024): lo importado por
+            // texto nunca aparecía como sugerencia después.
+            CatalogService.recordAddition(name: item.name, category: item.category, store: item.store, context: modelContext)
         }
         do {
             try ShoppingPersistenceCoordinator(context: modelContext).importItems(insertedItems)

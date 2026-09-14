@@ -130,7 +130,7 @@ struct SuggestedProducts {
         let sortedEntries = byCategory.sorted { $0.key.sortIndex < $1.key.sortIndex }
         for (defaultCat, products) in sortedEntries {
             if products.contains(where: { ProductNameNormalizer.normalize($0) == normalizedName }) {
-                return categories.first { $0.name == defaultCat.rawValue }
+                return Category.matching(defaultCat, in: categories)
             }
         }
         for (defaultCat, products) in sortedEntries {
@@ -138,7 +138,7 @@ struct SuggestedProducts {
                 let candidate = ProductNameNormalizer.normalize($0)
                 return normalizedName.hasPrefix(candidate) || candidate.hasPrefix(normalizedName)
             }) {
-                return categories.first { $0.name == defaultCat.rawValue }
+                return Category.matching(defaultCat, in: categories)
             }
         }
         return nil
@@ -159,7 +159,7 @@ struct SuggestedProducts {
         var order = 0
         for defaultCat in DefaultCategory.allCases {
             guard let products = byCategory[defaultCat] else { continue }
-            let realCategory = categories.first { $0.name == defaultCat.rawValue }
+            let realCategory = Category.matching(defaultCat, in: categories)
             for productName in products {
                 let newItem = ShoppingItem(
                     name: productName,
@@ -185,16 +185,63 @@ struct SuggestedProducts {
     /// `DefaultCategory.allCases` en vez del diccionario, porque iterar un
     /// diccionario hacía que la categoría ganadora de cada repetido cambiara
     /// entre instalaciones.
-    /// Clave que marca el catálogo como ya sembrado. La borra el reseteo de
-    /// datos y el arranque de los tests de UI, que son los dos momentos en que
-    /// tiene sentido volver a poblarlo.
+    /// Clave heredada de la 1.0: booleana, "ya sembré" sin decir qué lote. Se
+    /// sigue escribiendo porque `CasiListoStoreLocation` la lee como prueba de
+    /// que esta instalación ya arrancó alguna vez.
     static let hasSeededCatalogKey = "hasSeededCatalogV1"
 
+    /// Lote del catálogo que trae este binario. **Súbelo en 1 cada vez que
+    /// añadas productos a `byCategory`** y registra los nombres nuevos en
+    /// `productsIntroducedIn` bajo esa misma clave. Sin eso, quien ya tiene la
+    /// app instalada nunca vería los productos nuevos — `hasSeededCatalogKey`
+    /// apaga el sembrado para siempre tras la primera vez.
+    static let currentCatalogSeedBatch = 1
+
+    /// Clave versionada: guarda el último lote sembrado en este dispositivo.
+    static let catalogSeedBatchKey = "catalogSeedBatch"
+
+    /// Productos añadidos después del lote 1, por lote. El lote 1 es
+    /// `byCategory` completo tal como salió en la 1.0, así que no se enumera
+    /// aquí — solo los lotes posteriores.
+    ///
+    /// Invariante que verifica `testEveryBatchedProductAlsoLivesInByCategory`:
+    /// todo lo que esté aquí también tiene que estar en `byCategory`, bajo la
+    /// misma categoría. `byCategory` es lo que ve una instalación limpia; esto
+    /// es solo el delta para quien ya tiene el catálogo sembrado.
+    static let productsIntroducedIn: [Int: [DefaultCategory: [String]]] = [:]
+
+    /// Último lote sembrado en este dispositivo. La 1.0 solo dejaba una
+    /// bandera booleana: cuenta como lote 1.
+    static func seededCatalogBatch(defaults: UserDefaults = .standard) -> Int {
+        if let stored = defaults.object(forKey: catalogSeedBatchKey) as? Int { return stored }
+        return defaults.bool(forKey: hasSeededCatalogKey) ? 1 : 0
+    }
+
     @MainActor
-    static func seedCatalogItems(in context: ModelContext, defaults: UserDefaults = .standard) throws {
+    static func seedCatalogItems(
+        in context: ModelContext,
+        defaults: UserDefaults = .standard,
+        currentBatch: Int = currentCatalogSeedBatch,
+        batches: [Int: [DefaultCategory: [String]]] = productsIntroducedIn
+    ) throws {
+        let seededBatch = seededCatalogBatch(defaults: defaults)
         // Sembrar en cada arranque resucitaba lo que la persona había borrado
         // del catálogo: el borrado no sobrevivía a cerrar la app.
-        guard !defaults.bool(forKey: hasSeededCatalogKey) else { return }
+        guard seededBatch < currentBatch else { return }
+
+        // Instalación limpia: el catálogo entero. Instalación existente: solo
+        // el delta de los lotes que le faltan, para no resucitar lo que la
+        // persona borró a mano.
+        let pending: [DefaultCategory: [String]]
+        if seededBatch == 0 {
+            pending = byCategory
+        } else {
+            pending = ((seededBatch + 1)...currentBatch).reduce(into: [:]) { result, batch in
+                for (category, products) in batches[batch] ?? [:] {
+                    result[category, default: []].append(contentsOf: products)
+                }
+            }
+        }
 
         let catalogDescriptor = FetchDescriptor<ProductCatalogItem>()
         let existingCatalog = try context.fetch(catalogDescriptor)
@@ -204,8 +251,8 @@ struct SuggestedProducts {
         let categories = try context.fetch(catDescriptor)
 
         for defaultCat in DefaultCategory.allCases {
-            guard let products = byCategory[defaultCat] else { continue }
-            let realCategory = categories.first { $0.name == defaultCat.rawValue }
+            guard let products = pending[defaultCat] else { continue }
+            let realCategory = Category.matching(defaultCat, in: categories)
             for productName in products {
                 guard existingNames.insert(ProductNameNormalizer.normalize(productName)).inserted else {
                     continue
@@ -220,6 +267,7 @@ struct SuggestedProducts {
         }
 
         try context.save()
+        defaults.set(currentBatch, forKey: catalogSeedBatchKey)
         defaults.set(true, forKey: hasSeededCatalogKey)
     }
 
@@ -246,11 +294,9 @@ struct SuggestedProducts {
         defaults.set(true, forKey: hasDeduplicatedCatalogKey)
     }
 
-    // Nota para quien añada productos nuevos en una futura versión:
-    // `hasSeededCatalogKey` apaga el sembrado para siempre tras la primera
-    // vez, así que un `byCategory` ampliado en 1.1 no llegaría a quien ya
-    // tiene la app instalada. Cuando eso ocurra, no basta con cambiar
-    // `byCategory` — hace falta una segunda clave versionada
-    // (`hasSeededCatalogV2`) que siembre solo los nombres nuevos del lote
-    // siguiente, dejando intacto lo que la persona ya borró del catálogo.
+    // Cómo se añade un lote nuevo (ej. lote 2), sin tocar la lógica de arriba:
+    // 1. Añadir los productos a `byCategory` (donde ya van hoy).
+    // 2. Copiarlos a `productsIntroducedIn[2]` bajo la misma categoría.
+    // 3. Subir `currentCatalogSeedBatch` a 2.
+    // `testEveryBatchedProductAlsoLivesInByCategory` atrapa el olvido del paso 2.
 }

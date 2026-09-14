@@ -24,4 +24,8 @@ enum AppDefaultsKeys {
     static let hasCleanedLegacyDefaultsV1 = "hasCleanedLegacyDefaultsV1"
     /// Marca de que `sortOrder` ya se normalizó al orden alfabético una vez.
     static let hasNormalizedSortOrderV1 = "hasNormalizedSortOrderV1"
+    /// Marca de que la guía de primer uso ya se mostró (CASI-011). La borra
+    /// el reseteo de datos y la fija a mano el arnés de UI tests, para que la
+    /// guía no se presente encima de la lista de 363 productos sembrados.
+    static let hasSeenOnboardingV1 = "hasSeenOnboardingV1"
 }
