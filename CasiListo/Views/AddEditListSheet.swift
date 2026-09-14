@@ -75,8 +75,12 @@ struct AddEditListSheet: View {
             }
             .formStyle(.grouped)
             // El formulario es largo y el teclado tapa justo la paleta y los
-            // iconos: al desplazarse hacia ellos se cierra solo.
-            .scrollDismissesKeyboard(.immediately)
+            // iconos: al desplazarse hacia ellos se cierra solo. `.immediately`
+            // competía con el enfoque automático del nombre: el scroll que hace
+            // el propio Form para revelar el campo recién enfocado contaba como
+            // gesto del usuario y bajaba el teclado que acababa de subir, dejando
+            // la hoja inestable justo al abrirse (CASI-028).
+            .scrollDismissesKeyboard(.interactively)
             .scrollContentBackground(.hidden)
             .background(Color.appBackground)
             .navigationTitle(isEditing ? "Editar lista" : "Nueva lista")
@@ -172,6 +176,7 @@ struct AddEditListSheet: View {
                 .focused($isNameFocused)
                 .textInputAutocapitalization(.sentences)
                 .font(Theme.bodyBoldDynamic)
+                .accessibilityIdentifier("list-name-field")
                 .onChange(of: name) { _, newValue in
                     if autoAssignAppearance {
                         let (suggestedSymbol, suggestedColor) = ListAppearanceCatalog.suggestAppearance(for: newValue)
@@ -255,7 +260,11 @@ struct AddEditListSheet: View {
                 colorHex: selectedColorHex
             )
             modelContext.insert(newList)
+            // Después del commit (CASI-026): si el guardado fallara, ya se
+            // habría navegado a una lista que nunca llegó a persistirse.
+            try ShoppingPersistenceCoordinator(context: modelContext).commit()
             onListCreated?(newList)
+            return
         }
 
         try ShoppingPersistenceCoordinator(context: modelContext).commit()

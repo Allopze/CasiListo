@@ -87,8 +87,15 @@ final class ScreenshotCaptureTests: XCTestCase {
         XCTAssertTrue(app.buttons["list-card-Compra actual"].waitForExistence(timeout: 10))
         app.buttons["Crear nueva lista"].tap()
 
-        let nameField = app.textFields.firstMatch
-        XCTAssertTrue(nameField.waitForExistence(timeout: 5))
+        // Separado de la búsqueda del campo: si la hoja tarda en presentarse
+        // (CASI-028), el fallo debe apuntar a la presentación, no al campo.
+        XCTAssertTrue(
+            app.navigationBars["Nueva lista"].waitForExistence(timeout: 10),
+            "La hoja de nueva lista no llegó a presentarse"
+        )
+
+        let nameField = app.textFields["list-name-field"]
+        XCTAssertTrue(nameField.waitForExistence(timeout: 10))
         nameField.tap()
         // "Asado" dispara la apariencia sugerida: llama y coral.
         nameField.typeText("Asado")
