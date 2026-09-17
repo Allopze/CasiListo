@@ -177,6 +177,7 @@ final class CasiListoUITests: XCTestCase {
         app.launch()
 
         XCTAssertTrue(app.buttons["list-card-Compra actual"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["Nueva"].exists, "La tarjeta-resumen no debe duplicar el CTA de la barra")
         app.buttons["Crear nueva lista"].tap()
 
         XCTAssertTrue(
@@ -225,5 +226,85 @@ final class CasiListoUITests: XCTestCase {
         XCTAssertTrue(card.waitForExistence(timeout: 10))
         card.tap()
         XCTAssertFalse(app.buttons["onboarding-dismiss"].waitForExistence(timeout: 3))
+    }
+
+    /// Recorrido mínimo en Accessibility XXL: los CTA centrales deben seguir
+    /// siendo utilizables y no quedar debajo de la tab bar ni fuera del frame.
+    @MainActor
+    func testCriticalControlsRemainHittableAtAccessibilityXXL() throws {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "-ui-testing-reset-empty",
+            "-UIPreferredContentSizeCategoryName",
+            "UICTContentSizeCategoryAccessibilityXXL"
+        ]
+        app.launch()
+
+        let window = app.windows.firstMatch
+        /// En horizontal la exigencia es total: nada puede salirse por los
+        /// costados, que es como se ve el truncamiento. En vertical basta con
+        /// que el control empiece dentro de la ventana —en XXL un control puede
+        /// medir más que la pantalla y se termina de ver con scroll.
+        func assertVisibleAndInsideWindow(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+            let frame = element.frame
+            let message = "frame=\(frame) ventana=\(window.frame)"
+            XCTAssertTrue(window.frame.intersects(frame), message, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(frame.minX, window.frame.minX, message, file: file, line: line)
+            XCTAssertLessThanOrEqual(frame.maxX, window.frame.maxX, message, file: file, line: line)
+            XCTAssertGreaterThanOrEqual(frame.minY, window.frame.minY, message, file: file, line: line)
+            XCTAssertLessThanOrEqual(frame.minY, window.frame.maxY, message, file: file, line: line)
+        }
+        /// En XXL el contenido no cabe en una pantalla y todas estas vistas son
+        /// scrollables: la garantía que importa es que el control se alcance con
+        /// scroll y quede entero dentro de la ventana, no que nazca a la vista.
+        /// Sin esto, «Supermercado» del estado vacío da `isHittable == false`
+        /// solo por quedar bajo el pliegue.
+        func bringIntoView(_ element: XCUIElement, file: StaticString = #filePath, line: UInt = #line) {
+            guard element.waitForExistence(timeout: 10) else {
+                XCTFail("No existe \(element)", file: file, line: line)
+                return
+            }
+            // `app.swipeUp()` arranca en el centro de la pantalla, que en el
+            // estado vacío cae sobre el carrusel horizontal de básicos y se
+            // queda ahí: el arrastre explícito parte bajo él.
+            func drag(from startY: CGFloat, to endY: CGFloat) {
+                window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: startY))
+                    .press(
+                        forDuration: 0.05,
+                        thenDragTo: window.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: endY))
+                    )
+            }
+            for _ in 0..<6 where !element.isHittable {
+                drag(from: 0.85, to: 0.2)
+            }
+            for _ in 0..<6 where !element.isHittable {
+                drag(from: 0.2, to: 0.85)
+            }
+            XCTAssertTrue(
+                element.isHittable,
+                "No alcanzable: frame=\(element.frame) ventana=\(window.frame)",
+                file: file,
+                line: line
+            )
+            assertVisibleAndInsideWindow(element, file: file, line: line)
+        }
+        let starter = app.buttons["list-starter-Supermercado"]
+        bringIntoView(starter)
+        starter.tap()
+
+        let templates = app.buttons["empty-state-templates"]
+        bringIntoView(templates)
+        templates.tap()
+        XCTAssertTrue(app.buttons["Cerrar"].waitForExistence(timeout: 10))
+        app.buttons["Cerrar"].tap()
+
+        app.tabBars.buttons["Ajustes"].tap()
+        bringIntoView(app.buttons["settings-export-data"])
+        bringIntoView(app.buttons["settings-import-data"])
+
+        app.tabBars.buttons["Catálogo"].tap()
+        let catalogSection = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "catalog-section-")).firstMatch
+        bringIntoView(catalogSection)
     }
 }

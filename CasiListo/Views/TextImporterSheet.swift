@@ -126,7 +126,7 @@ struct TextImporterSheet: View {
     private var parsedPreviewView: some View {
         VStack(spacing: 0) {
             HStack {
-                Text("\(parsedItems.count) productos detectados")
+                Text("\(SpanishPluralization.count(parsedItems.count, singular: "producto", plural: "productos")) detectados")
                     .font(.caption.bold())
                     .foregroundStyle(Color.appTextSecondary)
                 Spacer()

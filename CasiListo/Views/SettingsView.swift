@@ -13,28 +13,20 @@ struct SettingsView: View {
     /// archivo viejo en silencio (CASI-002).
     @State private var fileToShare: SharedFile?
     @State private var exportErrorMessage: String?
+    @State private var isExporting = false
 
     // MARK: - Import de respaldo
     @State private var isImportPickerPresented = false
     @State private var pendingImport: (data: Data, outcome: DataExportService.ImportOutcome)?
     @State private var importResultMessage: String?
     @State private var importErrorMessage: String?
+    @State private var isImporting = false
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(spacing: Theme.sectionSpacing) {
-                    SettingsGestureGuideSection()
-                    SettingsCategoriesSection()
-                    privacyAndSupportSection
-                    dataSection
-                    dedicationFooter
-                    versionFooter
-                }
-                .padding(.vertical, 16)
-            }
-            .background(Color.appBackground)
-            .navigationTitle("Ajustes")
+            settingsListContent
+                .background(Color.appBackground)
+                .navigationTitle("Ajustes")
             .confirmationDialog(
                 "¿Borrar todos tus datos guardados?",
                 isPresented: $showsResetConfirmation,
@@ -43,7 +35,8 @@ struct SettingsView: View {
                 Button("Borrar todos mis datos", role: .destructive) { resetAllData() }
                 Button("Cancelar", role: .cancel) {}
             } message: {
-                Text("Se eliminarán tus listas, historial, categorías personalizadas, catálogo, fotos de boletas y notas de voz de este dispositivo. Esta acción no se puede deshacer.")
+                Text("Se eliminarán tus listas, historial, categorías personalizadas, catálogo, fotos de boletas y notas de voz "
+                    + "de este dispositivo. Esta acción no se puede deshacer.")
             }
             .alert(
                 "No se pudieron borrar los datos",
@@ -114,6 +107,24 @@ struct SettingsView: View {
         }
     }
 
+    var settingsSections: some View {
+        VStack(spacing: Theme.sectionSpacing) {
+            SettingsCategoriesSection()
+            privacyAndSupportSection
+            dataSection
+            SettingsGestureGuideSection()
+            dedicationFooter
+            versionFooter
+        }
+    }
+
+    var settingsListContent: some View {
+        ScrollView {
+            settingsSections
+                .padding(.vertical, 16)
+        }
+    }
+
     private var privacyAndSupportSection: some View {
         SettingsSection(title: "PRIVACIDAD Y SOPORTE") {
             Link(destination: AppSupportLinks.privacy) {
@@ -134,34 +145,57 @@ struct SettingsView: View {
 
     private var dataSection: some View {
         SettingsSection(title: "DATOS LOCALES") {
+            if isExporting || isImporting {
+                ProgressView(isExporting ? "Preparando el respaldo…" : "Leyendo el respaldo…")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel(isExporting ? "Preparando el respaldo" : "Leyendo el respaldo")
+            }
+
             // Sin backend, el dispositivo es la única copia. El archivo se
             // genera en cada toque: cachearlo dejaba compartiendo para siempre
             // la foto de los datos tal como estaban en la primera exportación
             // de la sesión (CASI-002).
             Button { exportData() } label: {
                 SettingsCard {
-                    SettingsLinkRow(title: "Exportar mis datos", detail: "Descarga un respaldo de tus listas, historial y catálogo.", symbol: "square.and.arrow.up")
+                    SettingsLinkRow(
+                        title: "Exportar mis datos",
+                        detail: "JSON de listas, productos, categorías y catálogo; CSV del historial. "
+                            + "Fotos y notas de voz no se incluyen y dependen del respaldo del dispositivo.",
+                        symbol: "square.and.arrow.up"
+                    )
                 }
             }
             .buttonStyle(.plain)
+            .disabled(isExporting || isImporting)
             .accessibilityLabel("Exportar mis datos")
             .accessibilityIdentifier("settings-export-data")
 
             Button { isImportPickerPresented = true } label: {
                 SettingsCard {
-                    SettingsLinkRow(title: "Restaurar desde un respaldo", detail: "Añade a este dispositivo las listas, el historial y el catálogo de un archivo exportado.", symbol: "square.and.arrow.down")
+                    SettingsLinkRow(
+                        title: "Restaurar desde un respaldo",
+                        detail: "Añade listas, productos, categorías y catálogo desde un JSON exportado.",
+                        symbol: "square.and.arrow.down"
+                    )
                 }
             }
             .buttonStyle(.plain)
+            .disabled(isExporting || isImporting)
             .accessibilityLabel("Restaurar desde un respaldo")
             .accessibilityIdentifier("settings-import-data")
 
             Button(role: .destructive) { showsResetConfirmation = true } label: {
                 SettingsCard {
-                    SettingsLinkRow(title: "Borrar todos mis datos guardados", detail: "Elimina los datos locales de este dispositivo.", symbol: "trash.fill", destructive: true)
+                    SettingsLinkRow(
+                        title: "Borrar todos mis datos guardados",
+                        detail: "Elimina los datos locales de este dispositivo.",
+                        symbol: "trash.fill",
+                        destructive: true
+                    )
                 }
             }
             .buttonStyle(.plain)
+            .disabled(isExporting || isImporting)
             .accessibilityLabel("Borrar todos mis datos guardados")
         }
     }
@@ -176,10 +210,16 @@ struct SettingsView: View {
     }
 
     private func exportData() {
-        do {
-            fileToShare = SharedFile(url: try DataExportService.exportFile(context: modelContext))
-        } catch {
-            exportErrorMessage = error.localizedDescription
+        guard !isExporting, !isImporting else { return }
+        isExporting = true
+        Task {
+            defer { isExporting = false }
+            do {
+                let url = try await DataExportService.exportFileAsync(context: modelContext)
+                fileToShare = SharedFile(url: url)
+            } catch {
+                exportErrorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -191,46 +231,73 @@ struct SettingsView: View {
             // El archivo puede venir de fuera del sandbox (Archivos, iCloud
             // Drive): sin el recurso con ámbito de seguridad, `Data(contentsOf:)`
             // falla por permisos.
+            guard !isExporting, !isImporting else { return }
             let isScoped = url.startAccessingSecurityScopedResource()
-            defer { if isScoped { url.stopAccessingSecurityScopedResource() } }
+            isImporting = true
+            Task {
+                defer {
+                    if isScoped { url.stopAccessingSecurityScopedResource() }
+                    isImporting = false
+                }
+                do {
+                    let data = try await Task.detached(priority: .utility) {
+                        try Data(contentsOf: url)
+                    }.value
+                    let outcome = try await DataExportService.planImportAsync(data: data, context: modelContext)
+                    pendingImport = (data, outcome)
+                } catch {
+                    importErrorMessage = error.localizedDescription
+                }
+            }
+        }
+    }
+
+    private func runImport(_ data: Data) {
+        pendingImport = nil
+        // La confirmación solo aparece después de terminar la preparación del
+        // archivo; no se vuelve a bloquear por el flag de lectura si SwiftUI
+        // aún no alcanzó a dibujar ese último cambio de estado.
+        guard !isExporting else { return }
+        isImporting = true
+        Task {
+            defer { isImporting = false }
             do {
-                let data = try Data(contentsOf: url)
-                let outcome = try DataExportService.planImport(data: data, context: modelContext)
-                pendingImport = (data, outcome)
+                let outcome = try await DataExportService.importAllAsync(data: data, context: modelContext)
+                HapticFeedback.success()
+                // Un archivo exportado antes de importar ya no refleja los datos
+                // actuales: que la persona vuelva a pedirlo si lo necesita.
+                fileToShare = nil
+                importResultMessage = resultMessage(for: outcome)
             } catch {
                 importErrorMessage = error.localizedDescription
             }
         }
     }
 
-    private func runImport(_ data: Data) {
-        do {
-            let outcome = try DataExportService.importAll(data: data, context: modelContext)
-            HapticFeedback.success()
-            // Un archivo exportado antes de importar ya no refleja los datos
-            // actuales: que la persona vuelva a pedirlo si lo necesita.
-            fileToShare = nil
-            importResultMessage = resultMessage(for: outcome)
-        } catch {
-            importErrorMessage = error.localizedDescription
-        }
-        pendingImport = nil
-    }
-
     private func confirmationMessage(for outcome: DataExportService.ImportOutcome) -> String {
         guard !outcome.addsNothing else {
             return "Este respaldo ya está completo en este dispositivo. No hay nada que añadir."
         }
-        var parts = ["Se añadirán \(outcome.newLists) lista(s), \(outcome.newItems) producto(s) y \(outcome.newCatalogItems) producto(s) al catálogo."]
+        let categories = SpanishPluralization.count(outcome.newCategories, singular: "categoría")
+        let lists = SpanishPluralization.count(outcome.newLists, singular: "lista")
+        let items = SpanishPluralization.count(outcome.newItems, singular: "producto")
+        let catalogItems = SpanishPluralization.count(outcome.newCatalogItems, singular: "producto de catálogo", plural: "productos de catálogo")
+        var parts = ["Se añadirán \(categories), \(lists), \(items) y \(catalogItems) al dispositivo."]
         parts.append("No se borrará ni se reemplazará nada de lo que ya tienes: lo que coincida se conservará como está.")
         parts.append("Las fotos de boletas y las notas de voz no viajan en el respaldo.")
         return parts.joined(separator: "\n\n")
     }
 
     private func resultMessage(for outcome: DataExportService.ImportOutcome) -> String {
-        var parts = ["Se añadieron \(outcome.newLists) lista(s) y \(outcome.newItems) producto(s)."]
+        let categories = SpanishPluralization.count(outcome.newCategories, singular: "categoría")
+        let lists = SpanishPluralization.count(outcome.newLists, singular: "lista")
+        let items = SpanishPluralization.count(outcome.newItems, singular: "producto")
+        let catalogItems = SpanishPluralization.count(outcome.newCatalogItems, singular: "producto de catálogo", plural: "productos de catálogo")
+        var parts = ["Se añadieron \(categories), \(lists), \(items) y \(catalogItems)."]
         if outcome.skippedItems > 0 || outcome.skippedLists > 0 {
-            parts.append("Se omitieron \(outcome.skippedLists) lista(s) y \(outcome.skippedItems) producto(s) que ya tenías.")
+            let skippedLists = SpanishPluralization.count(outcome.skippedLists, singular: "lista")
+            let skippedItems = SpanishPluralization.count(outcome.skippedItems, singular: "producto")
+            parts.append("Se omitieron \(skippedLists) y \(skippedItems) que ya tenías.")
         }
         return parts.joined(separator: " ")
     }

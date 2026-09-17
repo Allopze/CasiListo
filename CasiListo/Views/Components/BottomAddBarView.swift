@@ -49,59 +49,9 @@ struct BottomAddBarView: View {
                     .padding(.top, 4)
                 }
 
-                HStack(spacing: hStackSpacing) {
-                    HStack {
-                        Image(systemName: "cart.badge.plus")
-                            .font(.system(size: cartIconSize))
-                            .foregroundStyle(Color.appTextSecondary)
-                            .padding(.leading, cartIconLeadingPadding)
-
-                        TextField("Añade “2kg arroz” o “pan x3”…", text: $text)
-                            .font(Theme.bodyDynamic)
-                            .textFieldStyle(.plain)
-                            .autocorrectionDisabled()
-                            .submitLabel(.done)
-                            .onSubmit {
-                                if !text.trimmingCharacters(in: .whitespaces).isEmpty {
-                                    onAddQuick()
-                                }
-                            }
-                    }
-                    .frame(height: textFieldHeight)
-                    .glassFilterSurface(cornerRadius: controlCornerRadius, interactive: true)
-
-                    if !text.trimmingCharacters(in: .whitespaces).isEmpty {
-                        Button { onAddQuick() } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: actionButtonSymbolSize))
-                                .symbolRenderingMode(.palette)
-                                .foregroundStyle(Theme.onAccent, Theme.accentYellow)
-                                .frame(width: actionButtonSize, height: actionButtonSize)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Añadir instantáneamente")
-
-                        Button { onAddTapped() } label: {
-                            Image(systemName: "ellipsis.circle.fill")
-                                .font(.system(size: actionButtonSymbolSize))
-                                .symbolRenderingMode(.palette)
-                                .foregroundStyle(Color.appCardBackground, Color.appTextSecondary)
-                                .frame(width: actionButtonSize, height: actionButtonSize)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Añadir con detalles")
-                    } else {
-                        Button { onAddTapped() } label: {
-                            Image(systemName: "plus.circle.fill")
-                                .font(.system(size: actionButtonSymbolSize))
-                                .symbolRenderingMode(.palette)
-                                .foregroundStyle(Theme.onAccent, Theme.accentYellow)
-                                .frame(width: actionButtonSize, height: actionButtonSize)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel("Añadir producto")
-                        .accessibilityIdentifier("quick-add-product")
-                    }
+                ViewThatFits(in: .horizontal) {
+                    inputRow(axis: .horizontal)
+                    inputRow(axis: .vertical)
                 }
                 .padding(.horizontal, cardPadding)
                 .padding(.top, 4)
@@ -118,6 +68,86 @@ struct BottomAddBarView: View {
         .task(id: text) {
             try? await Task.sleep(for: .milliseconds(150))
             suggestions = CatalogService.suggestions(for: text, in: catalogItems)
+        }
+    }
+
+    private enum InputAxis { case horizontal, vertical }
+
+    @ViewBuilder
+    private func inputRow(axis: InputAxis) -> some View {
+        let layout = axis == .horizontal
+            ? AnyLayout(HStackLayout(spacing: hStackSpacing))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
+        layout {
+            inputField
+            if axis == .vertical {
+                HStack(spacing: hStackSpacing) {
+                    Spacer(minLength: 0)
+                    actionButtons
+                }
+                .frame(maxWidth: .infinity, alignment: .trailing)
+            } else {
+                actionButtons
+            }
+        }
+    }
+
+    private var inputField: some View {
+        HStack {
+            Image(systemName: "cart.badge.plus")
+                .font(.system(size: cartIconSize))
+                .foregroundStyle(Color.appTextSecondary)
+                .padding(.leading, cartIconLeadingPadding)
+
+            TextField("Añade “2kg arroz” o “pan x3”…", text: $text)
+                .font(Theme.bodyDynamic)
+                .textFieldStyle(.plain)
+                .autocorrectionDisabled()
+                .submitLabel(.done)
+                .onSubmit {
+                    if !text.trimmingCharacters(in: .whitespaces).isEmpty {
+                        onAddQuick()
+                    }
+                }
+        }
+        .frame(height: textFieldHeight)
+        .glassFilterSurface(cornerRadius: controlCornerRadius, interactive: true)
+        .layoutPriority(1)
+    }
+
+    @ViewBuilder
+    private var actionButtons: some View {
+        if !text.trimmingCharacters(in: .whitespaces).isEmpty {
+            Button { onAddQuick() } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: actionButtonSymbolSize))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(Theme.onAccent, Theme.accentYellow)
+                    .frame(width: actionButtonSize, height: actionButtonSize)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Añadir instantáneamente")
+
+            Button { onAddTapped() } label: {
+                Image(systemName: "ellipsis.circle.fill")
+                    .font(.system(size: actionButtonSymbolSize))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(Color.appCardBackground, Color.appTextSecondary)
+                    .frame(width: actionButtonSize, height: actionButtonSize)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Añadir con detalles")
+        } else {
+            Button { onAddTapped() } label: {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: actionButtonSymbolSize))
+                    .symbolRenderingMode(.palette)
+                    .foregroundStyle(Theme.onAccent, Theme.accentYellow)
+                    .frame(width: actionButtonSize, height: actionButtonSize)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Añadir producto")
+            .accessibilityIdentifier("quick-add-product")
         }
     }
 }

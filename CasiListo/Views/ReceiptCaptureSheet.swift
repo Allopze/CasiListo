@@ -237,10 +237,13 @@ struct ReceiptCaptureSheet: View {
                 .padding(.horizontal, 24)
 
                 if closesPurchase && !purchasedActiveItems.isEmpty {
+                    let markedProducts = SpanishPluralization.count(
+                        purchasedActiveItems.count,
+                        singular: "producto marcado listo",
+                        plural: "productos marcados listos"
+                    )
                     Label(
-                        purchasedActiveItems.count == 1
-                            ? "Tienes 1 producto marcado listo para archivar."
-                            : "Tienes \(purchasedActiveItems.count) productos marcados listos para archivar.",
+                        "Tienes \(markedProducts) para archivar.",
                         systemImage: "checkmark.circle"
                     )
                     .font(Theme.captionDynamic)
@@ -287,7 +290,9 @@ struct ReceiptCaptureSheet: View {
 
                     if closesPurchase && unmatchedPurchasedCount > 0 {
                         Label(
-                            "Se archivarán además \(unmatchedPurchasedCount) productos marcados que no aparecen en la boleta.",
+                            "Se archivarán además "
+                                + SpanishPluralization.count(unmatchedPurchasedCount, singular: "producto marcado", plural: "productos marcados")
+                                + " que no aparecen en la boleta.",
                             systemImage: "archivebox"
                         )
                         .font(Theme.captionDynamic)
@@ -421,9 +426,7 @@ struct ReceiptCaptureSheet: View {
                 VStack(alignment: .leading, spacing: 3) {
                     Text("Productos y precios")
                         .font(Theme.sectionHeaderDynamic)
-                    Text(entries.isEmpty
-                         ? "No se detectaron líneas automáticamente. Añade los productos de la boleta."
-                         : "\(validEntryCount) productos · \(entriesTotal.formattedPriceWithSymbol) · toca una línea para corregirla")
+                    Text(productReviewSubtitle)
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color.appTextSecondary)
                 }
@@ -481,6 +484,14 @@ struct ReceiptCaptureSheet: View {
                 }
             }
         }
+    }
+
+    private var productReviewSubtitle: String {
+        guard !entries.isEmpty else {
+            return "No se detectaron líneas automáticamente. Añade los productos de la boleta."
+        }
+        return "\(SpanishPluralization.count(validEntryCount, singular: "producto", plural: "productos")) · "
+            + "\(entriesTotal.formattedPriceWithSymbol) · toca una línea para corregirla"
     }
 
     private var saveButton: some View {
@@ -556,12 +567,23 @@ struct ReceiptCaptureSheet: View {
     }
 
     private func summarySubtitle(_ summary: ReceiptRegistrationSummary) -> String {
-        let receiptLabel = summary.receiptProductCount == 1 ? "1 producto de la boleta" : "\(summary.receiptProductCount) productos de la boleta"
+        let receiptLabel = SpanishPluralization.count(
+            summary.receiptProductCount,
+            singular: "producto de la boleta",
+            plural: "productos de la boleta"
+        )
         var parts = ["\(receiptLabel) · \(summary.totalSpent.formattedPriceWithSymbol)"]
         if summary.mergedPurchasedCount > 0 {
-            parts.append(summary.mergedPurchasedCount == 1
-                ? "Se archivó además 1 producto que marcaste."
-                : "Se archivaron además \(summary.mergedPurchasedCount) productos que marcaste.")
+            let verb = summary.mergedPurchasedCount == 1 ? "archivó" : "archivaron"
+            parts.append(
+                "Se \(verb) además "
+                    + SpanishPluralization.count(
+                        summary.mergedPurchasedCount,
+                        singular: "producto que marcaste",
+                        plural: "productos que marcaste"
+                    )
+                    + "."
+            )
         }
         if summary.otherStoreArchivedCount > 0 {
             parts.append(summary.otherStoreArchivedCount == 1

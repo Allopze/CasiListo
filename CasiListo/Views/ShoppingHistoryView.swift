@@ -4,6 +4,7 @@ import SwiftData
 /// Pestaña de historial de compras completadas.
 struct ShoppingHistoryView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var listPendingDeletion: ShoppingList?
     @State private var errorMessage: String?
     /// No es un caché: solo vive mientras el share sheet está presentado.
@@ -13,6 +14,7 @@ struct ShoppingHistoryView: View {
     /// ofrece "Guardar en Archivos" (CASI-005).
     @State private var fileToShare: SharedFile?
     @State private var exportErrorMessage: String?
+    @State private var isExporting = false
 
     @Query(sort: \ShoppingItem.createdAt, order: .forward) private var allItems: [ShoppingItem]
     @Query(sort: \ShoppingList.createdAt, order: .forward) private var allLists: [ShoppingList]
@@ -100,8 +102,19 @@ struct ShoppingHistoryView: View {
                         Button { exportCSV() } label: {
                             Label("Exportar CSV", systemImage: "square.and.arrow.up")
                         }
+                        .disabled(isExporting)
                         .accessibilityIdentifier("history-export-csv")
                     }
+                }
+            }
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if isExporting {
+                    ProgressView("Preparando el historial…")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 8)
+                        .background(Color.appBackground)
+                        .accessibilityLabel("Preparando el historial")
                 }
             }
             .sheet(item: $fileToShare) { ShareSheet(url: $0.url) }
@@ -110,39 +123,16 @@ struct ShoppingHistoryView: View {
 
     private func historyRow(for list: ShoppingList) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Label(list.title, systemImage: list.storeScope?.sfSymbol ?? "bag.fill")
-                    .font(.headline)
-                if list.receiptImageFilename != nil {
-                    Image(systemName: "doc.text.viewfinder")
-                        .foregroundStyle(Color.appTextSecondary)
-                        .accessibilityLabel("Tiene boleta asociada")
-                }
-                Spacer()
-                if list.totalSpent > 0 {
-                    Text(list.totalSpent.formattedPriceWithSymbol)
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundStyle(Theme.accentInteractive)
-                }
+            ViewThatFits(in: .horizontal) {
+                historyTitleRow(for: list, vertical: false)
+                historyTitleRow(for: list, vertical: true)
             }
 
             // Los recuentos se apoyan en el icono para ahorrar espacio; sin
             // etiqueta explícita VoiceOver solo dicta números sueltos.
-            HStack(spacing: 12) {
-                Label("\(list.purchasedCount)", systemImage: "checkmark.circle.fill")
-                    .accessibilityLabel("\(list.purchasedCount) comprados")
-                if list.pendingCount > 0 {
-                    Label("\(list.pendingCount)", systemImage: "circle")
-                        .accessibilityLabel("\(list.pendingCount) pendientes")
-                }
-                if list.skippedCount > 0 {
-                    Label("\(list.skippedCount)", systemImage: "clock")
-                        .accessibilityLabel("\(list.skippedCount) pospuestos")
-                }
-                if list.unavailableCount > 0 {
-                    Label("\(list.unavailableCount)", systemImage: "exclamationmark.triangle")
-                        .accessibilityLabel("\(list.unavailableCount) no encontrados")
-                }
+            ViewThatFits(in: .horizontal) {
+                historyCounts(for: list, vertical: false)
+                historyCounts(for: list, vertical: true)
             }
             .font(.caption)
             .foregroundStyle(Color.appTextSecondary)
@@ -151,9 +141,85 @@ struct ShoppingHistoryView: View {
                 Text(AppDateFormatting.shortWithTime(completedAt))
                     .font(.caption)
                     .foregroundStyle(Color.appTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
         .accessibilityElement(children: .combine)
+    }
+
+    @ViewBuilder
+    private func historyCounts(for list: ShoppingList, vertical: Bool) -> some View {
+        let layout = vertical
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+            : AnyLayout(HStackLayout(spacing: 12))
+        layout {
+            Label("\(list.purchasedCount)", systemImage: "checkmark.circle.fill")
+                .accessibilityLabel(
+                    SpanishPluralization.count(
+                        list.purchasedCount,
+                        singular: "producto comprado",
+                        plural: "productos comprados"
+                    )
+                )
+            if list.pendingCount > 0 {
+                Label("\(list.pendingCount)", systemImage: "circle")
+                    .accessibilityLabel(
+                        SpanishPluralization.count(
+                            list.pendingCount,
+                            singular: "producto pendiente",
+                            plural: "productos pendientes"
+                        )
+                    )
+            }
+            if list.skippedCount > 0 {
+                Label("\(list.skippedCount)", systemImage: "clock")
+                    .accessibilityLabel(
+                        SpanishPluralization.count(
+                            list.skippedCount,
+                            singular: "producto pospuesto",
+                            plural: "productos pospuestos"
+                        )
+                    )
+            }
+            if list.unavailableCount > 0 {
+                Label("\(list.unavailableCount)", systemImage: "exclamationmark.triangle")
+                    .accessibilityLabel(
+                        SpanishPluralization.count(
+                            list.unavailableCount,
+                            singular: "producto no encontrado",
+                            plural: "productos no encontrados"
+                        )
+                    )
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func historyTitleRow(for list: ShoppingList, vertical: Bool) -> some View {
+        let layout = vertical
+            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+            : AnyLayout(HStackLayout(spacing: 8))
+        layout {
+            HStack(spacing: 6) {
+                Label(list.title, systemImage: list.storeScope?.sfSymbol ?? "bag.fill")
+                    .font(.headline)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+                if list.receiptImageFilename != nil {
+                    Image(systemName: "doc.text.viewfinder")
+                        .foregroundStyle(Color.appTextSecondary)
+                        .accessibilityLabel("Tiene boleta asociada")
+                }
+            }
+
+            if list.totalSpent > 0 {
+                Text(list.totalSpent.formattedPriceWithSymbol)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(Theme.accentInteractive)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     /// Archivar nunca borra un `ShoppingItem`: solo le cambia el `listID`. Sin
@@ -177,13 +243,19 @@ struct ShoppingHistoryView: View {
     }
 
     private func exportCSV() {
-        do {
-            let url = PerformanceSignpost.measure("Exportar CSV") {
-                Result { try HistoryCSVExportService.exportFile(completedLists: completedLists, items: allItems) }
+        guard !isExporting else { return }
+        isExporting = true
+        Task {
+            defer { isExporting = false }
+            do {
+                let url = try await HistoryCSVExportService.exportFileAsync(
+                    completedLists: completedLists,
+                    items: allItems
+                )
+                fileToShare = SharedFile(url: url)
+            } catch {
+                exportErrorMessage = error.localizedDescription
             }
-            fileToShare = SharedFile(url: try url.get())
-        } catch {
-            exportErrorMessage = error.localizedDescription
         }
     }
 }

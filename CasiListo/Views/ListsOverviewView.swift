@@ -125,33 +125,19 @@ struct ListsOverviewView: View {
     private var headerSummaryCard: some View {
         HStack(spacing: 16) {
             VStack(alignment: .leading, spacing: 4) {
-                Text(activeLists.count == 1 ? "1 lista activa" : "\(activeLists.count) listas activas")
+                Text(SpanishPluralization.count(activeLists.count, singular: "lista activa", plural: "listas activas"))
                     .font(Theme.captionDynamic.weight(.semibold))
                     .foregroundStyle(Color.appTextSecondary)
 
-                Text(totalPendingItemsAcrossLists == 1 ? "1 producto por comprar" : "\(totalPendingItemsAcrossLists) productos por comprar")
+                Text(SpanishPluralization.count(totalPendingItemsAcrossLists, singular: "producto por comprar", plural: "productos por comprar"))
                     .font(Theme.headlineDynamic)
                     .foregroundStyle(Color.appTextPrimary)
             }
 
             Spacer()
 
-            Button {
-                HapticFeedback.impact()
-                sheetDestination = .createList
-            } label: {
-                HStack(spacing: 6) {
-                    Image(systemName: "plus.circle.fill")
-                    Text("Nueva")
-                        .fontWeight(.semibold)
-                }
-                .font(Theme.captionDynamic)
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .foregroundStyle(Theme.onAccent)
-                .background(Theme.accentYellow, in: Capsule())
-            }
-            .accessibilityLabel("Crear nueva lista de compra")
+            // La creación tiene un único CTA primario en la barra de navegación.
+            // Esta tarjeta queda como resumen informativo para no competir con él.
         }
         .padding(16)
         .background(

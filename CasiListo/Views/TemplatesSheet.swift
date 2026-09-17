@@ -3,6 +3,7 @@ import SwiftData
 
 /// Modal para seleccionar y aplicar plantillas predefinidas de compras.
 struct TemplatesSheet: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
 
@@ -135,43 +136,46 @@ struct TemplatesSheet: View {
 
     private func templateCard(_ template: PresetTemplate) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Text(template.emoji)
-                    .font(.largeTitle)
-
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(template.title)
-                        .font(.headline)
-                        .foregroundStyle(Color.appTextPrimary)
-
-                    Text(template.description)
-                        .font(.caption)
-                        .foregroundStyle(Color.appTextSecondary)
-                }
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) { templateHeaderContent(template) }
+                VStack(alignment: .leading, spacing: 8) { templateHeaderContent(template) }
             }
 
             Divider()
 
             if template.isSummarized {
                 Label(
-                    "\(template.items.count) productos — los que ya tengas en la lista se omiten.",
+                    summarizedTemplateLabel(for: template),
                     systemImage: "square.stack.3d.up.fill"
                 )
                 .font(.caption)
                 .foregroundStyle(Color.appTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
             } else {
                 VStack(alignment: .leading, spacing: 6) {
                     ForEach(template.items, id: \.name) { item in
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                                .foregroundStyle(Theme.accentInteractive)
-                                .font(.caption)
-                            Text(item.name)
-                                .font(.subheadline)
-                            Spacer()
-                            Text(item.quantity)
-                                .font(.caption)
-                                .foregroundStyle(Color.appTextSecondary)
+                        if dynamicTypeSize.isAccessibilitySize {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(item.name)
+                                    .font(.subheadline)
+                                    .fixedSize(horizontal: false, vertical: true)
+                                Text(item.quantity)
+                                    .font(.caption)
+                                    .foregroundStyle(Color.appTextSecondary)
+                            }
+                            .padding(.leading, 24)
+                        } else {
+                            HStack {
+                                Image(systemName: "plus.circle.fill")
+                                    .foregroundStyle(Theme.accentInteractive)
+                                    .font(.caption)
+                                Text(item.name)
+                                    .font(.subheadline)
+                                Spacer()
+                                Text(item.quantity)
+                                    .font(.caption)
+                                    .foregroundStyle(Color.appTextSecondary)
+                            }
                         }
                     }
                 }
@@ -180,8 +184,12 @@ struct TemplatesSheet: View {
             Button {
                 applyTemplate(template)
             } label: {
-                Label("Añadir estos \(template.items.count) productos", systemImage: "plus.app.fill")
+                Label(
+                    "Añadir estos \(SpanishPluralization.count(template.items.count, singular: "producto", plural: "productos"))",
+                    systemImage: "plus.app.fill"
+                )
                     .font(.subheadline.bold())
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 10)
                     .background(Theme.accentYellow)
@@ -195,6 +203,29 @@ struct TemplatesSheet: View {
         .background(Color.appCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
+    }
+
+    @ViewBuilder
+    private func templateHeaderContent(_ template: PresetTemplate) -> some View {
+        Text(template.emoji)
+            .font(.largeTitle)
+
+        VStack(alignment: .leading, spacing: 2) {
+            Text(template.title)
+                .font(.headline)
+                .foregroundStyle(Color.appTextPrimary)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(template.description)
+                .font(.caption)
+                .foregroundStyle(Color.appTextSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .layoutPriority(1)
+    }
+
+    private func summarizedTemplateLabel(for template: PresetTemplate) -> String {
+        "\(SpanishPluralization.count(template.items.count, singular: "producto", plural: "productos")) — los que ya tengas en la lista se omiten."
     }
 
     private func applyTemplate(_ template: PresetTemplate) {

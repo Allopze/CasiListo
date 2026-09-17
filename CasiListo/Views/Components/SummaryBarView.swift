@@ -21,47 +21,15 @@ struct SummaryBarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // Recuento y control de visibilidad. El botón de archivar vive en su
-            // propia fila: los tres juntos no caben y se truncaban entre sí
-            // («362 pendien…», «Archi…»).
-            HStack(spacing: scaledSpacing) {
-                Text(countsSummary)
-                    .font(Theme.captionDynamic.weight(.medium))
-                    .foregroundStyle(Color.appTextSecondary)
-                    .monospacedDigit()
-                    .lineLimit(1)
-
-                Spacer(minLength: 8)
-
-                Button {
-                    HapticFeedback.selection()
-                    withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
-                        showPurchased.toggle()
-                    }
-                } label: {
-                    Label(
-                        showPurchased ? "Ocultar comprados" : "Ver comprados",
-                        systemImage: showPurchased ? "eye.slash" : "eye"
-                    )
-                    .font(Theme.captionDynamic.weight(.medium))
-                    .foregroundStyle(Color.appTextSecondary)
-                    .lineLimit(1)
-                    .padding(.horizontal, 10)
-                    .padding(.vertical, 6)
-                    .background {
-                        Capsule()
-                            .fill(Color.appCardBackground)
-                            .overlay {
-                                Capsule()
-                                    .strokeBorder(Color.appSeparator, lineWidth: 1)
-                            }
-                    }
-                    .frame(minHeight: Theme.minimumTouchTarget)
-                    .contentShape(Rectangle())
+            // En tamaños accesibles la fila compacta no debe resolver el
+            // problema con elipsis. `ViewThatFits` apila el contador y el
+            // control cuando ambos textos ya no caben lado a lado.
+            ViewThatFits(in: .horizontal) {
+                controlsRow
+                VStack(alignment: .leading, spacing: 8) {
+                    countsText
+                    visibilityButton
                 }
-                .buttonStyle(.plain)
-                .layoutPriority(1)
-                .accessibilityLabel(showPurchased ? "Ocultar comprados" : "Mostrar comprados")
             }
 
             // Sin nada comprado la barra sería una franja gris sin significado.
@@ -82,7 +50,10 @@ struct SummaryBarView: View {
                 .animation(Theme.defaultAnimation(reduceMotion: reduceMotion), value: progress)
                 .accessibilityElement()
                 .accessibilityLabel("Progreso de la compra")
-                .accessibilityValue("\(purchasedCount) de \(totalCount) productos comprados")
+                .accessibilityValue(
+                    "\(purchasedCount) de "
+                        + "\(SpanishPluralization.count(totalCount, singular: "producto comprado", plural: "productos comprados"))"
+                )
             }
 
             if purchasedCount > 0, let archive = onArchivePurchased {
@@ -91,17 +62,19 @@ struct SummaryBarView: View {
                     archive()
                 } label: {
                     Label(
-                        purchasedCount == 1 ? "Archivar 1 comprado" : "Archivar \(purchasedCount) comprados",
+                        "Archivar " + SpanishPluralization.count(purchasedCount, singular: "comprado", plural: "comprados"),
                         systemImage: "archivebox"
                     )
                     .font(Theme.captionDynamic.weight(.semibold))
                     .foregroundStyle(Theme.accentInteractive)
-                    .lineLimit(1)
                     .frame(minHeight: Theme.minimumTouchTarget, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("Archivar \(purchasedCount) productos comprados")
+                .accessibilityLabel(
+                    "Archivar "
+                        + SpanishPluralization.count(purchasedCount, singular: "producto comprado", plural: "productos comprados")
+                )
             }
         }
         .accessibilityElement(children: .contain)
@@ -110,9 +83,58 @@ struct SummaryBarView: View {
     /// «363 pendientes» o «362 pendientes · 1 comprado» en una sola cadena, para
     /// que el recuento no compita por espacio consigo mismo.
     private var countsSummary: String {
-        let pending = pendingCount == 1 ? "1 pendiente" : "\(pendingCount) pendientes"
+        let pending = SpanishPluralization.count(pendingCount, singular: "pendiente", plural: "pendientes")
         guard purchasedCount > 0 else { return pending }
-        let purchased = purchasedCount == 1 ? "1 comprado" : "\(purchasedCount) comprados"
+        let purchased = SpanishPluralization.count(purchasedCount, singular: "comprado", plural: "comprados")
         return "\(pending) · \(purchased)"
+    }
+
+    private var countsText: some View {
+        Text(countsSummary)
+            .font(Theme.captionDynamic.weight(.medium))
+            .foregroundStyle(Color.appTextSecondary)
+            .monospacedDigit()
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(1)
+    }
+
+    private var visibilityButton: some View {
+        Button {
+            HapticFeedback.selection()
+            withAnimation(Theme.defaultAnimation(reduceMotion: reduceMotion)) {
+                showPurchased.toggle()
+            }
+        } label: {
+            Label(
+                showPurchased ? "Ocultar comprados" : "Ver comprados",
+                systemImage: showPurchased ? "eye.slash" : "eye"
+            )
+            .font(Theme.captionDynamic.weight(.medium))
+            .foregroundStyle(Color.appTextSecondary)
+            .fixedSize(horizontal: false, vertical: true)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 6)
+            .background {
+                Capsule()
+                    .fill(Color.appCardBackground)
+                    .overlay {
+                        Capsule()
+                            .strokeBorder(Color.appSeparator, lineWidth: 1)
+                    }
+            }
+            .frame(minHeight: Theme.minimumTouchTarget)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .layoutPriority(1)
+        .accessibilityLabel(showPurchased ? "Ocultar comprados" : "Mostrar comprados")
+    }
+
+    private var controlsRow: some View {
+        HStack(spacing: scaledSpacing) {
+            countsText
+            Spacer(minLength: 8)
+            visibilityButton
+        }
     }
 }

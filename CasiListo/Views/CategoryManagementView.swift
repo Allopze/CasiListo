@@ -65,7 +65,8 @@ struct CategoryManagementView: View {
                 // categoría de sistema le hace perder para siempre su vínculo
                 // con la categorización automática — nada la resiembra.
                 Text(
-                    "\(affectedItemCount(for: category)) producto(s) y \(affectedCatalogCount(for: category)) sugerencia(s) se reasignarán a «Varios». "
+                    "\(SpanishPluralization.count(affectedItemCount(for: category), singular: "producto")) y "
+                    + "\(SpanishPluralization.count(affectedCatalogCount(for: category), singular: "sugerencia")) se reasignarán a «Varios». "
                     + (category.isSystem
                         ? "CasiListo tampoco volverá a asignar productos a esta categoría automáticamente. "
                         : "")

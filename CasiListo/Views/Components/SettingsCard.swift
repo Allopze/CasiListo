@@ -52,10 +52,13 @@ struct SettingsLinkRow: View {
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
                     .font(Theme.bodyBoldDynamic)
+                    .fixedSize(horizontal: false, vertical: true)
                 Text(detail)
                     .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .layoutPriority(1)
 
             Spacer()
 

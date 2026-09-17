@@ -139,27 +139,9 @@ struct CategorySectionView: View {
                 onToggleCollapse()
             }
         } label: {
-            HStack(spacing: hStackSpacing) {
-                Image(systemName: category.sfSymbol)
-                    .font(.system(size: sfSymbolSize, weight: .semibold))
-                    .foregroundStyle(categoryIcon)
-                    .frame(width: imageWidth, height: imageWidth)
-                    .background(categoryAccent.opacity(Category.badgeBackgroundOpacity))
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-
-                Text(category.displayName)
-                    .font(Theme.bodyBoldDynamic)
-                    .foregroundStyle(Color.appTextPrimary)
-
-                Spacer()
-
-                categoryBadge
-
-                Image(systemName: "chevron.down")
-                    .font(.system(size: chevronSize, weight: .semibold))
-                    .foregroundStyle(Color.appTextSecondary)
-                    .rotationEffect(.degrees(isCollapsed ? 0 : 180))
-                    .animation(Theme.quickAnimation(reduceMotion: reduceMotion), value: isCollapsed)
+            ViewThatFits(in: .horizontal) {
+                sectionHeaderContent(axis: .horizontal)
+                sectionHeaderContent(axis: .vertical)
             }
             .textCase(nil)
             .padding(.vertical, headerPaddingVertical)
@@ -181,13 +163,52 @@ struct CategorySectionView: View {
         .buttonStyle(.plain)
         .accessibilityElement(children: .combine)
         .accessibilityLabel({
-            var label = "\(category.displayName), \(pendingCount) pendientes"
-            if purchasedCount > 0 { label += ", \(purchasedCount) comprados" }
+            var label = "\(category.displayName), "
+                + SpanishPluralization.count(pendingCount, singular: "pendiente", plural: "pendientes")
+            if purchasedCount > 0 {
+                label += ", " + SpanishPluralization.count(purchasedCount, singular: "comprado", plural: "comprados")
+            }
             return label
         }())
         .accessibilityValue(isCollapsed ? "Colapsada" : "Expandida")
         .accessibilityHint(isCollapsed ? "Toca para expandir la categoría" : "Toca para colapsar la categoría")
         .accessibilityIdentifier("category-section-\(category.name)")
+    }
+
+    private enum HeaderAxis { case horizontal, vertical }
+
+    @ViewBuilder
+    private func sectionHeaderContent(axis: HeaderAxis) -> some View {
+        let layout = axis == .horizontal
+            ? AnyLayout(HStackLayout(spacing: hStackSpacing))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+        layout {
+            HStack(spacing: hStackSpacing) {
+                Image(systemName: category.sfSymbol)
+                    .font(.system(size: sfSymbolSize, weight: .semibold))
+                    .foregroundStyle(categoryIcon)
+                    .frame(width: imageWidth, height: imageWidth)
+                    .background(categoryAccent.opacity(Category.badgeBackgroundOpacity))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+                Text(category.displayName)
+                    .font(Theme.bodyBoldDynamic)
+                    .foregroundStyle(Color.appTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .layoutPriority(1)
+            }
+
+            if axis == .horizontal { Spacer(minLength: 0) }
+
+            HStack(spacing: hStackSpacing) {
+                categoryBadge
+                Image(systemName: "chevron.down")
+                    .font(.system(size: chevronSize, weight: .semibold))
+                    .foregroundStyle(Color.appTextSecondary)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 180))
+                    .animation(Theme.quickAnimation(reduceMotion: reduceMotion), value: isCollapsed)
+            }
+        }
     }
 
     private var pendingCount: Int { items.filter { !$0.isPurchased }.count }

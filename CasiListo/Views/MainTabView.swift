@@ -1,6 +1,7 @@
 import SwiftData
 import SwiftUI
 import UIKit
+import OSLog
 
 /// Pestañas raíz de la app.
 enum AppTab: Hashable {
@@ -12,7 +13,9 @@ enum AppTab: Hashable {
 
 /// Raíz de navegación: Compra · Catálogo · Historial · Ajustes.
 struct MainTabView: View {
+    private static let widgetLogger = Logger(subsystem: "com.allopze.CasiListo", category: "WidgetActions")
     @State private var selection: AppTab = .compra
+    @State private var widgetErrorMessage: String?
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.modelContext) private var modelContext
     @Environment(VoiceNoteService.self) private var voiceNoteService
@@ -81,18 +84,28 @@ struct MainTabView: View {
         // urgente es que la persona sepa que esto no es su lista antes de
         // seguir usándola, no que se enteren de que no se guardará nada nuevo.
         .safeAreaInset(edge: .top, spacing: 0) {
-            if CasiListoModelContainer.didDetectMissingStore {
-                persistenceBanner(
-                    title: "No encontramos tus datos guardados",
-                    message: "La app arrancó vacía, pero ya la habías usado. No borres ni reinstales: escríbenos antes de seguir.",
-                    identifier: "persistence-missing-store-banner"
-                )
-            } else if CasiListoModelContainer.isUsingInMemoryFallback {
-                persistenceBanner(
-                    title: "CasiListo no puede guardar en este dispositivo",
-                    message: "Tus cambios se perderán al cerrar la app.",
-                    identifier: "persistence-warning-banner"
-                )
+            VStack(spacing: 0) {
+                if CasiListoModelContainer.didDetectMissingStore {
+                    persistenceBanner(
+                        title: "No encontramos tus datos guardados",
+                        message: "La app arrancó vacía, pero ya la habías usado. No borres ni reinstales: escríbenos antes de seguir.",
+                        identifier: "persistence-missing-store-banner"
+                    )
+                } else if CasiListoModelContainer.isUsingInMemoryFallback {
+                    persistenceBanner(
+                        title: "CasiListo no puede guardar en este dispositivo",
+                        message: "Tus cambios se perderán al cerrar la app.",
+                        identifier: "persistence-warning-banner"
+                    )
+                }
+
+                if let widgetErrorMessage {
+                    persistenceBanner(
+                        title: "No se pudo actualizar la lista",
+                        message: "Conservamos la acción del widget y la reintentaremos al volver a abrir CasiListo. (\(widgetErrorMessage))",
+                        identifier: "widget-persistence-error-banner"
+                    )
+                }
             }
         }
         // Solo para verificación visual automatizada. La apariencia se fuerza en
@@ -128,10 +141,16 @@ struct MainTabView: View {
         .task { applyPendingWidgetPurchases() }
     }
 
-    /// Lo que se marcó desde el widget mientras la app no estaba. Un fallo
-    /// aquí no se muestra: la persona no hizo nada en esta pantalla que
-    /// explicar, y el widget ya refleja el cambio de forma optimista.
+    /// Lo que se marcó desde el widget mientras la app no estaba. La cola se
+    /// conserva ante cualquier fallo y el aviso visible evita que el estado
+    /// optimista parezca una pérdida silenciosa.
     private func applyPendingWidgetPurchases() {
-        try? ShoppingPersistenceCoordinator(context: modelContext).applyPendingWidgetPurchases()
+        widgetErrorMessage = nil
+        do {
+            try ShoppingPersistenceCoordinator(context: modelContext).applyPendingWidgetPurchases()
+        } catch {
+            Self.widgetLogger.error("No se pudieron aplicar acciones del widget: \(error.localizedDescription, privacy: .public)")
+            widgetErrorMessage = error.localizedDescription
+        }
     }
 }

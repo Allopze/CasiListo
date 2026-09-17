@@ -14,6 +14,7 @@ struct ShoppingListDetailView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
     @State private var isEditingListSheetPresented = false
@@ -76,7 +77,8 @@ struct ShoppingListDetailView: View {
                     Text(list.title)
                         .font(Theme.bodyBoldDynamic)
                         .foregroundStyle(Color.appTextPrimary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
                 .accessibilityAddTraits(.isHeader)
             }
@@ -108,8 +110,8 @@ struct ShoppingListDetailView: View {
             }
             Button({
                 let count = viewModel.itemCounts(from: activeItems).purchased
-                return count == 1 ? "Archivar 1 comprado" : "Archivar \(count) comprados"
-            }(), role: .destructive) {
+                return "Archivar " + SpanishPluralization.count(count, singular: "comprado", plural: "comprados")
+            }()) {
                 do {
                     try ShoppingPersistenceCoordinator(context: modelContext).archivePurchased(
                         from: activeItems,
@@ -147,9 +149,11 @@ struct ShoppingListDetailView: View {
         // Cubre el flujo real más probable: lista vacía → "Usar plantilla" →
         // se puebla → se cierra el sheet → aparece la guía.
         .onChange(of: viewModel.presentedSheet?.id) { _, _ in presentOnboardingIfNeeded() }
-        .sheet(isPresented: $showsOnboarding, onDismiss: { hasSeenOnboarding = true }) {
-            OnboardingGuideSheet(onDismiss: { showsOnboarding = false })
-        }
+        .sheet(
+            isPresented: $showsOnboarding,
+            onDismiss: { hasSeenOnboarding = true },
+            content: { OnboardingGuideSheet(onDismiss: { showsOnboarding = false }) }
+        )
     }
 
     // MARK: - Menú de Opciones
@@ -222,7 +226,7 @@ struct ShoppingListDetailView: View {
             }
 
             if viewModel.itemCounts(from: activeItems).purchased > 0 {
-                Button(role: .destructive) { showsClearPurchasedDialog = true } label: {
+                Button { showsClearPurchasedDialog = true } label: {
                     Label("Archivar comprados", systemImage: "archivebox")
                 }
             }

@@ -17,6 +17,7 @@ struct AddEditListSheet: View {
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(filter: #Predicate<ShoppingList> { $0.statusRawValue == activeShoppingListStatusRawValue })
     private var activeLists: [ShoppingList]
 
@@ -149,7 +150,8 @@ struct AddEditListSheet: View {
                     Text(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Nombre de la lista" : name)
                         .font(Theme.headlineDynamic)
                         .foregroundStyle(name.isEmpty ? Color.appTextSecondary : Color.appTextPrimary)
-                        .lineLimit(1)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                        .fixedSize(horizontal: false, vertical: true)
 
                     HStack(spacing: 6) {
                         Circle()

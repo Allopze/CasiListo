@@ -19,11 +19,14 @@ struct ListsOverviewEmptyStateView: View {
                 Text("No tienes listas activas")
                     .font(Theme.sectionHeaderDynamic)
                     .foregroundStyle(Color.appTextPrimary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
 
                 Text("Crea una lista para organizar tus compras por ocasión o supermercado.")
                     .font(Theme.bodyDynamic)
                     .foregroundStyle(Color.appTextSecondary)
                     .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
                     .padding(.horizontal, 24)
             }
 
@@ -43,10 +46,17 @@ struct ListsOverviewEmptyStateView: View {
                     .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
 
-                HStack(spacing: 8) {
-                    quickStarterButton(title: "Supermercado", symbol: "cart.fill", colorHex: "F5C518")
-                    quickStarterButton(title: "Feria", symbol: "leaf.fill", colorHex: "4CAF50")
-                    quickStarterButton(title: "Asado", symbol: "flame.fill", colorHex: "FF5722")
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) {
+                        quickStarterButton(title: "Supermercado", symbol: "cart.fill", colorHex: "F5C518")
+                        quickStarterButton(title: "Feria", symbol: "leaf.fill", colorHex: "4CAF50")
+                        quickStarterButton(title: "Asado", symbol: "flame.fill", colorHex: "FF5722")
+                    }
+                    VStack(spacing: 8) {
+                        quickStarterButton(title: "Supermercado", symbol: "cart.fill", colorHex: "F5C518")
+                        quickStarterButton(title: "Feria", symbol: "leaf.fill", colorHex: "4CAF50")
+                        quickStarterButton(title: "Asado", symbol: "flame.fill", colorHex: "FF5722")
+                    }
                 }
             }
             .padding(.top, 12)

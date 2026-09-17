@@ -13,6 +13,20 @@ struct EmptyStateView: View {
     private let quickStaples = ["Leche 🥛", "Pan 🍞", "Huevos 🥚", "Manzanas 🍎", "Café ☕️", "Mantequilla 🧈"]
 
     var body: some View {
+        // En Accessibility XXL el contenido mide ~1.300 pt contra una ventana de
+        // 874 pt: sin scroll, «Usar plantilla» y «Ver última compra» quedaban
+        // fuera de pantalla y no había forma de alcanzarlos (CASI-108). El
+        // `minHeight` conserva el centrado con los tamaños en que sí cabe.
+        GeometryReader { proxy in
+            ScrollView {
+                content
+                    .frame(minHeight: proxy.size.height)
+            }
+            .scrollBounceBehavior(.basedOnSize)
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: mainSpacing) {
             Spacer()
 
@@ -22,11 +36,14 @@ struct EmptyStateView: View {
             Text("Tu lista está vacía")
                 .font(Theme.bodyBoldDynamic)
                 .foregroundStyle(Color.appTextPrimary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
             Text("Añade productos para tu próxima compra o selecciona uno de los básicos:")
                 .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
 
             // Chips de productos básicos rápidos
             ScrollView(.horizontal, showsIndicators: false) {
@@ -53,38 +70,9 @@ struct EmptyStateView: View {
             }
             .padding(.vertical, 4)
 
-            GlassEffectContainer(spacing: 12) {
-                Button {
-                    HapticFeedback.impact()
-                    onAddTapped()
-                } label: {
-                    Label("Añadir producto", systemImage: "plus")
-                        .font(Theme.bodyBoldDynamic)
-                }
-                .buttonStyle(.glassProminent)
-
-                if let showTemplates = onShowTemplates {
-                    Button {
-                        HapticFeedback.selection()
-                        showTemplates()
-                    } label: {
-                        Label("Usar plantilla", systemImage: "square.grid.2x2")
-                            .font(Theme.bodyBoldDynamic)
-                    }
-                    .buttonStyle(.glass)
-                    .accessibilityIdentifier("empty-state-templates")
-                }
-
-                if hasHistory, let showHistory = onShowHistory {
-                    Button {
-                        HapticFeedback.selection()
-                        showHistory()
-                    } label: {
-                        Label("Ver última compra", systemImage: "clock.arrow.circlepath")
-                            .font(Theme.bodyBoldDynamic)
-                    }
-                    .buttonStyle(.glass)
-                }
+            ViewThatFits(in: .horizontal) {
+                actionButtons(axis: .horizontal)
+                actionButtons(axis: .vertical)
             }
             .padding(.top, 4)
 
@@ -92,6 +80,54 @@ struct EmptyStateView: View {
             Spacer()
         }
         .padding(.horizontal, 24)
+    }
+
+    private enum ActionAxis { case horizontal, vertical }
+
+    @ViewBuilder
+    private func actionButtons(axis: ActionAxis) -> some View {
+        GlassEffectContainer(spacing: 12) {
+            if axis == .horizontal {
+                HStack(spacing: 12) { actionButtonViews }
+            } else {
+                VStack(spacing: 12) { actionButtonViews }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var actionButtonViews: some View {
+        Button {
+            HapticFeedback.impact()
+            onAddTapped()
+        } label: {
+            Label("Añadir producto", systemImage: "plus")
+                .font(Theme.bodyBoldDynamic)
+        }
+        .buttonStyle(.glassProminent)
+
+        if let showTemplates = onShowTemplates {
+            Button {
+                HapticFeedback.selection()
+                showTemplates()
+            } label: {
+                Label("Usar plantilla", systemImage: "square.grid.2x2")
+                    .font(Theme.bodyBoldDynamic)
+            }
+            .buttonStyle(.glass)
+            .accessibilityIdentifier("empty-state-templates")
+        }
+
+        if hasHistory, let showHistory = onShowHistory {
+            Button {
+                HapticFeedback.selection()
+                showHistory()
+            } label: {
+                Label("Ver última compra", systemImage: "clock.arrow.circlepath")
+                    .font(Theme.bodyBoldDynamic)
+            }
+            .buttonStyle(.glass)
+        }
     }
 }
 

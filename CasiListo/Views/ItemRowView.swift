@@ -22,43 +22,10 @@ struct ItemRowView: View {
     @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 12
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
-        HStack(spacing: scaledSpacing) {
-            Button {
-                toggleItem()
-            } label: {
-                checkboxView
-                    .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(item.isPurchased ? "Marcar \(item.name) como pendiente" : "Marcar \(item.name) como comprado")
-            .accessibilityValue(item.isPurchased ? "Comprado" : "Pendiente")
-            .accessibilityHint("Cambia el estado del producto")
-            .accessibilityIdentifier("item-toggle-\(item.id.uuidString)")
-
-            Button {
-                HapticFeedback.selection()
-                onEdit()
-            } label: {
-                HStack(spacing: scaledSpacing) {
-                    rowContent
-                    Spacer(minLength: 0)
-                }
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityElement(children: .combine)
-            .accessibilityLabel(accessibilityLabel)
-            .accessibilityHint("Toca para editar el producto")
-            .accessibilityIdentifier("item-row-\(item.id.uuidString)")
-
-            if let voiceNote = item.voiceNoteFilename {
-                VoiceNotePlayerButton(filename: voiceNote)
-            }
-
-            moreActionsMenu
-        }
+        rowLayout
         .padding(.vertical, scaledPaddingVertical)
         .contextMenu {
             Button {
@@ -142,13 +109,78 @@ struct ItemRowView: View {
         .animation(Theme.quickAnimation(reduceMotion: reduceMotion), value: item.isPurchased)
     }
 
+    @ViewBuilder
+    private var rowLayout: some View {
+        if dynamicTypeSize.isAccessibilitySize {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .top, spacing: scaledSpacing) {
+                    checkboxButton
+                    editButton
+                }
+
+                HStack(spacing: scaledSpacing) {
+                    Spacer(minLength: Theme.minimumTouchTarget + scaledSpacing)
+                    if let voiceNote = item.voiceNoteFilename {
+                        VoiceNotePlayerButton(filename: voiceNote)
+                    }
+                    moreActionsMenu
+                }
+            }
+        } else {
+            HStack(spacing: scaledSpacing) {
+                checkboxButton
+                editButton
+
+                if let voiceNote = item.voiceNoteFilename {
+                    VoiceNotePlayerButton(filename: voiceNote)
+                }
+
+                moreActionsMenu
+            }
+        }
+    }
+
+    private var checkboxButton: some View {
+        Button {
+            toggleItem()
+        } label: {
+            checkboxView
+                .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(item.isPurchased ? "Marcar \(item.name) como pendiente" : "Marcar \(item.name) como comprado")
+        .accessibilityValue(item.isPurchased ? "Comprado" : "Pendiente")
+        .accessibilityHint("Cambia el estado del producto")
+        .accessibilityIdentifier("item-toggle-\(item.id.uuidString)")
+    }
+
+    private var editButton: some View {
+        Button {
+            HapticFeedback.selection()
+            onEdit()
+        } label: {
+            HStack(spacing: scaledSpacing) {
+                rowContent
+                Spacer(minLength: 0)
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityHint("Toca para editar el producto")
+        .accessibilityIdentifier("item-row-\(item.id.uuidString)")
+        .layoutPriority(1)
+    }
+
     private var rowContent: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(highlighting: item.name, query: searchText)
                 .font(Theme.bodyDynamic)
                 .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextPrimary)
                 .strikethrough(item.isPurchased, color: Color.appTextPurchased)
-                .lineLimit(2)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+                .fixedSize(horizontal: false, vertical: true)
 
             metaChips
 
@@ -156,7 +188,8 @@ struct ItemRowView: View {
                 Text(item.note)
                     .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
         }
     }
@@ -164,44 +197,57 @@ struct ItemRowView: View {
     @ViewBuilder
     private var metaChips: some View {
         if showsStore || !item.quantity.isEmpty || item.status == .skipped || item.status == .unavailable {
-            HStack(spacing: 6) {
-                if showsStore {
-                    Text(item.store.displayName)
-                        .font(.system(size: storeTextSize, weight: .medium))
-                        .foregroundStyle(item.store.labelColor)
-                        .padding(.horizontal, pillPaddingHorizontal)
-                        .padding(.vertical, pillPaddingVertical)
-                        .background(item.store.color.opacity(0.13))
-                        .clipShape(Capsule())
-                        .opacity(item.isPurchased ? 0.55 : 1)
-                        .accessibilityLabel("Tienda: \(item.store.displayName)")
-                }
+            ViewThatFits(in: .horizontal) {
+                metaChipRow(axis: .horizontal)
+                metaChipRow(axis: .vertical)
+            }
+        }
+    }
 
-                if !item.quantity.isEmpty {
-                    Text(item.quantity)
-                        .font(Theme.captionDynamic)
-                        .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextSecondary)
-                        .padding(.horizontal, pillPaddingHorizontal)
-                        .padding(.vertical, pillPaddingVertical)
-                        .background(Color.appTextSecondary.opacity(0.08))
-                        .clipShape(Capsule())
-                        .accessibilityLabel("Cantidad \(item.quantity)")
-                }
+    private enum MetaChipAxis { case horizontal, vertical }
 
-                if item.status == .skipped || item.status == .unavailable {
-                    Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
-                        .font(Theme.captionDynamic)
-                        .foregroundStyle(
-                            item.status == .skipped
-                                ? Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D"))
-                                : Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078"))
-                        )
-                        .labelStyle(.titleAndIcon)
-                        .padding(.horizontal, pillPaddingHorizontal)
-                        .padding(.vertical, pillPaddingVertical)
-                        .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.10))
-                        .clipShape(Capsule())
-                }
+    @ViewBuilder
+    private func metaChipRow(axis: MetaChipAxis) -> some View {
+        let layout = axis == .horizontal
+            ? AnyLayout(HStackLayout(spacing: 6))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+        layout {
+            if showsStore {
+                Text(item.store.displayName)
+                    .font(.system(size: storeTextSize, weight: .medium))
+                    .foregroundStyle(item.store.labelColor)
+                    .padding(.horizontal, pillPaddingHorizontal)
+                    .padding(.vertical, pillPaddingVertical)
+                    .background(item.store.color.opacity(0.13))
+                    .clipShape(Capsule())
+                    .opacity(item.isPurchased ? 0.55 : 1)
+                    .accessibilityLabel("Tienda: \(item.store.displayName)")
+            }
+
+            if !item.quantity.isEmpty {
+                Text(item.quantity)
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(item.isPurchased ? Color.appTextPurchased : Color.appTextSecondary)
+                    .padding(.horizontal, pillPaddingHorizontal)
+                    .padding(.vertical, pillPaddingVertical)
+                    .background(Color.appTextSecondary.opacity(0.08))
+                    .clipShape(Capsule())
+                    .accessibilityLabel("Cantidad \(item.quantity)")
+            }
+
+            if item.status == .skipped || item.status == .unavailable {
+                Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(
+                        item.status == .skipped
+                            ? Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D"))
+                            : Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078"))
+                    )
+                    .labelStyle(.titleAndIcon)
+                    .padding(.horizontal, pillPaddingHorizontal)
+                    .padding(.vertical, pillPaddingVertical)
+                    .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.10))
+                    .clipShape(Capsule())
             }
         }
     }

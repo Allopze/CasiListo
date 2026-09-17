@@ -2,6 +2,7 @@ import SwiftUI
 
 /// Tarjeta interactiva que representa una lista de compras activa en el menú general.
 struct ListCardView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let list: ShoppingList
     let items: [ShoppingItem]
     let onSelect: () -> Void
@@ -44,7 +45,8 @@ struct ListCardView: View {
                         Text(list.title)
                             .font(Theme.bodyBoldDynamic)
                             .foregroundStyle(Color.appTextPrimary)
-                            .lineLimit(1)
+                            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                            .fixedSize(horizontal: false, vertical: true)
 
                         statusRow
                     }
@@ -68,7 +70,11 @@ struct ListCardView: View {
         }
         .buttonStyle(.plain)
         .accessibilityIdentifier("list-card-\(list.title)")
-        .accessibilityLabel("\(list.title), \(pendingItems.count) productos pendientes, \(purchasedItems.count) comprados")
+        .accessibilityLabel(
+            "\(list.title), "
+                + "\(SpanishPluralization.count(pendingItems.count, singular: "producto pendiente", plural: "productos pendientes")), "
+                + "\(SpanishPluralization.count(purchasedItems.count, singular: "producto comprado", plural: "productos comprados"))"
+        )
         .accessibilityHint("Toca para abrir esta lista")
         .contextMenu { listActions }
         // El menú vive fuera del Button: SwiftUI no activa controles anidados
@@ -121,14 +127,14 @@ struct ListCardView: View {
                     .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
             } else {
-                Text("\(pendingItems.count) pendientes")
+                Text(SpanishPluralization.count(pendingItems.count, singular: "pendiente", plural: "pendientes"))
                     .font(Theme.captionDynamic.weight(.medium))
                     .foregroundStyle(pendingItems.isEmpty ? Color.appTextSecondary : Color.appTextPrimary)
 
                 if !purchasedItems.isEmpty {
                     Text("·")
                         .foregroundStyle(Color.appTextSecondary)
-                    Text("\(purchasedItems.count) listos")
+                    Text(SpanishPluralization.count(purchasedItems.count, singular: "listo", plural: "listos"))
                         .font(Theme.captionDynamic)
                         .foregroundStyle(Color(light: UIColor(hex: "1B6E33"), dark: UIColor(hex: "6FD08C")))
                 }
@@ -145,7 +151,8 @@ struct ListCardView: View {
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.appBackground, in: Capsule())
-                    .lineLimit(1)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             if remainingCount > 0 {

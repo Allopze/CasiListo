@@ -5,6 +5,7 @@ import SwiftData
 /// Desde aquí se agregan productos a la lista activa con un toque.
 struct CatalogView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.modelContext) private var modelContext
 
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
@@ -126,7 +127,7 @@ struct CatalogView: View {
             Text(activeList.map { "Añadiendo a \($0.title)" } ?? "Se creará una lista nueva")
                 .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
@@ -187,29 +188,9 @@ struct CatalogView: View {
                 toggleCollapse(category)
             }
         } label: {
-            HStack(spacing: 12) {
-                Image(systemName: category.sfSymbol)
-                    .font(.system(size: 15, weight: .semibold))
-                    .foregroundStyle(Category.iconColor(for: category))
-                    .frame(width: iconTileSize, height: iconTileSize)
-                    .background(Category.accentColor(for: category).opacity(Category.badgeBackgroundOpacity))
-                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
-
-                Text(category.displayName)
-                    .font(Theme.bodyBoldDynamic)
-                    .foregroundStyle(Color.appTextPrimary)
-
-                Spacer()
-
-                Text("\(count)")
-                    .font(Theme.captionDynamic)
-                    .foregroundStyle(Color.appTextSecondary)
-                    .monospacedDigit()
-
-                Image(systemName: "chevron.down")
-                    .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(Color.appTextSecondary)
-                    .rotationEffect(.degrees(isCollapsed ? 0 : 180))
+            ViewThatFits(in: .horizontal) {
+                categoryHeaderContent(category, count: count, isCollapsed: isCollapsed, axis: .horizontal)
+                categoryHeaderContent(category, count: count, isCollapsed: isCollapsed, axis: .vertical)
             }
             .padding(.vertical, 12)
             .padding(.horizontal, cardPadding)
@@ -228,37 +209,105 @@ struct CatalogView: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .accessibilityLabel("\(category.displayName), \(count) productos en el catálogo")
+        .accessibilityLabel(
+            "\(category.displayName), "
+                + "\(SpanishPluralization.count(count, singular: "producto", plural: "productos")) en el catálogo"
+        )
         .accessibilityValue(isCollapsed ? "Colapsada" : "Expandida")
         .accessibilityIdentifier("catalog-section-\(category.name)")
     }
 
+    private enum CategoryHeaderAxis { case horizontal, vertical }
+
+    @ViewBuilder
+    private func categoryHeaderContent(
+        _ category: Category,
+        count: Int,
+        isCollapsed: Bool,
+        axis: CategoryHeaderAxis
+    ) -> some View {
+        let layout = axis == .horizontal
+            ? AnyLayout(HStackLayout(spacing: 12))
+            : AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
+        layout {
+            HStack(spacing: 12) {
+                Image(systemName: category.sfSymbol)
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(Category.iconColor(for: category))
+                    .frame(width: iconTileSize, height: iconTileSize)
+                    .background(Category.accentColor(for: category).opacity(Category.badgeBackgroundOpacity))
+                    .clipShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+
+                Text(category.displayName)
+                    .font(Theme.bodyBoldDynamic)
+                    .foregroundStyle(Color.appTextPrimary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if axis == .horizontal {
+                Spacer(minLength: 0)
+            }
+
+            HStack {
+                if axis == .vertical { Spacer(minLength: 0) }
+                Text("\(count)")
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
+                    .monospacedDigit()
+
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 13, weight: .semibold))
+                    .foregroundStyle(Color.appTextSecondary)
+                    .rotationEffect(.degrees(isCollapsed ? 0 : 180))
+            }
+        }
+    }
+
+    @ViewBuilder
     private func catalogRow(for catalogItem: ProductCatalogItem) -> some View {
         let status = activeStatusByName[ProductNameNormalizer.normalize(catalogItem.name)]
 
-        return HStack(spacing: 12) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(catalogItem.name)
-                    .font(Theme.bodyDynamic)
-                    .foregroundStyle(Color.appTextPrimary)
-                    .lineLimit(2)
-
-                if status == .purchased {
-                    Text("Comprado en esta visita")
-                        .font(Theme.captionDynamic)
-                        .foregroundStyle(Color.appTextSecondary)
-                } else if status != nil {
-                    Text("En tu compra")
-                        .font(Theme.captionDynamic)
-                        .foregroundStyle(Color.appTextSecondary)
+        Group {
+            if dynamicTypeSize.isAccessibilitySize {
+                VStack(alignment: .leading, spacing: 8) {
+                    catalogItemLabel(for: catalogItem, status: status)
+                    HStack {
+                        Spacer(minLength: 0)
+                        trailingButton(for: catalogItem, status: status)
+                    }
+                }
+            } else {
+                HStack(spacing: 12) {
+                    catalogItemLabel(for: catalogItem, status: status)
+                    Spacer(minLength: 8)
+                    trailingButton(for: catalogItem, status: status)
                 }
             }
-
-            Spacer(minLength: 8)
-
-            trailingButton(for: catalogItem, status: status)
         }
         .padding(.vertical, rowVerticalPadding)
+    }
+
+    private func catalogItemLabel(for catalogItem: ProductCatalogItem, status: ShoppingItemStatus?) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(catalogItem.name)
+                .font(Theme.bodyDynamic)
+                .foregroundStyle(Color.appTextPrimary)
+                .lineLimit(dynamicTypeSize.isAccessibilitySize ? 4 : 2)
+                .fixedSize(horizontal: false, vertical: true)
+
+            if status == .purchased {
+                Text("Comprado en esta visita")
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            } else if status != nil {
+                Text("En tu compra")
+                    .font(Theme.captionDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+        .layoutPriority(1)
     }
 
     @ViewBuilder
