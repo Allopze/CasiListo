@@ -29,10 +29,18 @@ jobs:
       - name: Validate generated site
         working-directory: privacy-site
         run: npm test
-      - name: Deploy to Cloudflare Pages
+      # El sitio es un Worker de solo assets, no un proyecto Pages: con
+      # `pages deploy` la API responde "Project not found" porque busca en otra
+      # lista. La configuración vive en privacy-site/wrangler.jsonc.
+      - name: Deploy to Cloudflare Workers
         uses: cloudflare/wrangler-action@v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           gitHubToken: ${{ secrets.GITHUB_TOKEN }}
-          command: pages deploy privacy-site/dist --project-name=casilisto-privacy
+          workingDirectory: privacy-site
+          # La acción instala wrangler 3.90.0 por defecto, anterior al soporte
+          # de `assets` en la configuración: con esa versión el deploy subiría
+          # un Worker vacío.
+          wranglerVersion: '4.133.0'
+          command: deploy

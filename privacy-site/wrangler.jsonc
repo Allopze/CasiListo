@@ -1,0 +1,17 @@
+// El sitio es un Worker de solo assets (no un proyecto Pages): se publica con
+// `wrangler deploy`, no con `wrangler pages deploy`. El nombre tiene que
+// coincidir con el Worker que ya sirve casilisto.lat —
+// casilisto-privacy.allopze.workers.dev— o el deploy crearía uno nuevo y el
+// dominio seguiría apuntando al viejo.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "casilisto-privacy",
+  "compatibility_date": "2026-09-17",
+  "workers_dev": true,
+  "assets": {
+    "directory": "./dist",
+    // Sin esto el 404 se responde con cuerpo vacío y `404.html` nunca se sirve,
+    // que es exactamente lo que pasa hoy en producción.
+    "not_found_handling": "404-page"
+  }
+}

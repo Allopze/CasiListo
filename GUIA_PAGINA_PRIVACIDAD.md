@@ -13,7 +13,7 @@ existe.
 ## 1. Estado actual: la página ya existe
 
 No se parte de cero. Hay un sitio estático versionado en [privacy-site/](privacy-site/) que se
-publica solo en Cloudflare Pages.
+publica solo en Cloudflare Workers (Worker de solo assets, no un proyecto Pages).
 
 | Pieza | Ruta | Nota |
 |---|---|---|
@@ -52,8 +52,10 @@ npm run build      # genera dist/privacy/index.html y dist/support/index.html
 - `dist/` se regenera desde cero (`rmSync`) en cada corrida y no está versionado.
 - Rutas finales: cada página se emite como `<page>/index.html`, por eso las URLs llevan slash final
   (`/privacy/`, no `/privacy.html`). Los enlaces internos deben escribirse con esa forma.
-- En CI, `PUBLIC_*` son **variables** de repositorio y `CLOUDFLARE_*` son **secretos**; el proyecto
-  de Cloudflare Pages se llama `casilisto-privacy`.
+- En CI, `PUBLIC_*` son **variables** de repositorio y `CLOUDFLARE_*` son **secretos**. El destino es
+  el Worker `casilisto-privacy` (`casilisto-privacy.allopze.workers.dev`), configurado en
+  [privacy-site/wrangler.jsonc](privacy-site/wrangler.jsonc). El token necesita **Workers Scripts:
+  Edit**: uno con permisos de Cloudflare Pages falla aunque autentique bien.
 
 ---
 

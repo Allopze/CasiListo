@@ -2,7 +2,7 @@
 
 Las tres páginas que App Store Connect exige para publicar CasiListo: portada, política de privacidad y soporte. HTML y CSS a mano, sin dependencias; `npm run build` deja en `dist/` una carpeta estática lista para cualquier hosting.
 
-Dominio en producción: `https://casilisto.lat` (Cloudflare Pages). Es el mismo que la app lleva compilado en [AppSupportLinks.swift](../CasiListo/Services/AppSupportLinks.swift); si cambia uno, cambia el otro y deja una redirección 301 desde el anterior.
+Dominio en producción: `https://casilisto.lat`, servido por el Worker de solo assets `casilisto-privacy` (Cloudflare Workers, no Pages). Es el mismo que la app lleva compilado en [AppSupportLinks.swift](../CasiListo/Services/AppSupportLinks.swift); si cambia uno, cambia el otro y deja una redirección 301 desde el anterior.
 
 ## Comandos
 
@@ -40,7 +40,7 @@ npm run dev     # sirve dist/ en http://localhost:3000
 | `PUBLIC_POLICY_LAST_UPDATED` | `13 de septiembre de 2026` | Formato «D de mes de AAAA»; se convierte a ISO para el sitemap |
 | `PUBLIC_POLICY_EFFECTIVE_DATE` | igual a la anterior | |
 
-En Cloudflare Pages: preset `None`, build command `npm run build`, output `dist`, y las variables anteriores en el panel. Cualquier otro hosting estático sirve igual: sube `dist/` a la raíz. Las cabeceras de seguridad viven en `src/public/_headers` (formato Cloudflare/Netlify); en Nginx hay que replicarlas con `add_header`.
+El deploy es `wrangler deploy` desde esta carpeta, con `wrangler.jsonc` apuntando a `dist/`; las variables anteriores se resuelven en el build, no en el panel. Cualquier otro hosting estático sirve igual: sube `dist/` a la raíz. Las cabeceras de seguridad viven en `src/public/_headers` (formato Cloudflare/Netlify); en Nginx hay que replicarlas con `add_header`.
 
 ## Estructura
 

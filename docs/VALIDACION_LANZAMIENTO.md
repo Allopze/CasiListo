@@ -6,7 +6,7 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
 
 ## 1. Configuración de Infraestructura y CI/CD (GitHub Actions)
 
-### Cloudflare Pages (Sitio de Privacidad y Soporte)
+### Cloudflare Workers (Sitio de Privacidad y Soporte)
 - [ ] En GitHub (Settings → Secrets and variables → Actions):
   - **Variables de repositorio**:
       - `PUBLIC_SITE_URL`: `https://casilisto.lat`.
@@ -14,7 +14,7 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
     - `PUBLIC_POLICY_EFFECTIVE_DATE`: Fecha de vigencia (ej. `12 de agosto de 2026`).
   - **Secretos de repositorio**:
     - `CLOUDFLARE_ACCOUNT_ID`: ID de cuenta de Cloudflare.
-    - `CLOUDFLARE_API_TOKEN`: Token con permisos de Cloudflare Pages.
+    - `CLOUDFLARE_API_TOKEN`: Token con **Workers Scripts: Edit** (plantilla *Edit Cloudflare Workers*). Un token de Cloudflare Pages autentica pero no puede publicar este sitio.
 - [ ] Ejecutar el workflow **Deploy privacy site** (`deploy-privacy.yml`) y comprobar:
   - `https://casilisto.lat/privacy/`
   - `https://casilisto.lat/support/`
