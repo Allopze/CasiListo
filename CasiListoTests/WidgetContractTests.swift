@@ -44,6 +44,48 @@ final class WidgetContractTests: XCTestCase {
         XCTAssertTrue(snapshot.isPlaceholder)
     }
 
+    func testPublishedEmptySnapshotIsNotPlaceholder() {
+        let snapshot = WidgetSnapshot(
+            pendingCount: 0,
+            purchasedCount: 0,
+            topItems: [],
+            updatedAt: .now,
+            publicationState: .empty
+        )
+
+        XCTAssertFalse(snapshot.isPlaceholder)
+        XCTAssertTrue(snapshot.isEmpty)
+    }
+
+    func testLegacySnapshotWithoutPublicationStateRemainsCompatible() throws {
+        let id = UUID()
+        let legacy: [String: Any] = [
+            "pendingCount": 1,
+            "purchasedCount": 0,
+            "topItems": [["id": id.uuidString, "name": "Pan"]],
+            "updatedAt": Date(timeIntervalSince1970: 1_000).timeIntervalSinceReferenceDate
+        ]
+        let data = try JSONSerialization.data(withJSONObject: legacy)
+        let decoded = try JSONDecoder().decode(WidgetSnapshot.self, from: data)
+
+        XCTAssertEqual(decoded.publicationState, .hasContent)
+        XCTAssertEqual(decoded.topItems.first?.id, id)
+    }
+
+    func testLegacyPublishedEmptySnapshotIsNotMistakenForUnpublished() throws {
+        let legacy: [String: Any] = [
+            "pendingCount": 0,
+            "purchasedCount": 0,
+            "topItems": [],
+            "updatedAt": Date(timeIntervalSince1970: 1_000).timeIntervalSinceReferenceDate
+        ]
+        let data = try JSONSerialization.data(withJSONObject: legacy)
+        let decoded = try JSONDecoder().decode(WidgetSnapshot.self, from: data)
+
+        XCTAssertTrue(decoded.isEmpty)
+        XCTAssertFalse(decoded.isPlaceholder)
+    }
+
     func testMarkingPurchasedRemovesTheItemAndMovesTheCounters() {
         let id = UUID()
         let snapshot = WidgetSnapshot(
@@ -59,6 +101,31 @@ final class WidgetContractTests: XCTestCase {
         XCTAssertEqual(updated.purchasedCount, 1)
         XCTAssertEqual(updated.topItems.map(\.name), ["Leche"])
         XCTAssertGreaterThan(updated.updatedAt, .distantPast)
+        XCTAssertEqual(updated.publicationState, .hasContent)
+    }
+
+    func testPublicationStatesKeepUnpublishedEmptyAndContentDistinct() {
+        let unpublished = WidgetSnapshot.empty
+        let empty = WidgetSnapshot(
+            pendingCount: 0,
+            purchasedCount: 0,
+            topItems: [],
+            updatedAt: .now,
+            publicationState: .empty
+        )
+        let purchased = WidgetSnapshot(
+            pendingCount: 0,
+            purchasedCount: 1,
+            topItems: [],
+            updatedAt: .now,
+            publicationState: .hasContent
+        )
+
+        XCTAssertTrue(unpublished.isPlaceholder)
+        XCTAssertTrue(empty.isEmpty)
+        XCTAssertFalse(empty.isPlaceholder)
+        XCTAssertFalse(purchased.isPlaceholder)
+        XCTAssertFalse(purchased.isEmpty)
     }
 
     /// Un ID que no está publicado —ya lo marcó la app, o el snapshot cambió
@@ -76,15 +143,42 @@ final class WidgetContractTests: XCTestCase {
 
     // MARK: - Cola
 
-    func testQueueEnqueuesOnceAndDrainClearsIt() throws {
+    func testQueueEnqueuesOnceAndAcknowledgesOnlyAppliedIDs() throws {
         let defaults = try makeScratchDefaults()
         let id = UUID()
 
         WidgetActionQueue.enqueue(itemID: id, in: defaults)
         WidgetActionQueue.enqueue(itemID: id, in: defaults)
 
-        XCTAssertEqual(WidgetActionQueue.drain(from: defaults), [id])
-        XCTAssertEqual(WidgetActionQueue.drain(from: defaults), [], "La cola debe vaciarse al drenar")
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [id])
+        WidgetActionQueue.acknowledge(ids: [id], in: defaults)
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [])
+    }
+
+    func testAcknowledgingOneIDPreservesOtherActions() throws {
+        let defaults = try makeScratchDefaults()
+        let first = UUID()
+        let second = UUID()
+        WidgetActionQueue.enqueue(itemID: first, in: defaults)
+        WidgetActionQueue.enqueue(itemID: second, in: defaults)
+
+        WidgetActionQueue.acknowledge(ids: [first], in: defaults)
+
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [second])
+
+        let third = UUID()
+        WidgetActionQueue.enqueue(itemID: third, in: defaults)
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [second, third])
+    }
+
+    func testMalformedQueueEntriesAreDiscardedExplicitly() throws {
+        let defaults = try makeScratchDefaults()
+        let valid = UUID()
+        defaults.set(["not-a-uuid", valid.uuidString], forKey: WidgetContract.pendingPurchasesKey)
+
+        WidgetActionQueue.discardMalformed(from: defaults)
+
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [valid])
     }
 
     // MARK: - Drenado en la app
@@ -109,7 +203,7 @@ final class WidgetContractTests: XCTestCase {
         XCTAssertEqual(pending.status, .purchased)
         XCTAssertEqual(alreadyPurchased.status, .purchased)
         XCTAssertEqual(untouched.status, .pending)
-        XCTAssertEqual(WidgetActionQueue.drain(from: defaults), [])
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [])
     }
 
     func testApplyingAnEmptyQueueDoesNothing() throws {
@@ -123,5 +217,32 @@ final class WidgetContractTests: XCTestCase {
         try ShoppingPersistenceCoordinator(context: context).applyPendingWidgetPurchases(from: defaults)
 
         XCTAssertEqual(item.status, .pending)
+    }
+
+    func testSaveFailureKeepsWidgetActionForRetry() throws {
+        enum ForcedSaveFailure: Error { case expected }
+
+        let defaults = try makeScratchDefaults()
+        let container = try makeInMemoryContainer()
+        let context = container.mainContext
+        let item = ShoppingItem(name: "Pan", status: .pending)
+        context.insert(item)
+        try context.save()
+        WidgetActionQueue.enqueue(itemID: item.id, in: defaults)
+
+        let coordinator = ShoppingPersistenceCoordinator(
+            context: context,
+            saveOperation: { throw ForcedSaveFailure.expected }
+        )
+
+        XCTAssertThrowsError(try coordinator.applyPendingWidgetPurchases(from: defaults))
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [item.id])
+        XCTAssertEqual(item.status, .pending)
+
+        try ShoppingPersistenceCoordinator(context: context).applyPendingWidgetPurchases(from: defaults)
+        XCTAssertEqual(item.status, .purchased)
+        XCTAssertEqual(WidgetActionQueue.peek(from: defaults), [])
+        try ShoppingPersistenceCoordinator(context: context).applyPendingWidgetPurchases(from: defaults)
+        XCTAssertEqual(item.status, .purchased)
     }
 }

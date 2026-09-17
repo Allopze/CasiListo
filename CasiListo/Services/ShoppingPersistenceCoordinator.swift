@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import SwiftData
 import UIKit
 
@@ -32,18 +33,22 @@ struct WidgetSnapshotWriter: WidgetSnapshotWriting {
 /// del widget se publica únicamente después de que SwiftData confirma el cambio.
 @MainActor
 final class ShoppingPersistenceCoordinator {
+    private static let widgetLogger = Logger(subsystem: "com.allopze.CasiListo", category: "WidgetActions")
     let context: ModelContext
     let fileStore: FileStore
     private let widgetWriter: any WidgetSnapshotWriting
+    private let saveOperation: (() throws -> Void)?
 
     init(
         context: ModelContext,
         fileStore: FileStore = LocalFileStore.shared,
-        widgetWriter: any WidgetSnapshotWriting = WidgetSnapshotWriter()
+        widgetWriter: any WidgetSnapshotWriting = WidgetSnapshotWriter(),
+        saveOperation: (() throws -> Void)? = nil
     ) {
         self.context = context
         self.fileStore = fileStore
         self.widgetWriter = widgetWriter
+        self.saveOperation = saveOperation
     }
 
     func commit() throws {
@@ -53,7 +58,11 @@ final class ShoppingPersistenceCoordinator {
 
     func commitWithoutWidget() throws {
         do {
-            try context.save()
+            if let saveOperation {
+                try saveOperation()
+            } else {
+                try context.save()
+            }
         } catch {
             context.rollback()
             throw PersistenceError.saveFailed(error.localizedDescription)
@@ -173,14 +182,31 @@ final class ShoppingPersistenceCoordinator {
     /// el `commit()` final republica el snapshot desde la base, que es la
     /// única fuente de verdad, por si el optimista se había quedado atrás.
     func applyPendingWidgetPurchases(from defaults: UserDefaults? = WidgetContract.groupDefaults) throws {
-        let pendingIDs = Set(WidgetActionQueue.drain(from: defaults))
+        WidgetActionQueue.discardMalformed(from: defaults)
+        let pendingIDs = Set(WidgetActionQueue.peek(from: defaults))
         guard !pendingIDs.isEmpty else { return }
 
         let items = try context.fetch(FetchDescriptor<ShoppingItem>())
-        for item in items where pendingIDs.contains(item.id) && item.status == .pending {
+        var appliedIDs = Set<UUID>()
+        var obsoleteIDs = Set<UUID>()
+        for id in pendingIDs {
+            guard let item = items.first(where: { $0.id == id }) else {
+                obsoleteIDs.insert(id)
+                continue
+            }
+            guard item.status == .pending else {
+                obsoleteIDs.insert(id)
+                continue
+            }
             item.status = .purchased
+            appliedIDs.insert(id)
         }
         try commit()
+        // Tanto los cambios aplicados como los IDs que ya no tienen trabajo
+        // válido se confirman solo después del save. Si fetch o save falla, la
+        // cola completa permanece disponible para el siguiente intento.
+        WidgetActionQueue.acknowledge(ids: Array(pendingIDs), in: defaults)
+        Self.widgetLogger.debug("Aplicadas \(appliedIDs.count) acciones del widget; descartadas \(obsoleteIDs.count) obsoletas")
     }
 
     func cleanUnreferencedFiles() throws {
@@ -216,7 +242,7 @@ final class ShoppingPersistenceCoordinator {
             // Los IDs encolados desde el widget apuntan a productos que
             // acaban de desaparecer: aplicarlos después no marcaría nada,
             // pero dejarlos ahí es basura que sobrevive al «borrar todo».
-            _ = WidgetActionQueue.drain()
+            WidgetActionQueue.clear()
 
             try CategoryBootstrapService.bootstrap(context: context)
             // Borrar todo deja la app como recién instalada, y eso incluye el

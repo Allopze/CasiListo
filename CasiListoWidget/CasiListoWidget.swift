@@ -67,18 +67,33 @@ struct SmallWidgetView: View {
                     .foregroundStyle(textColorSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                 Spacer()
-            } else {
-                Text("\(snapshot.pendingCount)")
-                    .font(.system(size: 46, weight: .bold, design: .rounded))
-                    .foregroundStyle(textColorPrimary)
-                    .minimumScaleFactor(0.6)
-
-                Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
-                    .font(.system(size: 13, weight: .medium, design: .rounded))
+            } else if snapshot.isEmpty {
+                Text("Lista vacía")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .foregroundStyle(textColorSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                Spacer()
+            } else {
+                if snapshot.pendingCount == 0 && snapshot.purchasedCount > 0 {
+                    Text("Todo listo")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(textColorPrimary)
+                } else {
+                    Text("\(snapshot.pendingCount)")
+                        .font(.system(size: 46, weight: .bold, design: .rounded))
+                        .foregroundStyle(textColorPrimary)
+                        .minimumScaleFactor(0.6)
+
+                    Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
+                        .font(.system(size: 13, weight: .medium, design: .rounded))
+                        .foregroundStyle(textColorSecondary)
+                }
 
                 if snapshot.purchasedCount > 0 {
-                    Label("\(snapshot.purchasedCount) comprados", systemImage: "checkmark.circle.fill")
+                    Label(
+                        snapshot.purchasedCount == 1 ? "1 comprado" : "\(snapshot.purchasedCount) comprados",
+                        systemImage: "checkmark.circle.fill"
+                    )
                         .font(.system(size: 11, weight: .medium, design: .rounded))
                         .foregroundStyle(WidgetPalette.purchased)
                         .lineLimit(1)
@@ -129,6 +144,20 @@ struct MediumWidgetView: View {
             }
             .padding(14)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        } else if snapshot.isEmpty {
+            VStack(alignment: .leading, spacing: 8) {
+                WidgetHeader(textColor: textColorPrimary)
+                Spacer()
+                Text("Lista vacía")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
+                    .foregroundStyle(textColorSecondary)
+                Text("Añade productos desde CasiListo.")
+                    .font(.system(size: 13, design: .rounded))
+                    .foregroundStyle(textColorSecondary)
+                Spacer()
+            }
+            .padding(14)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
         } else {
             contentColumns
         }
@@ -142,16 +171,26 @@ struct MediumWidgetView: View {
 
                 Spacer()
 
-                Text("\(snapshot.pendingCount)")
-                    .font(.system(size: 42, weight: .bold, design: .rounded))
-                    .foregroundStyle(textColorPrimary)
+                if snapshot.pendingCount == 0 && snapshot.purchasedCount > 0 {
+                    Text("Todo listo")
+                        .font(.system(size: 20, weight: .semibold, design: .rounded))
+                        .foregroundStyle(textColorPrimary)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("\(snapshot.pendingCount)")
+                        .font(.system(size: 42, weight: .bold, design: .rounded))
+                        .foregroundStyle(textColorPrimary)
 
-                Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
-                    .font(.system(size: 12, weight: .medium, design: .rounded))
-                    .foregroundStyle(textColorSecondary)
+                    Text(snapshot.pendingCount == 1 ? "pendiente" : "pendientes")
+                        .font(.system(size: 12, weight: .medium, design: .rounded))
+                        .foregroundStyle(textColorSecondary)
+                }
 
                 if snapshot.purchasedCount > 0 {
-                    Label("\(snapshot.purchasedCount)", systemImage: "checkmark.circle.fill")
+                    Label(
+                        snapshot.purchasedCount == 1 ? "1 comprado" : "\(snapshot.purchasedCount) comprados",
+                        systemImage: "checkmark.circle.fill"
+                    )
                         .font(.system(size: 11, weight: .semibold, design: .rounded))
                         .foregroundStyle(WidgetPalette.purchased)
                 }
@@ -168,7 +207,7 @@ struct MediumWidgetView: View {
             // Panel derecho: lista de ítems
             VStack(alignment: .leading, spacing: 5) {
                 if snapshot.topItems.isEmpty {
-                    Text("Lista vacía")
+                    Text(snapshot.purchasedCount > 0 ? "Todo listo" : "Lista vacía")
                         .font(.system(size: 13, design: .rounded))
                         .foregroundStyle(textColorSecondary)
                 } else {
@@ -212,18 +251,39 @@ struct AccessoryCircularView: View {
     let snapshot: WidgetSnapshot
 
     var body: some View {
-        if snapshot.isPlaceholder {
-            Image(systemName: "cart")
-                .font(.system(size: 20, weight: .semibold))
-        } else {
-            VStack(spacing: 0) {
-                Image(systemName: "cart.fill")
-                    .font(.system(size: 11, weight: .semibold))
-                Text("\(snapshot.pendingCount)")
-                    .font(.system(size: 16, weight: .bold, design: .rounded))
-                    .minimumScaleFactor(0.7)
+        // El `Group` no es decorativo: un `if/else` suelto es una sentencia y
+        // los modificadores de accesibilidad no se pueden colgar de ella.
+        Group {
+            if snapshot.isPlaceholder {
+                Image(systemName: "cart")
+                    .font(.system(size: 20, weight: .semibold))
+            } else if snapshot.isEmpty {
+                Image(systemName: "cart.badge.plus")
+                    .font(.system(size: 20, weight: .semibold))
+            } else if snapshot.pendingCount == 0 && snapshot.purchasedCount > 0 {
+                Image(systemName: "cart.badge.checkmark")
+                    .font(.system(size: 20, weight: .semibold))
+            } else {
+                VStack(spacing: 0) {
+                    Image(systemName: "cart.fill")
+                        .font(.system(size: 11, weight: .semibold))
+                    Text("\(snapshot.pendingCount)")
+                        .font(.system(size: 16, weight: .bold, design: .rounded))
+                        .minimumScaleFactor(0.7)
+                }
             }
         }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityLabel)
+    }
+
+    private var accessibilityLabel: String {
+        if snapshot.isPlaceholder { return "Abre CasiListo para empezar" }
+        if snapshot.isEmpty { return "Lista vacía" }
+        if snapshot.pendingCount == 0 && snapshot.purchasedCount > 0 { return "Todo listo" }
+        return snapshot.pendingCount == 1
+            ? "1 pendiente"
+            : "\(snapshot.pendingCount) pendientes"
     }
 }
 
@@ -240,8 +300,16 @@ struct AccessoryRectangularView: View {
                 Text("Abre CasiListo para empezar")
                     .font(.system(size: 12))
                     .lineLimit(1)
+            } else if snapshot.isEmpty {
+                Text("Lista vacía")
+                    .font(.system(size: 12))
+                    .lineLimit(1)
             } else {
-                Text(snapshot.pendingCount == 1 ? "1 pendiente" : "\(snapshot.pendingCount) pendientes")
+                Text(
+                    snapshot.pendingCount == 0 && snapshot.purchasedCount > 0
+                        ? "Todo listo"
+                        : snapshot.pendingCount == 1 ? "1 pendiente" : "\(snapshot.pendingCount) pendientes"
+                )
                     .font(.system(size: 13, weight: .bold))
                     .lineLimit(1)
                 if let firstItem = snapshot.topItems.first {
@@ -260,9 +328,13 @@ struct AccessoryInlineView: View {
     var body: some View {
         if snapshot.isPlaceholder {
             Label("CasiListo", systemImage: "cart")
+        } else if snapshot.isEmpty {
+            Label("Lista vacía", systemImage: "cart.badge.plus")
         } else {
             Label(
-                snapshot.pendingCount == 1 ? "1 pendiente" : "\(snapshot.pendingCount) pendientes",
+                snapshot.pendingCount == 0 && snapshot.purchasedCount > 0
+                    ? "Todo listo"
+                    : snapshot.pendingCount == 1 ? "1 pendiente" : "\(snapshot.pendingCount) pendientes",
                 systemImage: "cart.fill"
             )
         }

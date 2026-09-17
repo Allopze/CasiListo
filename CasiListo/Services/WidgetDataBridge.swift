@@ -21,7 +21,8 @@ enum WidgetDataBridge {
             pendingCount: pending.count,
             purchasedCount: purchased.count,
             topItems: Array(pending.prefix(5).map { WidgetItemSnapshot(id: $0.id, name: $0.name) }),
-            updatedAt: .now
+            updatedAt: .now,
+            publicationState: pending.isEmpty && purchased.isEmpty ? .empty : .hasContent
         )
         snapshot.write()
         scheduleReload()
