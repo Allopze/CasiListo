@@ -43,7 +43,7 @@ while [[ $# -gt 0 ]]; do
         --appearances) APPEARANCES="$2"; shift 2 ;;
         --text-sizes)  TEXT_SIZES="$2"; shift 2 ;;
         --full)
-            DEVICES="iPhone 17 Pro,iPhone 17 Pro Max"
+            DEVICES="iPhone 17e,iPhone 17 Pro,iPhone 17 Pro Max"
             APPEARANCES="light,dark"
             TEXT_SIZES="default,xxl"
             shift ;;

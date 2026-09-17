@@ -55,6 +55,7 @@ jobs:
             -scheme CasiListo \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             -skip-testing:CasiListoUITests/ScreenshotCaptureTests \
+            -skip-testing:CasiListoTests/FullLengthScreenshotTests \
             -resultBundlePath artifacts/CasiListoTests.xcresult | tee artifacts/xcodebuild-test.log
       - name: Validate privacy manifests
         if: always()
