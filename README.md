@@ -150,6 +150,8 @@ ci/capture-screenshots.sh                 # iPhone, claro + oscuro (~8 min)
 ci/capture-screenshots.sh --full          # + Pro Max y texto XXL (~30 min)
 ci/capture-screenshots.sh --out ~/Desktop/capturas
 ci/capture-screenshots.sh --os 26.0       # verificar el piso declarado
+# Diagnóstico opcional, fuera del gate de release: contenido full-length con ImageRenderer
+ci/capture-full-screenshots.sh
 ```
 
 Cubre el menú general de listas (vacío, con una y con varias), el sheet de personalización con paleta e iconos, el detalle en sus estados de categoría, el cierre con boleta, plantillas, importador, catálogo, historial y ajustes.
@@ -158,6 +160,7 @@ Dos detalles a tener en cuenta si se toca este arnés:
 
 - **Las variables de entorno necesitan el prefijo `TEST_RUNNER_`.** `xcodebuild` no propaga variables sueltas al proceso del runner; les quita ese prefijo al reenviarlas. Por eso el script exporta `TEST_RUNNER_SCREENSHOT_DIR` y el test lee `SCREENSHOT_DIR`.
 - **La apariencia se fuerza por partida doble.** La app respeta `-ui-testing-light` / `-ui-testing-dark`, pero las hojas modales se presentan fuera de esa jerarquía y siguen al sistema, así que el script además fija la apariencia del simulador con `simctl ui`.
+- El diagnóstico `ci/capture-full-screenshots.sh` pertenece al target de tests y no se ejecuta en CI; sus fixtures declaran explícitamente su alcance y verifican que claro/oscuro produzcan PNGs distintos.
 
 ---
 
@@ -227,7 +230,7 @@ Para mantener la base de código limpia, modular y fácil de mantener:
 
 - **Límite de tamaño de archivo (aspiracional)**: la intención es que los `.swift` no superen las **100 líneas** y que al crecer se extraigan componentes o extensiones.
 
-  > ⚠️ **Hoy no se cumple y nada lo aplica.** 46 de 75 archivos `.swift` exceden el límite —los mayores son `ReceiptCaptureSheet.swift` (1007), `PurchaseHistoryTests.swift` (960), `ReceiptServices.swift` (873) y `CasiListoTests.swift` (835)— y no hay SwiftLint, SwiftFormat ni check de CI que lo verifique. Tómalo como «extrae componentes cuando toques una vista», no como un gate de merge.
+  > ⚠️ **Hoy no se cumple y el límite de tamaño sigue siendo aspiracional.** El workflow `.github/workflows/ios.yml` ejecuta SwiftLint 0.65.1 con versión fijada; sus errores bloquean CI y sus advertencias se publican sin convertir el límite de 100 líneas en un gate. No se ejecuta SwiftFormat. Tómalo como «extrae componentes cuando toques una vista».
   >
   > Consecuencia práctica: **un tipo no vive necesariamente en el archivo con su nombre**. `DuplicatePolicy` está en `ProductNameNormalizer.swift`, `WidgetItemSnapshot` en `WidgetDataBridge.swift` y `ReceiptServices.swift` contiene 14 tipos de nivel superior.
 

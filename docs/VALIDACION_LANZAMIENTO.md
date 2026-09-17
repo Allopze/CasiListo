@@ -9,14 +9,35 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
 ### Cloudflare Pages (Sitio de Privacidad y Soporte)
 - [ ] En GitHub (Settings → Secrets and variables → Actions):
   - **Variables de repositorio**:
-    - `PUBLIC_SUPPORT_EMAIL`: Correo real de atención y soporte (ej. `soporte@casilisto.app`).
+      - `PUBLIC_SITE_URL`: `https://casilisto.lat`.
+      - `PUBLIC_SUPPORT_EMAIL`: Correo real de atención y soporte (ej. `soporte@casilisto.app`).
     - `PUBLIC_POLICY_EFFECTIVE_DATE`: Fecha de vigencia (ej. `12 de agosto de 2026`).
   - **Secretos de repositorio**:
     - `CLOUDFLARE_ACCOUNT_ID`: ID de cuenta de Cloudflare.
     - `CLOUDFLARE_API_TOKEN`: Token con permisos de Cloudflare Pages.
 - [ ] Ejecutar el workflow **Deploy privacy site** (`deploy-privacy.yml`) y comprobar:
-  - `https://casilisto-privacy.pages.dev/privacy/`
-  - `https://casilisto-privacy.pages.dev/support/`
+  - `https://casilisto.lat/privacy/`
+  - `https://casilisto.lat/support/`
+  - `https://casilisto.lat/robots.txt`, `https://casilisto.lat/sitemap.xml` y una ruta inexistente (`404` legible).
+  - HTTP → HTTPS, `www` → dominio raíz y HSTS desde Cloudflare, una vez verificados todos los subdominios.
+
+  La comprobación repetible de la salida pública está en
+  [`ci/validate-public-site.sh`](../ci/validate-public-site.sh). Define
+  `PUBLIC_WWW_URL` y, si corresponde, `PUBLIC_OLD_SITE_URL` para incluir las
+  redirecciones de hostname configuradas en Cloudflare.
+
+> Las redirecciones entre hostnames (`www`, dominio antiguo y raíz) son configuración de zona/Bulk Redirects de Cloudflare; no se simulan en `_redirects` de Pages.
+
+**Estado medido el 16 de septiembre de 2026** con `ci/validate-public-site.sh` contra `https://casilisto.lat`:
+
+- ✅ `/`, `/privacy/`, `/support/`, `/robots.txt` y `/sitemap.xml` responden **200**.
+- ✅ `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options` y `Referrer-Policy` presentes.
+- ❌ Una ruta inexistente responde 404 **sin cuerpo**: la `404.html` del repo todavía no está desplegada.
+- ❌ Falta `Strict-Transport-Security`: la línea existe en `src/public/_headers` pero tampoco está desplegada.
+- ❌ `http://casilisto.lat/` responde **200 en claro** en vez de 301/308. Es ajuste de zona (*Always Use HTTPS*), no del repo.
+- ⚠️ `www.casilisto.lat` no resuelve; si no se va a usar, deja `PUBLIC_WWW_URL` sin definir en vez de configurar la redirección.
+
+Los dos primeros ❌ se cierran redesplegando **Deploy privacy site** con el estado actual del repo; el tercero, desde el panel de Cloudflare.
 
 ### App Store Connect API (TestFlight y Release)
 - [ ] Crear API Key en App Store Connect (Users and Access → Integrations → App Store Connect API) con rol *App Manager* o *Developer*.
@@ -31,8 +52,8 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
 
 - [ ] Crear la aplicación en App Store Connect con Bundle ID `com.allopze.CasiListo`.
 - [ ] Registrar URLs:
-  - **Privacy Policy URL**: `https://casilisto-privacy.pages.dev/privacy/`
-  - **Support URL**: `https://casilisto-privacy.pages.dev/support/`
+  - **Privacy Policy URL**: `https://casilisto.lat/privacy/`
+  - **Support URL**: `https://casilisto.lat/support/`
 - [ ] Completar sección **App Privacy (Nutrition Labels)**:
   - **Tracking**: Seleccionar *No, no rastreamos a los usuarios*.
   - **Data Collection**: Seleccionar *No recolectamos datos de esta app*.
@@ -69,6 +90,7 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
   - Abrir archivo exportado con comillas, comas, saltos de línea y fórmulas en **Apple Numbers**, **Microsoft Excel** y **Google Sheets**.
 - [ ] **Rendimiento / Profiling**:
   - Cargar 1.000 y 5.000 ítems en dispositivo y verificar con Time Profiler que ninguna interacción bloquee más de 100 ms el hilo principal.
+  - El JSON contiene listas, productos, categorías y catálogo; el CSV contiene historial. Fotos de boletas y notas de voz quedan fuera y dependen del respaldo del dispositivo.
 
 ---
 
@@ -81,3 +103,4 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
 - [ ] **Dispositivos y Temas**: Validar en modo Claro y Oscuro en iPhone compacto (SE) y iPhone Pro Max.
 - [ ] **Piso de iOS**: correr la suite y el arnés (`ci/capture-screenshots.sh --os 26.0`) contra un runtime iOS 26 real, no solo contra el más reciente.
 
+> CI omite `CasiListoTests/FullLengthScreenshotTests` y `CasiListoUITests/ScreenshotCaptureTests` porque son diagnósticos visuales lentos. Ejecute la matriz de capturas reales con `ci/capture-screenshots.sh --full`; el diagnóstico opcional de longitud completa se ejecuta con `ci/capture-full-screenshots.sh` y exige revisar los hashes claro/oscuro antes del release.
