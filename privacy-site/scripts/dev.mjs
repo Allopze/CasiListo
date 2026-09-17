@@ -36,7 +36,12 @@ const server = createServer((req, res) => {
 
   if (!existsSync(filePath) || statSync(filePath).isDirectory()) {
     res.writeHead(404, { "Content-Type": "text/html; charset=utf-8" });
-    res.end("<h1>404 No Encontrado</h1><p>La página solicitada no existe.</p><p><a href='/'>Volver al inicio</a></p>");
+    const notFoundPath = join(distDir, "404.html");
+    if (existsSync(notFoundPath)) {
+      createReadStream(notFoundPath).pipe(res);
+    } else {
+      res.end("<h1>404 No Encontrado</h1><p>La página solicitada no existe.</p><p><a href='/'>Volver al inicio</a></p>");
+    }
     return;
   }
 

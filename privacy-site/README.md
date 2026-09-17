@@ -2,7 +2,7 @@
 
 Las tres páginas que App Store Connect exige para publicar CasiListo: portada, política de privacidad y soporte. HTML y CSS a mano, sin dependencias; `npm run build` deja en `dist/` una carpeta estática lista para cualquier hosting.
 
-Dominio en producción: `https://casilisto-privacy.pages.dev` (Cloudflare Pages). Es el mismo que la app lleva compilado en [AppSupportLinks.swift](../CasiListo/Services/AppSupportLinks.swift); si cambia uno, cambia el otro y deja una redirección 301 desde el anterior.
+Dominio en producción: `https://casilisto.lat` (Cloudflare Pages). Es el mismo que la app lleva compilado en [AppSupportLinks.swift](../CasiListo/Services/AppSupportLinks.swift); si cambia uno, cambia el otro y deja una redirección 301 desde el anterior.
 
 ## Comandos
 
@@ -34,7 +34,7 @@ npm run dev     # sirve dist/ en http://localhost:3000
 
 | Variable | Por defecto | Notas |
 | --- | --- | --- |
-| `PUBLIC_SITE_URL` | `https://casilisto-privacy.pages.dev` | Origen https sin ruta; el build falla si no lo es |
+| `PUBLIC_SITE_URL` | `https://casilisto.lat` | Origen https sin ruta; el build falla si no lo es |
 | `PUBLIC_SUPPORT_EMAIL` | `allopze@gmail.com` | El build falla si contiene «ejemplo» o no es un correo |
 | `PUBLIC_APP_VERSION` | `1.0` | Debe coincidir con `MARKETING_VERSION` del proyecto Xcode |
 | `PUBLIC_POLICY_LAST_UPDATED` | `13 de septiembre de 2026` | Formato «D de mes de AAAA»; se convierte a ISO para el sitemap |
@@ -55,7 +55,8 @@ src/support.html       soporte y preguntas frecuentes
 src/assets/css/        main.css (tokens tomados de Theme.swift)
 src/assets/icons/      favicon.svg
 src/assets/images/     appicon-240 (portada), appicon-512 (Open Graph), apple-touch-icon (180)
-src/public/_headers    cabeceras de seguridad y caché
+src/public/404.html    página 404 legible
+src/public/_headers    cabeceras de seguridad y caché (HSTS)
 ```
 
 ## Antes de publicar una versión nueva de la app
@@ -65,6 +66,17 @@ src/public/_headers    cabeceras de seguridad y caché
 3. Sube `PUBLIC_APP_VERSION` y `PUBLIC_POLICY_LAST_UPDATED`.
 4. `npm run build && npm test`.
 5. Comprueba que la ficha en App Store Connect siga declarando *Tracking: No* y *Data Not Collected*.
+
+Después de desplegar, ejecuta desde una red con DNS público:
+
+```bash
+PUBLIC_WWW_URL="https://www.casilisto.lat" \
+PUBLIC_OLD_SITE_URL="https://casilisto-privacy.pages.dev" \
+../ci/validate-public-site.sh
+```
+
+Las variables de hostname son opcionales; el script siempre comprueba las
+rutas canónicas, HTTPS y las cabeceras de seguridad.
 
 ## Checklist para App Store Connect
 

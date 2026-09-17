@@ -16,7 +16,7 @@ if (supportEmail.includes("ejemplo") || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(suppo
 // El valor por defecto es el mismo dominio que la app tiene compilado en
 // AppSupportLinks.swift: si cambian uno sin el otro, los enlaces desde Ajustes
 // dejan de apuntar aquí.
-const siteUrl = (env("PUBLIC_SITE_URL") || "https://casilisto-privacy.pages.dev").replace(/\/$/, "");
+const siteUrl = (env("PUBLIC_SITE_URL") || "https://casilisto.lat").replace(/\/$/, "");
 if (!/^https:\/\/[^\s/]+$/.test(siteUrl)) {
   throw new Error(`[site.config.mjs] PUBLIC_SITE_URL debe ser un origen https absoluto sin ruta (recibido: "${siteUrl}").`);
 }

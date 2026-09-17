@@ -30,7 +30,7 @@ function walk(dir) {
 }
 
 const distFiles = walk(distDir).map((f) => f.slice(distDir.length + 1));
-for (const required of ["index.html", "privacy/index.html", "support/index.html", "robots.txt", "sitemap.xml", "_headers", "assets/icons/favicon.svg", "assets/images/appicon-240.png", "assets/images/appicon-512.png", "assets/images/apple-touch-icon.png"]) {
+for (const required of ["index.html", "privacy/index.html", "support/index.html", "404.html", "robots.txt", "sitemap.xml", "_headers", "assets/icons/favicon.svg", "assets/images/appicon-240.png", "assets/images/appicon-512.png", "assets/images/apple-touch-icon.png"]) {
   assert(distFiles.includes(required), `falta dist/${required}`);
 }
 assert(!distFiles.some((f) => f.endsWith(".DS_Store")), "dist/ contiene .DS_Store");
@@ -42,11 +42,17 @@ assert(!distFiles.includes("assets/css/main.css"), "dist/ conserva main.css sin 
 const robots = readFileSync(resolve(distDir, "robots.txt"), "utf8");
 assert(robots.includes(`Sitemap: ${siteConfig.siteUrl}/sitemap.xml`), "robots.txt no declara el sitemap con URL absoluta");
 
+const notFound = readFileSync(resolve(distDir, "404.html"), "utf8");
+assert(notFound.includes("No encontramos esa página"), "404.html no ofrece un mensaje legible");
+assert(notFound.includes('href="/"'), "404.html no ofrece una vuelta a la portada");
+assert(!notFound.includes("casilisto-privacy.pages.dev"), "404.html conserva el dominio antiguo");
+
 const sitemap = readFileSync(resolve(distDir, "sitemap.xml"), "utf8");
 for (const path of ["/", "/privacy/", "/support/"]) {
   assert(sitemap.includes(`<loc>${siteConfig.siteUrl}${path}</loc>`), `sitemap.xml no lista ${path}`);
 }
 assert(sitemap.includes(`<lastmod>${siteConfig.policyLastUpdatedISO}</lastmod>`), "sitemap.xml no usa la fecha de la política como lastmod");
+assert(!sitemap.includes("casilisto-privacy.pages.dev"), "sitemap.xml conserva el dominio antiguo");
 
 // 2. Páginas ------------------------------------------------------------------
 
@@ -76,6 +82,7 @@ for (const [file, canonicalPath] of Object.entries(pages)) {
   assert(html.includes(`<link rel="canonical" href="${siteConfig.siteUrl}${canonicalPath}">`), `${where} canonical no es absoluta o no coincide con la ruta`);
   assert(html.includes(`<meta property="og:url" content="${siteConfig.siteUrl}${canonicalPath}">`), `${where} og:url no es absoluta`);
   assert(html.includes(`<meta property="og:image" content="${siteConfig.siteUrl}/assets/images/appicon-512.png">`), `${where} og:image no es absoluta`);
+  assert(!html.includes("casilisto-privacy.pages.dev"), `${where} conserva referencias al dominio antiguo`);
   assert(html.includes(`<link rel="stylesheet" href="/${cssFiles[0]}">`), `${where} no enlaza el CSS con hash`);
 
   assert(html.includes('class="skip-link"'), `${where} sin skip link`);
@@ -123,10 +130,17 @@ for (const [file, canonicalPath] of Object.entries(pages)) {
 // 3. Coherencia con la app ----------------------------------------------------
 
 const privacy = readFileSync(resolve(distDir, "privacy/index.html"), "utf8");
+const home = readFileSync(resolve(distDir, "index.html"), "utf8");
+assert(home.includes('"operatingSystem": "iOS 26.0"'), "index.html: JSON-LD no declara el sistema operativo como iOS 26.0");
+assert(!home.includes('"operatingSystem": "iOS iOS'), "index.html: JSON-LD duplica el prefijo iOS");
 assert(privacy.includes(siteConfig.permissions.camera), "privacy: el texto del permiso de cámara no coincide con site.config");
 assert(privacy.includes(siteConfig.permissions.microphone), "privacy: el texto del permiso de micrófono no coincide con site.config");
 assert(privacy.includes(siteConfig.appGroupId), "privacy: no cita el App Group configurado");
 assert(privacy.includes("iCloud"), "privacy: no explica qué pasa con el respaldo de iCloud");
+assert(privacy.includes("no incluye las fotos de boletas ni las notas de voz"), "privacy: no aclara la exclusión de archivos multimedia del JSON");
+assert(privacy.includes("dependen del respaldo del dispositivo"), "privacy: no explica cómo conservar fotos y notas de voz");
+assert(!/exportar\s+todo/i.test(privacy), "privacy: el resumen promete exportar todo");
+assert(!/copia\s+completa(?:\s+en\s+JSON)?/i.test(privacy), "privacy: llama completa a una exportación que excluye multimedia");
 for (const label of ["Exportar mis datos", "Exportar CSV", "Borrar todos mis datos guardados", "Grabar nota de voz", "Escanear boleta"]) {
   assert(privacy.includes(label), `privacy: no cita el texto literal de la app «${label}»`);
 }

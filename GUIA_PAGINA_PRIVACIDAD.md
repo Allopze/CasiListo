@@ -25,8 +25,8 @@ publica solo en Cloudflare Pages.
 
 **URLs en producción** (las declara [AppSupportLinks.swift](CasiListo/Services/AppSupportLinks.swift)):
 
-- `https://casilisto-privacy.pages.dev/privacy/`
-- `https://casilisto-privacy.pages.dev/support/`
+- `https://casilisto.lat/privacy/`
+- `https://casilisto.lat/support/`
 
 > ⚠️ Estas URLs están **hardcodeadas en el binario**: la pestaña Ajustes las abre con `Link`
 > ([SettingsView.swift:63-75](CasiListo/Views/SettingsView.swift#L63-L75)). Cambiar de dominio
@@ -431,7 +431,7 @@ Orden propuesto, cada sección con el respaldo factual de §4:
    ninguna referencia legal sin verificarla contra fuente oficial**. Si la app se publica también en
    otras tiendas regionales, evaluar si hace falta mencionar GDPR/CCPA (aunque al no haber
    recolección de datos la exposición es mínima).
-5. **Dominio propio** vs. `casilisto-privacy.pages.dev`. Si se migra, recordar §1: es cambio de
+5. **Dominio propio** `casilisto.lat`. Si se migra nuevamente, recordar §1: es cambio de
    binario.
 6. **Tipografía web**: mantener `-apple-system` o empaquetar una redondeada para acercarse a SF
    Rounded.
@@ -457,8 +457,8 @@ open dist/privacy/index.html
 
 Antes de enviar a revisión de App Store:
 
-- [ ] `https://casilisto-privacy.pages.dev/privacy/` responde 200 y se ve bien en claro y oscuro.
-- [ ] `https://casilisto-privacy.pages.dev/support/` responde 200 y el enlace cruzado funciona.
+- [ ] `https://casilisto.lat/privacy/` responde 200 y se ve bien en claro y oscuro.
+- [ ] `https://casilisto.lat/support/` responde 200 y el enlace cruzado funciona.
 - [ ] El correo de soporte del sitio es un buzón que alguien lee de verdad.
 - [ ] Las dos URLs están registradas en App Store Connect (Privacy Policy URL y Support URL) y
       coinciden con [AppSupportLinks.swift](CasiListo/Services/AppSupportLinks.swift).
