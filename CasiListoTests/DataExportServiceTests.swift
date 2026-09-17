@@ -57,6 +57,18 @@ final class DataExportServiceTests: XCTestCase {
         XCTAssertNoThrow(try JSONSerialization.jsonObject(with: data))
     }
 
+    func testAsyncExportWritesTheSameVersionedFormat() async throws {
+        let container = try ModelContainer(
+            for: ShoppingItem.self, ShoppingList.self, ProductCatalogItem.self, CasiListo.Category.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let url = try await DataExportService.exportFileAsync(context: container.mainContext)
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        let export = try decodeExport(at: url)
+        XCTAssertEqual(export.schemaVersion, DataExportService.currentExportSchemaVersion)
+    }
+
     /// Ajustes cacheaba la URL de la primera exportación de la sesión y
     /// compartía ese archivo para siempre: exportar después de cambiar algo
     /// entregaba datos viejos sin avisar (CASI-002). El arreglo es estructural
@@ -280,6 +292,21 @@ final class DataExportServiceTests: XCTestCase {
         let actual = try DataExportService.importAll(data: data, context: destinationContext)
 
         XCTAssertEqual(planned, actual)
+    }
+
+    func testAsyncImportPlanningAndMutationRemainIdempotent() async throws {
+        let source = try makeInMemoryContainer()
+        source.mainContext.insert(ShoppingItem(name: "Pan"))
+        try source.mainContext.save()
+        let data = try DataExportService.exportAll(context: source.mainContext)
+
+        let destination = try makeInMemoryContainer()
+        let planned = try await DataExportService.planImportAsync(data: data, context: destination.mainContext)
+        let applied = try await DataExportService.importAllAsync(data: data, context: destination.mainContext)
+        let repeated = try await DataExportService.importAllAsync(data: data, context: destination.mainContext)
+
+        XCTAssertEqual(planned, applied)
+        XCTAssertTrue(repeated.addsNothing)
     }
 
     /// Los contadores de uso del catálogo se fusionan, nunca bajan.

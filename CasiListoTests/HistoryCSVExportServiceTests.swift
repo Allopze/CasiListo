@@ -8,7 +8,15 @@ final class HistoryCSVExportServiceTests: XCTestCase {
     func testDocumentIncludesHeaderAndOneRowPerItemOfCompletedLists() {
         let category = Category(name: "Bebidas", sfSymbol: "cup.and.saucer.fill", sortIndex: 0)
         let completedList = ShoppingList(title: "Compra Jumbo", completedAt: .now, status: .completed, storeScope: .jumbo)
-        let item = ShoppingItem(name: "Cerveza", listID: completedList.id, quantity: "6", category: category, status: .purchased, price: 1_200, store: .jumbo)
+        let item = ShoppingItem(
+            name: "Cerveza",
+            listID: completedList.id,
+            quantity: "6",
+            category: category,
+            status: .purchased,
+            price: 1_200,
+            store: .jumbo
+        )
 
         let rows = HistoryCSVExportService.rows(completedLists: [completedList], items: [item])
 
@@ -49,6 +57,18 @@ final class HistoryCSVExportServiceTests: XCTestCase {
         XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
         XCTAssertTrue(url.lastPathComponent.hasPrefix("CasiListo-historial-"))
         XCTAssertEqual(url.pathExtension, "csv")
+    }
+
+    func testAsyncExportWritesCSVWithDatedName() async throws {
+        let url = try await HistoryCSVExportService.exportFileAsync(completedLists: [], items: [])
+        defer { try? FileManager.default.removeItem(at: url) }
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: url.path))
+        XCTAssertTrue(url.lastPathComponent.hasPrefix("CasiListo-historial-"))
+        XCTAssertEqual(url.pathExtension, "csv")
+        // `CSVSerializer` entrecomilla todos los campos (RFC 4180), así que
+        // la cabecera sale como `"Fecha","Lista"`, no como `Fecha,Lista`.
+        XCTAssertTrue(try String(contentsOf: url, encoding: .utf8).hasPrefix("\"Fecha\",\"Lista\""))
     }
 
     /// El bug que motiva el ítem: el `String` cacheado en `.task(id: allItems)`

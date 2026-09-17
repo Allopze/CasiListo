@@ -1,6 +1,110 @@
 import Foundation
 import SwiftData
 
+// Estos DTO viven fuera del enum `@MainActor` para que sus conformancias
+// Codable/Sendable puedan cruzar tareas de codificación sin aislamiento.
+nonisolated struct DataExportPayload: Codable, Sendable {
+    var schemaVersion: Int?
+    let exportedAt: Date
+    let categories: [DataCategoryExport]
+    let lists: [DataShoppingListExport]
+    let items: [DataShoppingItemExport]
+    let catalogItems: [DataProductCatalogItemExport]
+}
+
+nonisolated struct DataCategoryExport: Codable, Sendable {
+    let name: String
+    let sfSymbol: String
+    let sortIndex: Int
+    let isSystem: Bool
+    var defaultCategoryRawValue: String?
+}
+
+nonisolated struct DataShoppingListExport: Codable, Sendable {
+    let id: UUID
+    let title: String
+    let createdAt: Date
+    let completedAt: Date?
+    let status: String
+    let storeScope: String?
+    let purchasedCount: Int
+    let pendingCount: Int
+    let skippedCount: Int
+    let unavailableCount: Int
+    let totalSpent: Double
+    let receiptImageFilename: String?
+    let iconName: String
+    let colorHex: String
+}
+
+nonisolated struct DataShoppingItemExport: Codable, Sendable {
+    let id: UUID
+    let listID: UUID?
+    let name: String
+    let quantity: String
+    let category: String
+    let store: String
+    let note: String
+    let status: String
+    let sortOrder: Int
+    let price: Double?
+    let voiceNoteFilename: String?
+    let createdAt: Date
+}
+
+nonisolated struct DataProductCatalogItemExport: Codable, Sendable {
+    let id: UUID
+    let name: String
+    let category: String
+    let store: String
+    let timesAdded: Int
+    let lastAddedAt: Date?
+    let createdAt: Date
+}
+
+nonisolated enum DataExportError: LocalizedError {
+    case encodingFailed
+    case writeFailed
+
+    var errorDescription: String? {
+        switch self {
+        case .encodingFailed:
+            return "No se pudo preparar el archivo de exportación."
+        case .writeFailed:
+            return "No se pudo guardar el archivo de exportación."
+        }
+    }
+}
+
+nonisolated enum DataImportError: LocalizedError {
+    case invalidFile
+    case unsupportedVersion(Int)
+    case saveFailed(String)
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidFile:
+            return "Este archivo no parece un respaldo de CasiListo."
+        case .unsupportedVersion:
+            return "Este respaldo viene de una versión más nueva de CasiListo. Actualiza la app e inténtalo de nuevo."
+        case .saveFailed:
+            return "No se pudo guardar el respaldo. No se cambió nada de lo que ya tenías."
+        }
+    }
+}
+
+nonisolated struct DataImportOutcome: Equatable, Sendable {
+    let newCategories: Int
+    let newLists: Int
+    let newItems: Int
+    let newCatalogItems: Int
+    let skippedLists: Int
+    let skippedItems: Int
+    let mergedCatalogItems: Int
+
+    var addsNothing: Bool { newCategories + newLists + newItems + newCatalogItems == 0 }
+}
+
 /// Exporta un volcado de lectura de los datos del usuario.
 ///
 /// Sin backend, el dispositivo es la única copia: esto es una red de
@@ -10,89 +114,21 @@ import SwiftData
 /// blobs viven en el sandbox y sacarlos de la app es un problema aparte.
 @MainActor
 enum DataExportService {
-    enum ExportError: LocalizedError {
-        case encodingFailed
-        case writeFailed
-
-        var errorDescription: String? {
-            switch self {
-            case .encodingFailed:
-                return "No se pudo preparar el archivo de exportación."
-            case .writeFailed:
-                return "No se pudo guardar el archivo de exportación."
-            }
-        }
-    }
-
-    struct Export: Codable {
-        /// Formato del respaldo. Opcional para que los archivos exportados
-        /// antes de esta versión (sin el campo) sigan decodificando: ausente
-        /// se interpreta como 1. Sin esto, un formato 2.0 futuro no tendría
-        /// forma de rechazarse y se importaría a medias.
-        var schemaVersion: Int?
-        let exportedAt: Date
-        let categories: [CategoryExport]
-        let lists: [ShoppingListExport]
-        let items: [ShoppingItemExport]
-        let catalogItems: [ProductCatalogItemExport]
-    }
+    typealias ExportError = DataExportError
+    typealias Export = DataExportPayload
+    typealias CategoryExport = DataCategoryExport
+    typealias ShoppingListExport = DataShoppingListExport
+    typealias ShoppingItemExport = DataShoppingItemExport
+    typealias ProductCatalogItemExport = DataProductCatalogItemExport
+    typealias ImportError = DataImportError
+    typealias ImportOutcome = DataImportOutcome
 
     /// Versión del formato que escribe este binario.
-    static let currentExportSchemaVersion = 1
+    nonisolated static let currentExportSchemaVersion = 1
 
-    struct CategoryExport: Codable {
-        let name: String
-        let sfSymbol: String
-        let sortIndex: Int
-        let isSystem: Bool
-        /// Vínculo estable con `DefaultCategory` (CASI-008). Opcional para que
-        /// los respaldos escritos antes de V2 sigan decodificando.
-        var defaultCategoryRawValue: String?
-    }
-
-    struct ShoppingListExport: Codable {
-        let id: UUID
-        let title: String
-        let createdAt: Date
-        let completedAt: Date?
-        let status: String
-        let storeScope: String?
-        let purchasedCount: Int
-        let pendingCount: Int
-        let skippedCount: Int
-        let unavailableCount: Int
-        let totalSpent: Double
-        let receiptImageFilename: String?
-        let iconName: String
-        let colorHex: String
-    }
-
-    struct ShoppingItemExport: Codable {
-        let id: UUID
-        let listID: UUID?
-        let name: String
-        let quantity: String
-        let category: String
-        let store: String
-        let note: String
-        let status: String
-        let sortOrder: Int
-        let price: Double?
-        let voiceNoteFilename: String?
-        let createdAt: Date
-    }
-
-    struct ProductCatalogItemExport: Codable {
-        let id: UUID
-        let name: String
-        let category: String
-        let store: String
-        let timesAdded: Int
-        let lastAddedAt: Date?
-        let createdAt: Date
-    }
-
-    static func exportAll(context: ModelContext) throws -> Data {
+    /// Construye el DTO en el actor principal, donde sí se puede tocar SwiftData.
+    /// La codificación se ejecuta fuera de ese actor mediante `encodeExport`.
+    static func makeExport(context: ModelContext) throws -> Export {
         let categories = try context.fetch(FetchDescriptor<Category>()).map {
             CategoryExport(
                 name: $0.name,
@@ -159,7 +195,7 @@ enum DataExportService {
             )
         }
 
-        let export = Export(
+        return Export(
             schemaVersion: currentExportSchemaVersion,
             exportedAt: .now,
             categories: categories,
@@ -168,13 +204,21 @@ enum DataExportService {
             catalogItems: catalogItems
         )
 
+    }
+
+    nonisolated static func encodeExport(_ export: Export) throws -> Data {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        guard let data = try? encoder.encode(export) else {
+        do {
+            return try encoder.encode(export)
+        } catch {
             throw ExportError.encodingFailed
         }
-        return data
+    }
+
+    static func exportAll(context: ModelContext) throws -> Data {
+        try encodeExport(makeExport(context: context))
     }
 
     /// Escribe el volcado en un archivo temporal con nombre legible, listo
@@ -182,6 +226,24 @@ enum DataExportService {
     /// exportar dos veces el mismo día no confunda cuál es la más reciente.
     static func exportFile(context: ModelContext) throws -> URL {
         let data = try exportAll(context: context)
+        return try writeExportData(data)
+    }
+
+    /// Exporta sin mantener la codificación ni la escritura de archivo en el
+    /// `MainActor`. SwiftData se lee primero; después el DTO `Sendable` cruza
+    /// el límite y el trabajo de Foundation ocurre en una tarea de utilidad.
+    static func exportFileAsync(context: ModelContext) async throws -> URL {
+        let export = try makeExport(context: context)
+        let data = try await Task.detached(priority: .utility) {
+            try encodeExport(export)
+        }.value
+        try Task.checkCancellation()
+        return try await Task.detached(priority: .utility) {
+            try writeExportData(data)
+        }.value
+    }
+
+    nonisolated private static func writeExportData(_ data: Data) throws -> URL {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HHmm"
         let filename = "CasiListo-\(formatter.string(from: .now)).json"
@@ -202,7 +264,7 @@ enum DataExportService {
     /// Borra respaldos anteriores de la misma familia en `temporaryDirectory`.
     /// Se usa antes de escribir uno nuevo, tanto aquí como en
     /// `HistoryCSVExportService`, con prefijos distintos para no pisarse.
-    static func removeStaleExports(prefix: String, extension fileExtension: String) {
+    nonisolated static func removeStaleExports(prefix: String, extension fileExtension: String) {
         let directory = FileManager.default.temporaryDirectory
         guard let existing = try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil) else { return }
         for url in existing where url.lastPathComponent.hasPrefix(prefix) && url.pathExtension == fileExtension {
@@ -212,39 +274,10 @@ enum DataExportService {
 
     // MARK: - Import de respaldo
 
-    enum ImportError: LocalizedError {
-        case invalidFile
-        case unsupportedVersion(Int)
-        case saveFailed(String)
-
-        var errorDescription: String? {
-            switch self {
-            case .invalidFile:
-                return "Este archivo no parece un respaldo de CasiListo."
-            case .unsupportedVersion:
-                return "Este respaldo viene de una versión más nueva de CasiListo. Actualiza la app e inténtalo de nuevo."
-            case .saveFailed:
-                return "No se pudo guardar el respaldo. No se cambió nada de lo que ya tenías."
-            }
-        }
-    }
-
     /// Qué haría (o hizo) una importación. Se usa dos veces —para la
     /// confirmación previa y para el resumen posterior— para que la persona
     /// pueda comparar lo que se le prometió con lo que pasó.
-    struct ImportOutcome: Equatable {
-        let newCategories: Int
-        let newLists: Int
-        let newItems: Int
-        let newCatalogItems: Int
-        let skippedLists: Int
-        let skippedItems: Int
-        let mergedCatalogItems: Int
-
-        var addsNothing: Bool { newCategories + newLists + newItems + newCatalogItems == 0 }
-    }
-
-    private static func decodeExport(_ data: Data) throws -> Export {
+    nonisolated static func decodeExport(_ data: Data) throws -> Export {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         guard let export = try? decoder.decode(Export.self, from: data) else {
@@ -302,11 +335,49 @@ enum DataExportService {
         try outcome(for: try decodeExport(data), context: context)
     }
 
+    /// Decodifica el archivo fuera del actor principal y vuelve al actor para
+    /// consultar SwiftData y calcular el plan que se mostrará en la UI.
+    static func planImportAsync(data: Data, context: ModelContext) async throws -> ImportOutcome {
+        let export = try await Task.detached(priority: .utility) {
+            try decodeExport(data)
+        }.value
+        try Task.checkCancellation()
+        return try outcome(for: export, context: context)
+    }
+
     /// Importación real. **Aditiva siempre**: nunca borra ni reemplaza una
     /// fila existente — en cualquier colisión, el dispositivo gana.
     @discardableResult
     static func importAll(data: Data, context: ModelContext) throws -> ImportOutcome {
         let export = try decodeExport(data)
+        return try importExport(export, context: context)
+    }
+
+    /// Igual que `importAll`, pero prepara el DTO fuera del actor y conserva
+    /// todas las mutaciones de SwiftData en `MainActor`.
+    @discardableResult
+    static func importAllAsync(data: Data, context: ModelContext) async throws -> ImportOutcome {
+        let export = try await Task.detached(priority: .utility) {
+            try decodeExport(data)
+        }.value
+        try Task.checkCancellation()
+        return try importExport(export, context: context)
+    }
+
+    @discardableResult
+    private static func importExport(_ export: Export, context: ModelContext) throws -> ImportOutcome {
+        do {
+            return try importExportTransaction(export, context: context)
+        } catch {
+            // La importación es aditiva, pero también debe ser atómica ante
+            // cualquier fetch o transformación que falle antes del save: no
+            // dejamos filas insertadas a medias visibles en el contexto.
+            context.rollback()
+            throw error
+        }
+    }
+
+    private static func importExportTransaction(_ export: Export, context: ModelContext) throws -> ImportOutcome {
         let plannedOutcome = try outcome(for: export, context: context)
 
         // Categorías: se resuelven por nombre normalizado, no por `id` ni por

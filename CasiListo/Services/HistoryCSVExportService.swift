@@ -40,6 +40,20 @@ enum HistoryCSVExportService {
     /// ofrecía "Guardar en Archivos"; un `URL` de archivo sí.
     static func exportFile(completedLists: [ShoppingList], items: [ShoppingItem]) throws -> URL {
         let csv = document(completedLists: completedLists, items: items)
+        return try writeCSV(csv)
+    }
+
+    /// Construye las filas en el actor principal (los modelos de SwiftData no
+    /// pueden cruzar actores) y serializa/escribe el CSV fuera de él.
+    static func exportFileAsync(completedLists: [ShoppingList], items: [ShoppingItem]) async throws -> URL {
+        let exportRows = rows(completedLists: completedLists, items: items)
+        try Task.checkCancellation()
+        return try await Task.detached(priority: .utility) {
+            try writeCSV(CSVSerializer.document(rows: exportRows))
+        }.value
+    }
+
+    nonisolated private static func writeCSV(_ csv: String) throws -> URL {
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd-HHmm"
         let url = FileManager.default.temporaryDirectory
