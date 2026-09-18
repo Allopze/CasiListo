@@ -7,6 +7,13 @@
 **Alcance real del producto:** iPhone, orientación vertical, iOS 26+, Swift 6, app local sin cuenta ni backend
 **Evidencia:** revisión estática completa, 46 capturas reales (40 en iPhone 17 Pro claro/oscuro y 6 en iPhone 17e con Accessibility XXL), 208 pruebas unitarias ejecutadas, build Release sin firma, manifiestos de privacidad, sitio estático y comprobación pública de DNS.
 
+> **Estado de remediación al 18 de septiembre de 2026.** Este informe es un **snapshot del 14 de septiembre** y sus hallazgos se conservan tal como se midieron; no se reescriben. La rama `fix/auditoria-ui-ux-2026-09-14` cerró los cuatro P0 y el polish de P2:
+>
+> - **Cerrados y verificados en código o red:** CASI-101 (`https://casilisto.lat/privacy/` y `/support/` responden 200, con 404 legible y `Strict-Transport-Security`; la app ya apunta a ese dominio), CASI-102 (`body` volvió a `LazyVStack` y el contenedor eager quedó aislado en `contentWithoutScroll`, usado solo por el diagnóstico), CASI-103 (`WidgetActionQueue.peek` + `acknowledge` con clave de confirmados; `drain` quedó deprecado), CASI-105 (`publicationState` distingue snapshot ausente de lista vacía), CASI-106 (`FullLengthScreenshotTests` vive solo en `CasiListoTests` y el CI lo salta), CASI-107 (export/import asíncronos fuera del actor principal), CASI-108 (layouts para tamaños de accesibilidad), CASI-109 (Archivar sin rol destructivo), CASI-110 (un solo CTA para crear lista), CASI-111 (la guía de gestos quedó bajo privacidad y datos en Ajustes), CASI-112, CASI-113 (`SpanishPluralization`) y CASI-114.
+> - **Abierto:** CASI-104 completo —Archive firmado, IPA, TestFlight, runtime iOS 26 real y recorrido físico— más el único resto de CASI-101: `http://casilisto.lat/` responde 200 en claro y necesita *Always Use HTTPS* en el panel de Cloudflare, que no es configuración del repo.
+>
+> La checklist viva es [VALIDACION_LANZAMIENTO.md](VALIDACION_LANZAMIENTO.md); la sección 35 de aquí queda como registro del corte.
+
 > **Criterio de certeza.** “Verificado” significa observado en código, artefacto o ejecución de esta auditoría. “Needs Runtime Verification” identifica pruebas que requieren un runtime iOS 26, dispositivo físico, VoiceOver, permisos reales, firma de distribución o App Store Connect. No se declara como roto lo que no pudo probarse.
 
 ## 1. Executive Summary
@@ -629,8 +636,8 @@ Debilidades:
 
 ### Infraestructura y legal
 
-- [ ] `https://casilisto-privacy.pages.dev/privacy/` responde 200.
-- [ ] `https://casilisto-privacy.pages.dev/support/` responde 200.
+- [x] `https://casilisto.lat/privacy/` responde 200 *(dominio final; el `casilisto-privacy.pages.dev` del corte quedó abandonado)*.
+- [x] `https://casilisto.lat/support/` responde 200.
 - [ ] Correo y fechas son reales; copy JSON no promete multimedia.
 - [ ] Enlaces se abren desde build TestFlight.
 

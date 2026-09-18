@@ -15,7 +15,7 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
   - **Secretos de repositorio**:
     - `CLOUDFLARE_ACCOUNT_ID`: ID de cuenta de Cloudflare.
     - `CLOUDFLARE_API_TOKEN`: Token con **Workers Scripts: Edit** (plantilla *Edit Cloudflare Workers*). Un token de Cloudflare Pages autentica pero no puede publicar este sitio.
-- [ ] Ejecutar el workflow **Deploy privacy site** (`deploy-privacy.yml`) y comprobar:
+- [x] Ejecutar el workflow **Deploy privacy site** (`deploy-privacy.yml`) y comprobar:
   - `https://casilisto.lat/privacy/`
   - `https://casilisto.lat/support/`
   - `https://casilisto.lat/robots.txt`, `https://casilisto.lat/sitemap.xml` y una ruta inexistente (`404` legible).
@@ -28,16 +28,15 @@ Este documento contiene la lista de comprobaciones y procedimientos operativos n
 
 > Las redirecciones entre hostnames (`www`, dominio antiguo y raíz) son configuración de zona/Bulk Redirects de Cloudflare; no se simulan en `_redirects` de Pages.
 
-**Estado medido el 16 de septiembre de 2026** con `ci/validate-public-site.sh` contra `https://casilisto.lat`:
+**Estado medido el 18 de septiembre de 2026** con `ci/validate-public-site.sh` contra `https://casilisto.lat`, ya desplegado como Worker de assets:
 
 - ✅ `/`, `/privacy/`, `/support/`, `/robots.txt` y `/sitemap.xml` responden **200**.
-- ✅ `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options` y `Referrer-Policy` presentes.
-- ❌ Una ruta inexistente responde 404 **sin cuerpo**: la `404.html` del repo todavía no está desplegada.
-- ❌ Falta `Strict-Transport-Security`: la línea existe en `src/public/_headers` pero tampoco está desplegada.
-- ❌ `http://casilisto.lat/` responde **200 en claro** en vez de 301/308. Es ajuste de zona (*Always Use HTTPS*), no del repo.
+- ✅ Una ruta inexistente responde **404 con cuerpo legible**: la `404.html` del repo ya está desplegada.
+- ✅ `Strict-Transport-Security: max-age=31536000`, `Content-Security-Policy`, `X-Content-Type-Options`, `X-Frame-Options` y `Referrer-Policy` presentes. El script exige las tres primeras, así que un despliegue que pierda `_headers` lo hace fallar.
+- ❌ `http://casilisto.lat/` responde **200 en claro** en vez de 301/308. Es el único hallazgo abierto y es ajuste de zona (*Always Use HTTPS* en el panel de Cloudflare), no del repo: redesplegar no lo arregla.
 - ⚠️ `www.casilisto.lat` no resuelve; si no se va a usar, deja `PUBLIC_WWW_URL` sin definir en vez de configurar la redirección.
 
-Los dos primeros ❌ se cierran redesplegando **Deploy privacy site** con el estado actual del repo; el tercero, desde el panel de Cloudflare.
+Con `PUBLIC_WWW_URL` sin definir, el script termina en el ❌ del HTTP en claro; cuando *Always Use HTTPS* quede activo debe llegar a «Validación pública completada».
 
 ### App Store Connect API (TestFlight y Release)
 - [ ] Crear API Key en App Store Connect (Users and Access → Integrations → App Store Connect API) con rol *App Manager* o *Developer*.
@@ -102,5 +101,6 @@ Los dos primeros ❌ se cierran redesplegando **Deploy privacy site** con el est
 - [ ] **Ajustes de Visión**: Probar con *Reducir transparencia*, *Aumentar contraste* y *Reducir movimiento* activados.
 - [ ] **Dispositivos y Temas**: Validar en modo Claro y Oscuro en iPhone compacto (SE) y iPhone Pro Max.
 - [ ] **Piso de iOS**: correr la suite y el arnés (`ci/capture-screenshots.sh --os 26.0`) contra un runtime iOS 26 real, no solo contra el más reciente.
+  Al 18 de septiembre de 2026 esta máquina solo tiene el runtime **iOS 27.0** (`xcrun simctl list runtimes`), así que el piso declarado sigue sin ejecutarse: hay que instalar el runtime 26.0 desde Xcode (Settings → Components) antes de marcar esta casilla.
 
 > CI omite `CasiListoTests/FullLengthScreenshotTests` y `CasiListoUITests/ScreenshotCaptureTests` porque son diagnósticos visuales lentos. Ejecute la matriz de capturas reales con `ci/capture-screenshots.sh --full`; el diagnóstico opcional de longitud completa se ejecuta con `ci/capture-full-screenshots.sh` y exige revisar los hashes claro/oscuro antes del release.
