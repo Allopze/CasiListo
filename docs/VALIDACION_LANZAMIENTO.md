@@ -68,6 +68,13 @@ Con `PUBLIC_WWW_URL` sin definir, el script termina en el ❌ del HTTP en claro;
 
 - [ ] Ejecutar el workflow **iOS verification** (`ios.yml`) con Xcode 26+.
 - [ ] Revisar el `.xcresult` y que `ci/validate-privacy-manifests.sh` pase sin advertencias.
+
+**Estado medido el 18 de septiembre de 2026** en local (Xcode 27, simulador iPhone 17 Pro con iOS 27.0), con los tres arneses visuales saltados igual que el CI:
+
+- ✅ `xcodebuild test` termina en `** TEST SUCCEEDED **`: **230 pruebas**, ninguna falla.
+- ✅ SwiftLint **0.65.1** —la versión que fija `ios.yml`— sobre los cinco directorios: **38 warnings, 0 errores**, así que el gate de lint pasa.
+- ⚠️ Sigue sin producirse un `.xcresult` válido en local: esta corrida se hizo sin `-resultBundlePath` para evitar el aborto por bundle existente. El `.xcresult` del CI es el que vale como evidencia.
+
 - [ ] En Xcode: **Product → Archive** con configuración *Release*.
 - [ ] En Xcode Organizer:
   - Seleccionar el archive y hacer clic en **Generate Privacy Report** para verificar que no aparezcan APIs no declaradas ni SDKs de terceros con tracking.
