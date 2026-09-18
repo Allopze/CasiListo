@@ -47,14 +47,22 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p artifacts
-          # El arnés de capturas no verifica nada en CI: escribe ~20 PNG en el
-          # /tmp del runner y los descarta, con más de 20 sleep() bloqueantes.
-          # Se salta para que el gate del PR mida lo que importa.
+          # Los tres arneses visuales no verifican nada en CI y se saltan para
+          # que el gate del PR mida lo que importa:
+          #  - ScreenshotCaptureTests escribe ~20 PNG en el /tmp del runner y
+          #    los descarta, con más de 20 sleep() bloqueantes.
+          #  - FullLengthScreenshotTests renderiza con ImageRenderer para
+          #    inspección humana.
+          #  - VideoTourTests son 301 líneas de Thread.sleep con una sola
+          #    aserción: existe para que `ci/record-app-tour.sh` lo envuelva en
+          #    `simctl recordVideo`. Sin esa envoltura no graba nada y en el
+          #    runner costaba ~3,5 min de reloj por PR.
           xcodebuild test \
             -project CasiListo.xcodeproj \
             -scheme CasiListo \
             -destination 'platform=iOS Simulator,name=iPhone 17 Pro,OS=latest' \
             -skip-testing:CasiListoUITests/ScreenshotCaptureTests \
+            -skip-testing:CasiListoUITests/VideoTourTests \
             -skip-testing:CasiListoTests/FullLengthScreenshotTests \
             -resultBundlePath artifacts/CasiListoTests.xcresult | tee artifacts/xcodebuild-test.log
       - name: Validate privacy manifests
