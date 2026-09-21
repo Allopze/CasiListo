@@ -143,7 +143,7 @@ No se requieren dependencias externas — el proyecto utiliza únicamente framew
 
 ## 📸 Capturas de pantalla
 
-`ci/capture-screenshots.sh` recorre la app con `ScreenshotCaptureTests` y deja 21 PNG por variante, organizados en `<salida>/<dispositivo>/<apariencia>/<tamaño-texto>/`.
+`ci/capture-screenshots.sh` recorre la app con `ScreenshotCaptureTests`, conserva los `.xcresult` y exporta 23 PNG adjuntos por XCTest a `<salida>/<dispositivo>/<apariencia>/<tamaño-texto>/`. La corrida falla si XCTest no produce ninguna imagen.
 
 ```bash
 ci/capture-screenshots.sh                 # iPhone, claro + oscuro (~8 min)
@@ -158,7 +158,7 @@ Cubre el menú general de listas (vacío, con una y con varias), el sheet de per
 
 Dos detalles a tener en cuenta si se toca este arnés:
 
-- **Las variables de entorno necesitan el prefijo `TEST_RUNNER_`.** `xcodebuild` no propaga variables sueltas al proceso del runner; les quita ese prefijo al reenviarlas. Por eso el script exporta `TEST_RUNNER_SCREENSHOT_DIR` y el test lee `SCREENSHOT_DIR`.
+- **Las variables de entorno necesitan el prefijo `TEST_RUNNER_`.** `xcodebuild` reenvía `TEST_RUNNER_SCREENSHOT_APPEARANCE` y `TEST_RUNNER_SCREENSHOT_TEXT_SIZE` al runner quitando ese prefijo. Las imágenes se guardan como adjuntos del `.xcresult`, no en una ruta del host desde el runner.
 - **La apariencia se fuerza por partida doble.** La app respeta `-ui-testing-light` / `-ui-testing-dark`, pero las hojas modales se presentan fuera de esa jerarquía y siguen al sistema, así que el script además fija la apariencia del simulador con `simctl ui`.
 - El diagnóstico `ci/capture-full-screenshots.sh` pertenece al target de tests y no se ejecuta en CI; sus fixtures declaran explícitamente su alcance y verifican que claro/oscuro produzcan PNGs distintos.
 

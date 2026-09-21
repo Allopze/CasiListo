@@ -13,7 +13,11 @@ final class WidgetContractTests: XCTestCase {
         let suite = "CasiListoTests.widgetContract.\(name)"
         UserDefaults.standard.removeSuite(named: suite)
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
-        addTeardownBlock { UserDefaults.standard.removeSuite(named: suite) }
+        defaults.removePersistentDomain(forName: suite)
+        addTeardownBlock {
+            defaults.removePersistentDomain(forName: suite)
+            UserDefaults.standard.removeSuite(named: suite)
+        }
         return defaults
     }
 

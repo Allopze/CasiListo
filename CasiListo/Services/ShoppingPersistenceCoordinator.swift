@@ -51,6 +51,11 @@ final class ShoppingPersistenceCoordinator {
         self.saveOperation = saveOperation
     }
 
+    // Evita el scope implícito de `MainActor` durante la liberación. iOS 26
+    // aborta en `TaskLocal::StopLookupScope` al destruir coordinadores
+    // temporales creados por servicios como `CatalogService`.
+    nonisolated deinit {}
+
     func commit() throws {
         try commitWithoutWidget()
         refreshWidgetSnapshot()
@@ -189,6 +194,7 @@ final class ShoppingPersistenceCoordinator {
         let items = try context.fetch(FetchDescriptor<ShoppingItem>())
         var appliedIDs = Set<UUID>()
         var obsoleteIDs = Set<UUID>()
+        var appliedItems: [ShoppingItem] = []
         for id in pendingIDs {
             guard let item = items.first(where: { $0.id == id }) else {
                 obsoleteIDs.insert(id)
@@ -200,8 +206,19 @@ final class ShoppingPersistenceCoordinator {
             }
             item.status = .purchased
             appliedIDs.insert(id)
+            appliedItems.append(item)
         }
-        try commit()
+        do {
+            try commit()
+        } catch {
+            // SwiftData's rollback restores the store, but on iOS 26 the
+            // already-fetched @Model instances can keep their mutated values.
+            // Restore those objects too so this still-pending queue can retry.
+            for item in appliedItems {
+                item.status = .pending
+            }
+            throw error
+        }
         // Tanto los cambios aplicados como los IDs que ya no tienen trabajo
         // válido se confirman solo después del save. Si fetch o save falla, la
         // cola completa permanece disponible para el siguiente intento.

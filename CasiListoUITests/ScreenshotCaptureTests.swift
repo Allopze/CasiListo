@@ -1,23 +1,14 @@
 import XCTest
 
 /// Arnés de captura del estado visual real de la app. No valida nada: recorre
-/// las pantallas y escribe PNGs para revisarlas a ojo.
+/// las pantallas y adjunta PNGs al resultado de XCTest para revisarlas a ojo.
 ///
 /// La apariencia y el tamaño de texto no se fijan aquí sino que llegan por
 /// entorno, para que `ci/capture-screenshots.sh` pueda recorrer la matriz de
 /// variantes sin duplicar tests. Por eso los nombres de archivo no dicen
 /// "dark": la variante la codifica el directorio de salida.
 ///
-/// Ojo con el entorno: `xcodebuild` NO propaga variables sueltas al proceso del
-/// runner. Hay que prefijarlas con `TEST_RUNNER_` y él quita el prefijo, así que
-/// se exporta `TEST_RUNNER_SCREENSHOT_DIR` y aquí se lee `SCREENSHOT_DIR`.
 final class ScreenshotCaptureTests: XCTestCase {
-
-    // MARK: - Configuración por entorno
-
-    private var outputDirectory: String {
-        ProcessInfo.processInfo.environment["SCREENSHOT_DIR"] ?? "/tmp"
-    }
 
     /// Argumentos de arranque comunes a todas las capturas.
     /// - Parameter reset: `-ui-testing-reset` siembra el fixture de 363 productos;
@@ -58,31 +49,29 @@ final class ScreenshotCaptureTests: XCTestCase {
     @MainActor
     func testCaptureListsOverview() throws {
         let app = launchApp()
-        let dir = outputDirectory
 
         let card = app.buttons["list-card-Compra actual"]
         XCTAssertTrue(card.waitForExistence(timeout: 10))
-        capture(app, to: "\(dir)/listas-una.png")
+        capture(app, to: "listas-una.png")
 
         // Duplicar deja dos tarjetas: así se ve el menú general con varias listas.
         let menu = app.buttons["list-card-menu-Compra actual"]
         XCTAssertTrue(menu.waitForExistence(timeout: 5))
         menu.tap()
         sleep(1)
-        capture(app, to: "\(dir)/listas-menu-tarjeta.png")
+        capture(app, to: "listas-menu-tarjeta.png")
 
         let duplicate = app.buttons["Duplicar lista"]
         XCTAssertTrue(duplicate.waitForExistence(timeout: 5))
         duplicate.tap()
         sleep(2)
-        capture(app, to: "\(dir)/listas-varias.png")
+        capture(app, to: "listas-varias.png")
     }
 
     /// Creación y personalización de una lista: vista previa, paleta y iconos.
     @MainActor
     func testCaptureListCustomizationSheet() throws {
         let app = launchApp()
-        let dir = outputDirectory
 
         XCTAssertTrue(app.buttons["list-card-Compra actual"].waitForExistence(timeout: 10))
         app.buttons["Crear nueva lista"].tap()
@@ -100,12 +89,12 @@ final class ScreenshotCaptureTests: XCTestCase {
         // "Asado" dispara la apariencia sugerida: llama y coral.
         nameField.typeText("Asado")
         sleep(1)
-        capture(app, to: "\(dir)/lista-nueva-sugerida.png")
+        capture(app, to: "lista-nueva-sugerida.png")
 
         // El selector de iconos vive al final del formulario.
         app.swipeUp()
         sleep(1)
-        capture(app, to: "\(dir)/lista-nueva-iconos.png")
+        capture(app, to: "lista-nueva-iconos.png")
 
         // Nombre repetido: el aviso explica por qué "Guardar" queda apagado.
         app.swipeDown()
@@ -114,7 +103,7 @@ final class ScreenshotCaptureTests: XCTestCase {
         nameField.typeText(XCUIKeyboardKey.delete.rawValue.repeated(10))
         nameField.typeText("Compra actual")
         sleep(1)
-        capture(app, to: "\(dir)/lista-nueva-nombre-repetido.png")
+        capture(app, to: "lista-nueva-nombre-repetido.png")
     }
 
     // MARK: - Detalle de la lista
@@ -122,17 +111,16 @@ final class ScreenshotCaptureTests: XCTestCase {
     @MainActor
     func testCaptureMainListExpanded() throws {
         let app = launchApp()
-        let dir = outputDirectory
 
         openSeededList(in: app)
 
         let categoryCard = app.buttons["category-section-Aseo personal"]
         XCTAssertTrue(categoryCard.waitForExistence(timeout: 10))
-        capture(app, to: "\(dir)/detalle-colapsado.png")
+        capture(app, to: "detalle-colapsado.png")
 
         categoryCard.tap()
         sleep(1)
-        capture(app, to: "\(dir)/detalle-expandido.png")
+        capture(app, to: "detalle-expandido.png")
 
         // Marca un producto como comprado para capturar ese estado también.
         let firstToggle = app.buttons.matching(
@@ -141,14 +129,13 @@ final class ScreenshotCaptureTests: XCTestCase {
         if firstToggle.waitForExistence(timeout: 5) {
             firstToggle.tap()
             sleep(1)
-            capture(app, to: "\(dir)/detalle-comprado.png")
+            capture(app, to: "detalle-comprado.png")
         }
     }
 
     @MainActor
     func testCaptureReceiptClosingFlow() throws {
         let app = launchApp()
-        let dir = outputDirectory
 
         openSeededList(in: app)
         expandFirstCategory(in: app)
@@ -166,13 +153,13 @@ final class ScreenshotCaptureTests: XCTestCase {
         XCTAssertTrue(archiveButton.waitForExistence(timeout: 5))
         archiveButton.tap()
         sleep(1)
-        capture(app, to: "\(dir)/boleta-dialogo-archivar.png")
+        capture(app, to: "boleta-dialogo-archivar.png")
 
         let receiptOption = app.buttons["Añadir boleta y archivar"]
         XCTAssertTrue(receiptOption.waitForExistence(timeout: 5))
         receiptOption.tap()
         sleep(1)
-        capture(app, to: "\(dir)/boleta-captura.png")
+        capture(app, to: "boleta-captura.png")
     }
 
     // MARK: - Primer arranque
@@ -180,19 +167,18 @@ final class ScreenshotCaptureTests: XCTestCase {
     @MainActor
     func testFirstRunStartsEmptyAndTemplatePopulatesList() throws {
         let app = launchApp(reset: "-ui-testing-reset-empty")
-        let dir = outputDirectory
 
         // Primer arranque real: "Mis Listas" sin ninguna lista todavía.
         let starter = app.buttons["list-starter-Supermercado"]
         XCTAssertTrue(starter.waitForExistence(timeout: 10))
-        capture(app, to: "\(dir)/listas-vacio.png")
+        capture(app, to: "listas-vacio.png")
 
         // El atajo crea la lista y entra directo a su detalle, todavía vacío.
         starter.tap()
 
         let templatesButton = app.buttons["empty-state-templates"]
         XCTAssertTrue(templatesButton.waitForExistence(timeout: 10))
-        capture(app, to: "\(dir)/detalle-vacio.png")
+        capture(app, to: "detalle-vacio.png")
         templatesButton.tap()
 
         // La primera tarjeta es "Catálogo completo"; aplicarla puebla la lista.
@@ -200,11 +186,11 @@ final class ScreenshotCaptureTests: XCTestCase {
             NSPredicate(format: "label BEGINSWITH 'Añadir estos'")
         ).firstMatch
         XCTAssertTrue(applyButton.waitForExistence(timeout: 5))
-        capture(app, to: "\(dir)/plantillas.png")
+        capture(app, to: "plantillas.png")
         applyButton.tap()
 
         XCTAssertTrue(app.staticTexts["355 pendientes"].waitForExistence(timeout: 10))
-        capture(app, to: "\(dir)/detalle-plantilla-aplicada.png")
+        capture(app, to: "detalle-plantilla-aplicada.png")
 
         // El catálogo también quedó poblado.
         app.tabBars.buttons["Catálogo"].tap()
@@ -212,12 +198,12 @@ final class ScreenshotCaptureTests: XCTestCase {
         XCTAssertTrue(catalogSection.waitForExistence(timeout: 5))
         catalogSection.tap()
         sleep(1)
-        capture(app, to: "\(dir)/catalogo.png")
+        capture(app, to: "catalogo.png")
 
         // Final del scroll: la última fila debe quedar por encima de la tab bar.
         for _ in 0..<8 { app.swipeUp() }
         sleep(1)
-        capture(app, to: "\(dir)/catalogo-final.png")
+        capture(app, to: "catalogo-final.png")
     }
 
     // MARK: - Pestañas secundarias
@@ -225,7 +211,6 @@ final class ScreenshotCaptureTests: XCTestCase {
     @MainActor
     func testCaptureSecondaryScreens() throws {
         let app = launchApp()
-        let dir = outputDirectory
 
         // Genera una compra en el historial: marca un producto y archívalo.
         openSeededList(in: app)
@@ -247,26 +232,26 @@ final class ScreenshotCaptureTests: XCTestCase {
         app.tabBars.buttons["Historial"].tap()
         XCTAssertTrue(app.navigationBars["Historial"].waitForExistence(timeout: 5))
         sleep(1)
-        capture(app, to: "\(dir)/historial.png")
+        capture(app, to: "historial.png")
 
         let historyRow = app.cells.firstMatch
         if historyRow.waitForExistence(timeout: 3) {
             historyRow.tap()
             sleep(1)
-            capture(app, to: "\(dir)/historial-detalle.png")
+            capture(app, to: "historial-detalle.png")
         }
 
         // Ajustes.
         app.tabBars.buttons["Ajustes"].tap()
         XCTAssertTrue(app.navigationBars["Ajustes"].waitForExistence(timeout: 5))
         sleep(1)
-        capture(app, to: "\(dir)/ajustes.png")
+        capture(app, to: "ajustes.png")
 
         // Final del scroll: comprueba que la tab bar flotante no deje contenido
         // inalcanzable debajo.
         for _ in 0..<4 { app.swipeUp() }
         sleep(1)
-        capture(app, to: "\(dir)/ajustes-final.png")
+        capture(app, to: "ajustes-final.png")
 
         // Plantillas e importador, desde el menú de la lista. Volver a la pestaña
         // Compra aterriza en "Mis Listas", así que hay que entrar de nuevo.
@@ -277,7 +262,7 @@ final class ScreenshotCaptureTests: XCTestCase {
         XCTAssertTrue(templatesOption.waitForExistence(timeout: 5))
         templatesOption.tap()
         sleep(1)
-        capture(app, to: "\(dir)/plantillas-desde-menu.png")
+        capture(app, to: "plantillas-desde-menu.png")
         app.buttons["Cerrar"].tap()
 
         app.buttons["toolbar-options-menu"].tap()
@@ -285,7 +270,7 @@ final class ScreenshotCaptureTests: XCTestCase {
         XCTAssertTrue(importerOption.waitForExistence(timeout: 5))
         importerOption.tap()
         sleep(1)
-        capture(app, to: "\(dir)/importador.png")
+        capture(app, to: "importador.png")
     }
 
     // MARK: - Utilidades
@@ -313,14 +298,18 @@ final class ScreenshotCaptureTests: XCTestCase {
         }
     }
 
-    /// Captura la ventana de la app, no la pantalla completa: así el PNG no
-    /// arrastra el marco del simulador cuando la ventana no está a pantalla completa.
+    /// Adjunta una captura de la ventana al resultado de XCTest. Esos adjuntos
+    /// se exportan luego desde el `.xcresult` en `ci/capture-screenshots.sh`;
+    /// escribir directamente en una ruta del host desde el runner falla en silencio.
     @MainActor
     private func capture(_ app: XCUIApplication, to path: String) {
         let screenshot = app.windows.firstMatch.exists
             ? app.windows.firstMatch.screenshot()
             : XCUIScreen.main.screenshot()
-        try? screenshot.pngRepresentation.write(to: URL(fileURLWithPath: path))
+        let attachment = XCTAttachment(screenshot: screenshot)
+        attachment.name = URL(fileURLWithPath: path).lastPathComponent
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
 }
 

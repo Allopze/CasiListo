@@ -3,7 +3,7 @@
 # Captura el estado visual de CasiListo recorriendo una matriz de variantes.
 #
 # Cada combinación de dispositivo × apariencia × tamaño de texto es una corrida
-# completa de ScreenshotCaptureTests, que deja los PNG en su propia carpeta:
+# completa de ScreenshotCaptureTests. Los PNG se exportan desde el `.xcresult` a:
 #
 #   <salida>/<dispositivo>/<apariencia>/<tamaño-texto>/*.png
 #
@@ -140,9 +140,12 @@ for device in "${DEVICE_LIST[@]}"; do
             variant="$(slug "$device")/ios-$(slug "$OS_VERSION")/$appearance/$text_size"
             variant_dir="$OUTPUT_DIR/$variant"
             log_file="$LOG_DIR/$(slug "$device")-ios-$(slug "$OS_VERSION")-$appearance-$text_size.log"
+            result_bundle="$OUTPUT_DIR/_results/$(slug "$device")-ios-$(slug "$OS_VERSION")-$appearance-$text_size.xcresult"
 
             rm -rf "$variant_dir"
             mkdir -p "$variant_dir"
+            mkdir -p "$(dirname "$result_bundle")"
+            rm -rf "$result_bundle"
 
             echo "▶ $device · iOS $OS_VERSION · $appearance · texto $text_size"
 
@@ -163,19 +166,38 @@ for device in "${DEVICE_LIST[@]}"; do
                 destination="platform=iOS Simulator,name=$device,OS=$OS_VERSION"
             fi
 
-            # TEST_RUNNER_ es obligatorio: xcodebuild no propaga variables sueltas
-            # al proceso del runner, les quita ese prefijo al reenviarlas.
-            if TEST_RUNNER_SCREENSHOT_DIR="$variant_dir" \
-               TEST_RUNNER_SCREENSHOT_APPEARANCE="$appearance" \
+            # XCTest conserva los PNG como adjuntos en el result bundle; después
+            # los exportamos al host. TEST_RUNNER_ permite pasar las variantes al runner.
+            if TEST_RUNNER_SCREENSHOT_APPEARANCE="$appearance" \
                TEST_RUNNER_SCREENSHOT_TEXT_SIZE="$text_size" \
                xcodebuild \
                    -project "$PROJECT_ROOT/CasiListo.xcodeproj" \
                    -scheme "$SCHEME" \
                    -destination "$destination" \
                    -only-testing:"$TEST_TARGET" \
+                   -parallel-testing-enabled NO \
+                   -resultBundlePath "$result_bundle" \
                    test < /dev/null > "$log_file" 2>&1
             then
-                echo "  ✓ $(ls -1 "$variant_dir" | wc -l | tr -d ' ') capturas en $variant"
+                if ! xcrun xcresulttool export attachments \
+                    --path "$result_bundle" \
+                    --output-path "$variant_dir" \
+                    --filter '*.png' >> "$log_file" 2>&1
+                then
+                    FAILED=$((FAILED + 1))
+                    echo "  ✗ no se pudieron exportar los PNG. Log: $log_file"
+                    [[ $KEEP_GOING -eq 1 ]] || { echo "Abortando (usa --keep-going para continuar)."; exit 1; }
+                    continue
+                fi
+
+                screenshot_count="$(find "$variant_dir" -type f -iname '*.png' | wc -l | tr -d ' ')"
+                if [[ "$screenshot_count" -eq 0 ]]; then
+                    FAILED=$((FAILED + 1))
+                    echo "  ✗ XCTest terminó sin producir PNG. Resultado: $result_bundle"
+                    [[ $KEEP_GOING -eq 1 ]] || { echo "Abortando (usa --keep-going para continuar)."; exit 1; }
+                else
+                    echo "  ✓ $screenshot_count capturas en $variant"
+                fi
             else
                 FAILED=$((FAILED + 1))
                 echo "  ✗ falló. Log: $log_file"

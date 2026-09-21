@@ -124,6 +124,10 @@ final class ShoppingListViewModel {
     /// poder observar `withAnimation` directamente.
     var contentAnimation: Animation? { reduceMotion ? nil : Theme.defaultAnimation }
 
+    // Swift 6.4/iOS 26 aborta al cerrar el scope implícito de `MainActor`
+    // cuando un ViewModel temporal se libera al terminar una operación.
+    nonisolated deinit {}
+
     // MARK: - Snapshot derivado
 
     /// Grupos cacheados — actualizados explícitamente desde la vista para no
