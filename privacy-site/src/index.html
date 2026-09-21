@@ -39,11 +39,11 @@
 
   <link rel="stylesheet" href="{{CSS_PATH}}">
 </head>
-<body>
+<body class="home-page">
   <a href="#main-content" class="skip-link">Saltar al contenido principal</a>
 
   <header class="site-header">
-    <div class="site-container header-inner">
+    <div class="site-container header-inner home-container">
       <a href="/" class="brand-link" aria-label="CasiListo, inicio">
         <img src="/assets/icons/favicon.svg" alt="" class="brand-icon" width="40" height="40">
         <span>{{SITE_NAME}}</span>
@@ -58,66 +58,103 @@
     </div>
   </header>
 
-  <main id="main-content">
-    <div class="site-container">
+  <main id="main-content" class="home-main">
+    <div class="site-container home-container">
 
-      <section class="hero" aria-labelledby="hero-title">
-        <div class="hero-inner">
-          <img src="/assets/images/appicon-240.png" alt="Ícono de CasiListo" class="hero-icon" width="80" height="80">
-          <div class="hero-content">
-            <div class="hero-badges">
-              <span class="badge">{{TAGLINE}}</span>
-              <span class="badge-subtle">iPhone · {{MIN_IOS_VERSION}}</span>
-            </div>
-            <h1 id="hero-title">La lista para el súper que se queda en tu iPhone</h1>
-            <p class="hero-description">
-              CasiListo arma la lista para Jumbo o Líder, fotografía la boleta al salir y anota lo que costó cada producto para la próxima vez. Todo se guarda en el teléfono: sin cuenta, sin servidor y sin publicidad.
-            </p>
-            <div class="button-group">
-              <a href="/privacy/" class="btn btn-primary">Leer la política de privacidad</a>
-              <a href="/support/" class="btn btn-secondary">Escribir al desarrollador</a>
-            </div>
+      <section class="home-hero" aria-labelledby="hero-title">
+        <div class="home-hero-copy">
+          <p class="home-kicker">Listas de compra para Chile</p>
+          <h1 id="hero-title">La lista de hoy.<br><span>Para la próxima.</span></h1>
+          <p class="home-hero-description">
+            Separa tus compras para Jumbo o Líder, marca lo que vas llevando y guarda los precios al cerrar con la boleta. La próxima vez, tu historial está en el iPhone.
+          </p>
+          <div class="home-actions">
+            <a href="#recorrido" class="btn btn-primary">Ver cómo funciona <span aria-hidden="true">↓</span></a>
+            <a href="/privacy/" class="home-text-link">Tus datos y tu privacidad</a>
           </div>
+          <ul class="home-facts" aria-label="Datos de CasiListo">
+            <li>Jumbo y Líder</li>
+            <li>Más de 350 productos</li>
+            <li>Gratis · sin cuenta</li>
+          </ul>
+        </div>
+
+        <figure class="home-visual">
+          <img src="/assets/images/casilisto-catalogo.jpg" alt="Pantalla del catálogo de CasiListo con productos agrupados por categoría" class="home-screen" width="1206" height="2622" fetchpriority="high">
+          <figcaption><span>El catálogo</span><span>Productos habituales, por categoría</span></figcaption>
+          <span class="home-stamp" aria-hidden="true">iPhone<br>iOS 26+</span>
+        </figure>
+      </section>
+
+      <section id="recorrido" class="journey-section" aria-labelledby="journey-title">
+        <div class="section-heading">
+          <p class="home-kicker">Del primer pendiente al historial</p>
+          <h2 id="journey-title">Una compra que deja lista la siguiente.</h2>
+        </div>
+
+        <div class="journey-list">
+          <details class="journey-step" open>
+            <summary>
+              <span class="journey-number" aria-hidden="true">01</span>
+              <span class="journey-summary-copy"><span>Antes de salir</span><strong>Arma la lista por tienda.</strong></span>
+              <span class="journey-toggle" aria-hidden="true"></span>
+            </summary>
+            <div class="journey-content">
+              <p>Elige Jumbo o Líder y agrega productos desde el catálogo. Tus listas y categorías se quedan guardadas en el teléfono.</p>
+              <img src="/assets/images/casilisto-catalogo.jpg" alt="El catálogo organiza productos habituales como conservas, despensa y frutas y verduras" width="1206" height="2622" loading="lazy" class="journey-screen">
+            </div>
+          </details>
+
+          <details class="journey-step">
+            <summary>
+              <span class="journey-number" aria-hidden="true">02</span>
+              <span class="journey-summary-copy"><span>En el súper</span><strong>Marca lo que ya llevas.</strong></span>
+              <span class="journey-toggle" aria-hidden="true"></span>
+            </summary>
+            <div class="journey-content">
+              <p>Los productos se ordenan por categoría. Marca cada pendiente, deja una nota de voz de hasta 30 segundos o consulta la lista desde el widget de inicio.</p>
+              <img src="/assets/images/casilisto-lista.jpg" alt="Lista de compra de CasiListo con productos agrupados y uno marcado como comprado" width="1206" height="2622" loading="lazy" class="journey-screen">
+            </div>
+          </details>
+
+          <details class="journey-step">
+            <summary>
+              <span class="journey-number" aria-hidden="true">03</span>
+              <span class="journey-summary-copy"><span>Al volver</span><strong>Guarda lo que costó.</strong></span>
+              <span class="journey-toggle" aria-hidden="true"></span>
+            </summary>
+            <div class="journey-content">
+              <p>Fotografía la boleta. iOS reconoce el texto en el mismo iPhone; revisas los productos y precios antes de guardarlos en el historial. También puedes exportar las compras a CSV.</p>
+              <img src="/assets/images/casilisto-boleta.jpg" alt="Pantalla de CasiListo para fotografiar una boleta o elegir una imagen" width="1206" height="2622" loading="lazy" class="journey-screen">
+            </div>
+          </details>
         </div>
       </section>
 
-      <section class="card" aria-labelledby="features-title">
-        <h2 id="features-title" class="card-title">Qué hace</h2>
-        <ul class="feature-list">
-          <li><strong>Listas por supermercado.</strong> Cada lista se asigna a Jumbo o Líder y agrupa los productos por categoría, con un catálogo de más de 350 productos habituales en Chile para no escribirlos de cero.</li>
-          <li><strong>Boleta fotografiada.</strong> Al terminar, una foto de la boleta reconoce los productos y montos en pesos, los cruza con la lista y los deja revisar antes de guardarlos en el historial.</li>
-          <li><strong>Historial de precios.</strong> Cada compra cerrada guarda qué se pagó por cada producto; el historial se exporta a CSV para abrirlo en Numbers o Excel.</li>
-          <li><strong>Notas de voz y widget.</strong> Una nota de hasta 30 segundos por producto, y un widget en la pantalla de inicio con los pendientes que se pueden marcar sin abrir la app.</li>
-        </ul>
+      <section class="local-data" aria-labelledby="local-data-title">
+        <div>
+          <p class="home-kicker">Privado por diseño</p>
+          <h2 id="local-data-title">Tus compras se quedan contigo.</h2>
+        </div>
+        <div class="local-data-copy">
+          <p>Listas, precios, fotos de boletas y notas de voz se guardan en el iPhone. No hay cuenta, servidor de CasiListo, analítica ni publicidad.</p>
+          <a href="/privacy/" class="home-text-link">Lee qué guarda la app y cómo borrarlo <span aria-hidden="true">↗</span></a>
+        </div>
       </section>
 
-      <section class="card card-highlight" aria-labelledby="privacy-title">
-        <h2 id="privacy-title" class="card-title">Dónde viven tus datos</h2>
-        <p>
-          Listas, precios, fotos de boletas y notas de voz se guardan en el almacenamiento de la app dentro de tu iPhone. La lectura de boletas usa el reconocimiento de texto de iOS en el propio teléfono, sin conexión. No hay servidor de CasiListo, no hay analítica y no hay identificadores publicitarios.
-        </p>
-        <p>
-          La única copia fuera del teléfono es la que tú decidas hacer: al exportar tus datos o al respaldar el iPhone en iCloud, donde Apple los cifra junto con el resto del respaldo. La <a href="/privacy/">política de privacidad</a> detalla qué se guarda y cómo borrarlo.
-        </p>
+      <section class="home-details" aria-label="Detalles de la app">
+        <p><strong>{{MIN_IOS_VERSION}} o posterior</strong><span>iPhone</span></p>
+        <p><strong>Gratis</strong><span>Sin compras dentro de la app</span></p>
+        <p><strong>Español</strong><span>Hecha para Chile</span></p>
+        <p><strong>{{APP_VERSION}}</strong><span>Versión</span></p>
       </section>
-
-      <section class="card card-subtle" aria-labelledby="specs-title">
-        <h2 id="specs-title" class="card-title">Ficha</h2>
-        <ul class="specs-list">
-          <li><strong>Requiere:</strong> iPhone con {{MIN_IOS_VERSION}} o posterior</li>
-          <li><strong>Idioma:</strong> español (Chile)</li>
-          <li><strong>Versión:</strong> {{APP_VERSION}}</li>
-          <li><strong>Precio:</strong> gratis, sin compras dentro de la app</li>
-          <li><strong>Desarrollador:</strong> {{DEVELOPER_NAME}}, {{DEVELOPER_COUNTRY}}</li>
-        </ul>
-        <p class="dedication">{{DEDICATION}}</p>
-      </section>
+      <p class="home-dedication">{{DEDICATION}}</p>
 
     </div>
   </main>
 
   <footer class="site-footer">
-    <div class="site-container footer-inner">
+    <div class="site-container footer-inner home-container">
       <ul class="footer-links">
         <li><a href="/privacy/">Política de privacidad</a></li>
         <li><a href="/support/">Soporte</a></li>
