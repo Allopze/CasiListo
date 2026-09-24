@@ -11,7 +11,7 @@ Preparado para la primera ficha de App Store Connect. Revisar y aprobar el texto
 - **Categoría principal / secundaria:** Productividad / Compras
 - **Precio:** Gratis
 - **Bundle ID:** `com.allopze.CasiListo`
-- **Copyright:** `2026 Alejandro López Zelaya` (validar que sea el titular de los derechos)
+- **Copyright:** `2026 Alejandro López Zelaya` (confirmado por el titular el 24-09-2026, a nombre de persona natural)
 - **URL de soporte:** <https://casilisto.lat/support/>
 - **URL de privacidad:** <https://casilisto.lat/privacy/>
 
@@ -38,5 +38,5 @@ Sin cuenta, anuncios ni compras dentro de la app. Tus listas y archivos se guard
 
 - **Notas para App Review:** No se necesita una cuenta. Las listas, notas, fotos de boletas y notas de voz se procesan o guardan en el dispositivo; la revisión del binario y su Privacy Report debe confirmar que no hay datos recopilados ni tracking antes de declarar esas opciones en App Store Connect.
 - **Clasificación por edad:** Completar el cuestionario vigente de App Store Connect en función del contenido y las funciones de la versión enviada; no aplicar una clasificación manual sin completar el cuestionario.
-- **Copyright:** Confirmar el titular antes de guardar este valor en App Store Connect.
+- **Copyright:** Confirmado el 24-09-2026: `2026 Alejandro López Zelaya`. Correo de soporte (`allopze@gmail.com`) y vigencia de la política (13 de septiembre de 2026) también quedan tal cual están publicados.
 - **Capturas:** Cargar cinco PNG de iPhone 18 Pro Max en modo claro, sin alfa: menú de listas, lista activa, catálogo, captura de boleta e historial. Verificar dimensiones exactas según la tabla vigente de Apple.
