@@ -14,7 +14,14 @@ jobs:
       - name: Select Xcode 26
         uses: maxim-lobanov/setup-xcode@v1
         with:
-          xcode-version: '26.0'
+          # 26.2 y no 26.0: la imagen macos-26-arm64 (20260907) trae Xcode
+          # 26.0.1 pero solo runtimes de simulador iOS 26.2/26.4/26.5, y en
+          # Xcode 26 actool exige un runtime del mismo SDK para compilar el
+          # AppIcon aunque el destino sea dispositivo. Con 26.0 el archive de
+          # release murió con «No simulator runtime version from [...]
+          # available to use with iphonesimulator SDK version 23A339».
+          # 26.2 es el Xcode mínimo cuyo SDK (23C54) tiene runtime instalado.
+          xcode-version: '26.2'
       - name: Require Xcode 26 or newer
         shell: bash
         run: |
