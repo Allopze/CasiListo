@@ -99,10 +99,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          xcrun iTMSTransporter -m upload \
-            -assetFile artifacts/export/CasiListo.ipa \
-            -apiKey "$ASC_KEY_ID" \
-            -apiIssuer "$ASC_ISSUER_ID"
+          # Xcode 26 ya no trae iTMSTransporter («iTMSTransporter is now
+          # part of Transporter. Please install Transporter from the Mac App
+          # Store»), así que la subida del build 5 murió aunque el IPA estaba
+          # listo. Se sube con el propio exportArchive (destination=upload),
+          # que reutiliza la API key. manageAppVersionAndBuildNumber=false
+          # para que Xcode no reescriba el BUILD_NUMBER que fija este job.
+          xcodebuild -exportArchive \
+            -archivePath artifacts/CasiListo.xcarchive \
+            -exportPath artifacts/upload \
+            -exportOptionsPlist ci/ExportOptions-AppStoreUpload.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$ASC_KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID" | tee artifacts/xcodebuild-upload.log
       - name: Remove App Store Connect key
         if: always()
         shell: bash
