@@ -235,12 +235,11 @@ struct TemplatesSheet: View {
 
         // Índices incrementales para que aplicar plantillas grandes sea O(n).
         var existingKeys = Set(allItems.map { "\(ProductNameNormalizer.normalize($0.name))|\($0.store.rawValue)" })
+        // Se calcula en línea y no en una func anidada: el compilador de
+        // Xcode 26.2 (Swift 6.2) no infiere MainActor para la func local y el
+        // archive de release murió con «sending 'category' risks causing
+        // data races» al pasar el @Model al ViewModel.
         var nextOrders: [String: Int] = [:]
-        func nextOrder(for category: Category) -> Int {
-            let next = nextOrders[category.name] ?? viewModel.nextSortOrder(for: category, in: allItems)
-            nextOrders[category.name] = next + 1
-            return next
-        }
 
         for item in template.items {
             let category = SuggestedProducts.suggestedCategory(for: item.name, in: categories)
@@ -250,12 +249,15 @@ struct TemplatesSheet: View {
             let key = "\(ProductNameNormalizer.normalize(item.name))|\(store.rawValue)"
             guard existingKeys.insert(key).inserted else { continue }
 
+            let sortOrder = nextOrders[category.name] ?? viewModel.nextSortOrder(for: category, in: allItems)
+            nextOrders[category.name] = sortOrder + 1
+
             let newItem = ShoppingItem(
                 name: item.name,
                 listID: activeList?.id,
                 quantity: item.quantity,
                 category: category,
-                sortOrder: nextOrder(for: category),
+                sortOrder: sortOrder,
                 store: store
             )
             modelContext.insert(newItem)
