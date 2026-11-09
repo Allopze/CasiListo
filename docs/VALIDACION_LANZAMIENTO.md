@@ -53,7 +53,8 @@ No hay credenciales de App Store Connect ni `gh` en este entorno, por lo que el 
 
 ## 2. App Store Connect (Ficha y Metadata)
 
-- [ ] Crear la aplicación en App Store Connect con Bundle ID `com.allopze.CasiListo`.
+- [x] Crear la aplicación en App Store Connect con Bundle ID `com.allopze.CasiListo`.
+  - Verificado el 24 de septiembre de 2026: la app ya existe con estado **Prepare for Submission** (En preparación para el envío). No hay que crearla ni borrarla. Ver la advertencia sobre no eliminarla en [`docs/GUIA_PUBLICACION_APP_STORE.md`](GUIA_PUBLICACION_APP_STORE.md).
 - [ ] Registrar URLs:
   - **Privacy Policy URL**: `https://casilisto.lat/privacy/`
   - **Support URL**: `https://casilisto.lat/support/`
