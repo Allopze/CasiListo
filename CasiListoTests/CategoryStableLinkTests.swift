@@ -62,6 +62,25 @@ final class CategoryStableLinkTests: XCTestCase {
         XCTAssertEqual(Category.matching(.carnes, in: categories)?.name, "Carnicería")
     }
 
+    /// «Pan» calzaba por prefijo crudo con «Panoja» (Congelados) antes que
+    /// con «Pan marraqueta». Los básicos de un toque de la lista vacía
+    /// (`EmptyStateView.quickStaples`) deben caer donde la persona espera.
+    func testQuickStaplesLandInTheirExpectedCategory() throws {
+        let context = try makeContext()
+        try CategoryBootstrapService.bootstrap(context: context)
+        let categories = try fetchCategories(in: context)
+
+        let expected: [(String, String)] = [
+            ("Pan", "Panadería y dulces"),
+            ("Leche", "Lácteos y huevos"),
+            ("Huevos", "Lácteos y huevos"),
+            ("Mantequilla", "Lácteos y huevos")
+        ]
+        for (name, category) in expected {
+            XCTAssertEqual(SuggestedProducts.suggestedCategory(for: name, in: categories)?.name, category, name)
+        }
+    }
+
     /// Simula un store de la 1.0 (las 15 sembradas sin vínculo) pasando por
     /// el primer arranque con V2.
     func testBackfillLinksSystemCategoriesByExactName() throws {

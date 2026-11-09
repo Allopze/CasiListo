@@ -133,6 +133,18 @@ struct SuggestedProducts {
                 return Category.matching(defaultCat, in: categories)
             }
         }
+        // Prefijo de palabra completa antes que prefijo crudo: «Pan» calzaba
+        // con «Panoja» (Congelados, que se recorre antes) y no con «Pan
+        // marraqueta» (Panadería). El chip «Pan» de la lista vacía lo mandaba
+        // a Congelados con un solo toque.
+        for (defaultCat, products) in sortedEntries {
+            if products.contains(where: {
+                let candidate = ProductNameNormalizer.normalize($0)
+                return normalizedName.hasPrefix(candidate + " ") || candidate.hasPrefix(normalizedName + " ")
+            }) {
+                return Category.matching(defaultCat, in: categories)
+            }
+        }
         for (defaultCat, products) in sortedEntries {
             if products.contains(where: {
                 let candidate = ProductNameNormalizer.normalize($0)
