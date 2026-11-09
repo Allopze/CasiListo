@@ -28,3 +28,19 @@ privacy-site/skills-lock.json
 # Configuracion local del editor (VS Code / SweetPad): apunta al workspace de
 # esta maquina, no es parte del proyecto.
 .vscode/
+
+# Estado local de Xcode por usuario (pestañas abiertas, esquemas visibles):
+# cambia en cada sesión y no es parte del proyecto.
+xcuserdata/
+
+# Configuración local de Claude Code y carpetas de agentes/skills de las
+# herramientas del entorno, igual que en privacy-site.
+.claude/settings.local.json
+.claude/agents/
+.agents/
+.codex/
+.commandcode/
+.github/agents/
+
+# Logs de corridas de GitHub Actions descargados a mano.
+logs_*/
