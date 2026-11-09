@@ -9,7 +9,7 @@ struct SettingsCategoriesSection: View {
             } label: {
                 SettingsCard {
                     SettingsLinkRow(
-                        title: "Administrar Categorías",
+                        title: "Administrar categorías",
                         detail: "Crea, edita, ordena o elimina las categorías de tus productos.",
                         symbol: "tag.fill"
                     )

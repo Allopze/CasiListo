@@ -359,7 +359,7 @@ struct ReceiptCaptureSheet: View {
             let mismatch = totalMismatch
             HStack(alignment: .top, spacing: 10) {
                 Image(systemName: mismatch == nil ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(mismatch == nil ? Theme.accentYellow : Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078")))
+                    .foregroundStyle(mismatch == nil ? Theme.statusPurchased : Theme.statusUnavailable)
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {
@@ -784,8 +784,8 @@ private struct ReceiptEntryRow: View {
 
     private var comparisonColor: Color {
         guard let comparison else { return Color.appTextSecondary }
-        if comparison.difference > 0 { return Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078")) }
-        if comparison.difference < 0 { return Color(light: UIColor(hex: "1B6E33"), dark: UIColor(hex: "6FD08C")) }
+        if comparison.difference > 0 { return Theme.statusUnavailable }
+        if comparison.difference < 0 { return Theme.statusPurchased }
         return Color.appTextSecondary
     }
 
@@ -806,7 +806,7 @@ private struct ReceiptEntryRow: View {
             HStack(spacing: 12) {
                 Image(systemName: isAssociated ? "link.circle.fill" : "plus.circle")
                     .font(.system(size: 20))
-                    .foregroundStyle(isAssociated ? Theme.accentYellow : Color.appTextSecondary)
+                    .foregroundStyle(isAssociated ? Theme.accentInteractive : Color.appTextSecondary)
                     .accessibilityHidden(true)
 
                 VStack(alignment: .leading, spacing: 2) {

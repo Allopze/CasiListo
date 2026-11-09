@@ -21,6 +21,7 @@ struct ListsOverviewView: View {
     @State private var listToDelete: ShoppingList?
     @State private var showsDeleteConfirmation = false
     @State private var persistenceErrorMessage: String?
+    @ScaledMetric(relativeTo: .largeTitle) private var overviewNumeralSize: CGFloat = 56
 
     private enum SheetDestination: Identifiable {
         case createList
@@ -34,12 +35,26 @@ struct ListsOverviewView: View {
         }
     }
 
-    private var totalPendingItemsAcrossLists: Int {
+    private var pendingItemsAcrossLists: [ShoppingItem] {
         let activeIDs = Set(activeLists.map(\.id))
         return allItems.filter { item in
             guard let listID = item.listID else { return false }
             return activeIDs.contains(listID) && item.status == .pending
-        }.count
+        }
+    }
+
+    private var totalPendingItemsAcrossLists: Int {
+        pendingItemsAcrossLists.count
+    }
+
+    /// Pendientes por supermercado, solo los que tienen algo. Es lo que no dice
+    /// ninguna tarjeta por sí sola: a qué súper conviene ir.
+    private var pendingByStore: [(store: Store, count: Int)] {
+        let pending = pendingItemsAcrossLists
+        return Store.allCases.compactMap { store in
+            let count = pending.filter { $0.store == store }.count
+            return count > 0 ? (store, count) : nil
+        }
     }
 
     var body: some View {
@@ -70,7 +85,7 @@ struct ListsOverviewView: View {
             .padding(.vertical, 12)
         }
         .background(Color.appBackground.ignoresSafeArea())
-        .navigationTitle("Mis Listas")
+        .navigationTitle("Mis listas")
         .navigationBarTitleDisplayMode(.large)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -100,7 +115,7 @@ struct ListsOverviewView: View {
             titleVisibility: .visible,
             presenting: listToDelete
         ) { list in
-            Button("Eliminar \"\(list.title)\"", role: .destructive) {
+            Button("Eliminar «\(list.title)»", role: .destructive) {
                 deleteList(list)
             }
             Button("Cancelar", role: .cancel) {}
@@ -120,42 +135,87 @@ struct ListsOverviewView: View {
         }
     }
 
-    // MARK: - Tarjeta de resumen superior
+    // MARK: - Panel de resumen superior
 
+    /// El mismo panel carbón que encabeza cada lista, a escala de todas: el
+    /// ícono de la app hecho pantalla (DESIGN.md). Informa, no actúa: la
+    /// creación tiene un único CTA primario en la barra de navegación.
     private var headerSummaryCard: some View {
-        HStack(spacing: 16) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text(SpanishPluralization.count(activeLists.count, singular: "lista activa", plural: "listas activas"))
-                    .font(Theme.captionDynamic.weight(.semibold))
-                    .foregroundStyle(Color.appTextSecondary)
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("\(totalPendingItemsAcrossLists)")
+                        .font(Theme.displayNumeral(size: overviewNumeralSize))
+                        .tracking(-1.5)
+                        .foregroundStyle(Theme.accentYellow)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.5)
+                        .contentTransition(.numericText(value: Double(totalPendingItemsAcrossLists)))
+                    (Text("por comprar ")
+                        .foregroundStyle(Theme.onPanel)
+                        + Text("en " + SpanishPluralization.count(activeLists.count, singular: "lista", plural: "listas"))
+                        .foregroundStyle(Theme.onPanelSecondary))
+                        .font(Theme.bodyBoldDynamic)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
 
-                Text(SpanishPluralization.count(totalPendingItemsAcrossLists, singular: "producto por comprar", plural: "productos por comprar"))
-                    .font(Theme.headlineDynamic)
-                    .foregroundStyle(Color.appTextPrimary)
+                Spacer(minLength: 0)
             }
 
-            Spacer()
+            if !pendingByStore.isEmpty {
+                Rectangle()
+                    .fill(Theme.panelTrack)
+                    .frame(height: 1)
 
-            // La creación tiene un único CTA primario en la barra de navegación.
-            // Esta tarjeta queda como resumen informativo para no competir con él.
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 16) { storeSplitLabels }
+                    VStack(alignment: .leading, spacing: 6) { storeSplitLabels }
+                }
+            }
         }
-        .padding(16)
-        .background(
-            Color.appCardBackground,
-            in: RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous)
-        )
-        .shadow(color: .black.opacity(0.03), radius: 6, x: 0, y: 2)
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Theme.panel, in: RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                .strokeBorder(Theme.panelEdge, lineWidth: 1)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(overviewAccessibilityLabel)
+    }
+
+    @ViewBuilder
+    private var storeSplitLabels: some View {
+        if pendingByStore.count == 1, let only = pendingByStore.first {
+            storeLabel(only.store, text: "Todo en \(only.store.displayName)")
+        } else {
+            ForEach(pendingByStore, id: \.store) { entry in
+                storeLabel(entry.store, text: "\(entry.count) en \(entry.store.displayName)")
+            }
+        }
+    }
+
+    private func storeLabel(_ store: Store, text: String) -> some View {
+        Label(text, systemImage: store.sfSymbol)
+            .font(Theme.captionDynamic.weight(.semibold))
+            .monospacedDigit()
+            .foregroundStyle(Theme.onPanel)
+            .fixedSize(horizontal: false, vertical: true)
+    }
+
+    private var overviewAccessibilityLabel: String {
+        var label = SpanishPluralization.count(totalPendingItemsAcrossLists, singular: "producto por comprar", plural: "productos por comprar")
+            + " en " + SpanishPluralization.count(activeLists.count, singular: "lista", plural: "listas")
+        if !pendingByStore.isEmpty {
+            label += ". " + pendingByStore.map { "\($0.count) en \($0.store.displayName)" }.joined(separator: ", ")
+        }
+        return label
     }
 
     // MARK: - Sección de Listas Activas
 
     private var activeListsSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("LISTAS ACTIVAS")
-                .font(Theme.captionDynamic.weight(.bold))
-                .foregroundStyle(Color.appTextSecondary)
-                .padding(.horizontal, 4)
-
             LazyVStack(spacing: 12) {
                 ForEach(activeLists) { list in
                     ListCardView(

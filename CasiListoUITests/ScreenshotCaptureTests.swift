@@ -206,6 +206,107 @@ final class ScreenshotCaptureTests: XCTestCase {
         capture(app, to: "catalogo-final.png")
     }
 
+    // MARK: - Momento firma
+
+    /// El panel cuenta hacia «¡Listo!» (DESIGN.md §2): sin estas dos capturas
+    /// el estado más importante del diseño no quedaba registrado en ninguna
+    /// corrida. Cuatro básicos: tres marcados son «Casi listo» (75 %), el
+    /// cuarto inunda el panel de amarillo.
+    @MainActor
+    func testCaptureCompletionMoment() throws {
+        let app = launchApp(reset: "-ui-testing-reset-empty")
+
+        let starter = app.buttons["list-starter-Supermercado"]
+        XCTAssertTrue(starter.waitForExistence(timeout: 10))
+        starter.tap()
+
+        // El primer básico sale del estado vacío; el resto, de la barra rápida.
+        let firstStaple = app.buttons["Añadir Leche"]
+        XCTAssertTrue(firstStaple.waitForExistence(timeout: 10))
+        firstStaple.tap()
+        dismissOnboardingIfPresent(in: app)
+
+        for staple in ["Pan", "Huevos", "Manzanas"] {
+            let field = app.textFields["quick-add-field"]
+            XCTAssertTrue(field.waitForExistence(timeout: 5))
+            field.tap()
+            field.typeText("\(staple)\n")
+            sleep(1)
+            dismissOnboardingIfPresent(in: app)
+        }
+
+        let toggles = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH 'item-toggle-'"))
+        XCTAssertTrue(toggles.firstMatch.waitForExistence(timeout: 5))
+        if app.keyboards.count > 0 { app.swipeDown() }
+
+        for staple in ["Manzanas", "Leche", "Huevos"] { tapToggle(named: staple, in: app) }
+        scrollToTop(in: app)
+        capture(app, to: "detalle-casi-listo.png")
+
+        // Colapsar las dos categorías completas sube «Panadería y dulces»:
+        // la última fila no siempre alcanza a quedar sobre la barra rápida
+        // con un gesto de XCTest.
+        for section in ["Frutas y verduras", "Lácteos y huevos"] {
+            let header = app.buttons["category-section-\(section)"]
+            if header.exists, (header.value as? String) == "Expandida" {
+                header.tap()
+                sleep(1)
+            }
+        }
+        tapToggle(named: "Pan", in: app)
+        sleep(1)
+        scrollToTop(in: app)
+        capture(app, to: "detalle-listo.png")
+    }
+
+    /// El panel ocupa el primer tercio de la pantalla y la `List` es perezosa:
+    /// un producto bajo el pliegue no existe en la jerarquía hasta que se
+    /// desplaza hasta él, y las últimas filas quedan bajo la barra rápida. Se
+    /// toca por nombre y solo cuando su marco está entre ambas barras.
+    @MainActor
+    private func tapToggle(named name: String, in app: XCUIApplication) {
+        let toggle = app.buttons["Marcar \(name) como comprado"]
+        let field = app.textFields["quick-add-field"]
+        func isClear() -> Bool {
+            // Entre la barra de navegación y el borde superior de la barra rápida.
+            guard toggle.exists, field.exists else { return false }
+            return toggle.frame.minY > 120 && toggle.frame.maxY < field.frame.minY - 16
+        }
+        for attempt in 0..<6 where !isClear() {
+            // Alterna el sentido: el producto puede haber quedado arriba o abajo.
+            if attempt < 3 {
+                app.swipeUp()
+            } else {
+                app.swipeDown()
+            }
+            sleep(1)
+        }
+        XCTAssertTrue(isClear(), "\(name) no quedó a la vista")
+        toggle.tap()
+        sleep(1)
+    }
+
+    /// Vuelve hasta que el numeral del panel (o «¡Listo!») esté a la vista.
+    @MainActor
+    private func scrollToTop(in app: XCUIApplication) {
+        let headline = app.descendants(matching: .any)["progress-panel-headline"]
+        let window = app.windows.firstMatch.frame
+        for _ in 0..<6 {
+            if headline.exists, headline.frame.minY > window.minY + 100 { break }
+            app.swipeDown()
+            sleep(1)
+        }
+    }
+
+    @MainActor
+    private func dismissOnboardingIfPresent(in app: XCUIApplication) {
+        let dismiss = app.buttons["onboarding-dismiss"]
+        if dismiss.waitForExistence(timeout: 2) {
+            dismiss.tap()
+            sleep(1)
+        }
+    }
+
     // MARK: - Pestañas secundarias
 
     @MainActor

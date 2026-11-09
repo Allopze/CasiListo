@@ -17,7 +17,10 @@ struct TemplatesSheet: View {
     struct PresetTemplate: Identifiable {
         let id: String
         let title: String
-        let emoji: String
+        /// SF Symbol + color de la paleta de listas: un solo lenguaje de
+        /// íconos en toda la app (antes eran emoji 3D junto a SF Symbols).
+        let symbol: String
+        let colorHex: String
         let description: String
         let items: [(name: String, quantity: String)]
         /// Las plantillas grandes muestran un resumen en vez de listar cada producto.
@@ -34,7 +37,8 @@ struct TemplatesSheet: View {
         return PresetTemplate(
             id: "catalogo-completo",
             title: "Catálogo completo",
-            emoji: "🛒",
+            symbol: "cart.fill",
+            colorHex: "F5C518",
             description: "Todos los productos habituales, organizados en \(DefaultCategory.allCases.count) categorías.",
             items: uniqueNames.map { (name: $0, quantity: "") },
             isSummarized: true
@@ -44,8 +48,9 @@ struct TemplatesSheet: View {
     private let templates: [PresetTemplate] = [
         PresetTemplate(
             id: "asado",
-            title: "Asado Familiar",
-            emoji: "🥩",
+            title: "Asado familiar",
+            symbol: "flame.fill",
+            colorHex: "FF5722",
             description: "Carnes, carbón, choripanes y bebidas para el fin de semana.",
             items: [
                 ("Lomo liso", "1.5 kg"),
@@ -58,8 +63,9 @@ struct TemplatesSheet: View {
         ),
         PresetTemplate(
             id: "desayuno",
-            title: "Desayuno Semanal",
-            emoji: "🍳",
+            title: "Desayuno semanal",
+            symbol: "sun.horizon.fill",
+            colorHex: "FF9800",
             description: "Esenciales para comenzar cada mañana.",
             items: [
                 ("Leche semi", "2 lt"),
@@ -73,8 +79,9 @@ struct TemplatesSheet: View {
         ),
         PresetTemplate(
             id: "limpieza",
-            title: "Limpieza del Hogar",
-            emoji: "🧹",
+            title: "Limpieza del hogar",
+            symbol: "sparkles",
+            colorHex: "00BCD4",
             description: "Detergente, lavaloza y artículos de aseo.",
             items: [
                 ("Detergente", "3 lt"),
@@ -87,8 +94,9 @@ struct TemplatesSheet: View {
         ),
         PresetTemplate(
             id: "despensa",
-            title: "Despensa Básica",
-            emoji: "🥫",
+            title: "Despensa básica",
+            symbol: "shippingbox.fill",
+            colorHex: "795548",
             description: "Arroz, fideos, aceite y conservas esenciales.",
             items: [
                 ("Arroz", "2 kg"),
@@ -113,7 +121,7 @@ struct TemplatesSheet: View {
                 .padding(16)
             }
             .background(Color.appBackground)
-            .navigationTitle("Plantillas de Lista")
+            .navigationTitle("Plantillas")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -136,9 +144,13 @@ struct TemplatesSheet: View {
 
     private func templateCard(_ template: PresetTemplate) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            ViewThatFits(in: .horizontal) {
-                HStack(spacing: 12) { templateHeaderContent(template) }
+            // `ViewThatFits` medía la descripción en una sola línea y caía al
+            // apilado en dos de cada tres tarjetas: la insignia quedaba arriba
+            // en unas y al lado en otras. Se decide por tamaño de texto.
+            if dynamicTypeSize.isAccessibilitySize {
                 VStack(alignment: .leading, spacing: 8) { templateHeaderContent(template) }
+            } else {
+                HStack(alignment: .top, spacing: 12) { templateHeaderContent(template) }
             }
 
             Divider()
@@ -202,22 +214,28 @@ struct TemplatesSheet: View {
         .padding(16)
         .background(Color.appCardBackground)
         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+        .compositingGroup()
         .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 
     @ViewBuilder
     private func templateHeaderContent(_ template: PresetTemplate) -> some View {
-        Text(template.emoji)
-            .font(.largeTitle)
+        ListBadgeView(
+            symbol: template.symbol,
+            color: Color(hex: template.colorHex),
+            size: 48,
+            iconSize: 22,
+            cornerRadius: 14
+        )
 
         VStack(alignment: .leading, spacing: 2) {
             Text(template.title)
-                .font(.headline)
+                .font(Theme.headlineDynamic)
                 .foregroundStyle(Color.appTextPrimary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(template.description)
-                .font(.caption)
+                .font(Theme.captionDynamic)
                 .foregroundStyle(Color.appTextSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

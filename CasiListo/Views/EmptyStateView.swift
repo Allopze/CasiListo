@@ -7,10 +7,12 @@ struct EmptyStateView: View {
     var onQuickAdd: ((String) -> Void)?
     var onShowTemplates: (() -> Void)?
 
-    @ScaledMetric(relativeTo: .body) private var logoSize: CGFloat = 80
+    @ScaledMetric(relativeTo: .body) private var logoSize: CGFloat = 88
     @ScaledMetric(relativeTo: .body) private var mainSpacing: CGFloat = 20
 
-    private let quickStaples = ["Leche 🥛", "Pan 🍞", "Huevos 🥚", "Manzanas 🍎", "Café ☕️", "Mantequilla 🧈"]
+    /// Básicos de un toque. Sin emoji: el resto de la app habla en SF Symbols
+    /// y los emoji mezclaban dos lenguajes de íconos en la misma pantalla.
+    private let quickStaples = ["Leche", "Pan", "Huevos", "Manzanas", "Café", "Mantequilla"]
 
     var body: some View {
         // En Accessibility XXL el contenido mide ~1.300 pt contra una ventana de
@@ -33,48 +35,44 @@ struct EmptyStateView: View {
             LogoView(size: logoSize)
                 .padding(.bottom, 4)
 
-            Text("Tu lista está vacía")
-                .font(Theme.bodyBoldDynamic)
-                .foregroundStyle(Color.appTextPrimary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+            VStack(spacing: 8) {
+                Text("Tu lista está vacía")
+                    .font(Theme.sectionHeaderDynamic)
+                    .foregroundStyle(Color.appTextPrimary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
 
-            Text("Añade productos para tu próxima compra o selecciona uno de los básicos:")
-                .font(Theme.captionDynamic)
-                .foregroundStyle(Color.appTextSecondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
-
-            // Chips de productos básicos rápidos
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    ForEach(quickStaples, id: \.self) { staple in
-                        Button {
-                            HapticFeedback.impact()
-                            let cleanName = staple.components(separatedBy: " ").first ?? staple
-                            onQuickAdd?(cleanName)
-                        } label: {
-                            Text(staple)
-                                .font(Theme.chipDynamic)
-                                .foregroundStyle(Color.appTextPrimary)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 8)
-                                .background(Color.appCardBackground)
-                                .clipShape(Capsule())
-                                .overlay(Capsule().strokeBorder(Theme.accentYellow.opacity(0.3), lineWidth: 1))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-                .padding(.horizontal, 4)
+                Text("Añade lo que te falta o parte con un básico:")
+                    .font(Theme.bodyDynamic)
+                    .foregroundStyle(Color.appTextSecondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
-            .padding(.vertical, 4)
+
+            FlowLayout(spacing: 8, lineSpacing: 8) {
+                ForEach(quickStaples, id: \.self) { staple in
+                    Button {
+                        HapticFeedback.impact()
+                        onQuickAdd?(staple)
+                    } label: {
+                        Label(staple, systemImage: "plus")
+                            .font(Theme.chipDynamic.weight(.semibold))
+                            .foregroundStyle(Color.appTextPrimary)
+                            .padding(.horizontal, 14)
+                            .frame(minHeight: Theme.minimumTouchTarget)
+                            .background(Color.appCardBackground, in: Capsule())
+                            .overlay(Capsule().strokeBorder(Color.appSeparator, lineWidth: 1))
+                    }
+                    .buttonStyle(PressableButtonStyle())
+                    .accessibilityLabel("Añadir \(staple)")
+                }
+            }
 
             ViewThatFits(in: .horizontal) {
                 actionButtons(axis: .horizontal)
                 actionButtons(axis: .vertical)
             }
-            .padding(.top, 4)
+            .padding(.top, 8)
 
             Spacer()
             Spacer()
@@ -86,15 +84,16 @@ struct EmptyStateView: View {
 
     @ViewBuilder
     private func actionButtons(axis: ActionAxis) -> some View {
-        GlassEffectContainer(spacing: 12) {
-            if axis == .horizontal {
-                HStack(spacing: 12) { actionButtonViews }
-            } else {
-                VStack(spacing: 12) { actionButtonViews }
-            }
+        if axis == .horizontal {
+            HStack(spacing: 12) { actionButtonViews }
+        } else {
+            VStack(spacing: 12) { actionButtonViews }
         }
     }
 
+    /// Un solo componente primario en ambos modos: antes `.glassProminent`
+    /// pintaba oro con texto blanco en claro y amarillo con texto blanco en
+    /// oscuro (1,6:1). La regla de marca es `.accentProminent`.
     @ViewBuilder
     private var actionButtonViews: some View {
         Button {
@@ -102,9 +101,8 @@ struct EmptyStateView: View {
             onAddTapped()
         } label: {
             Label("Añadir producto", systemImage: "plus")
-                .font(Theme.bodyBoldDynamic)
         }
-        .buttonStyle(.glassProminent)
+        .buttonStyle(.accentProminent)
 
         if let showTemplates = onShowTemplates {
             Button {
@@ -112,9 +110,8 @@ struct EmptyStateView: View {
                 showTemplates()
             } label: {
                 Label("Usar plantilla", systemImage: "square.grid.2x2")
-                    .font(Theme.bodyBoldDynamic)
             }
-            .buttonStyle(.glass)
+            .buttonStyle(.accentBordered)
             .accessibilityIdentifier("empty-state-templates")
         }
 
@@ -124,9 +121,8 @@ struct EmptyStateView: View {
                 showHistory()
             } label: {
                 Label("Ver última compra", systemImage: "clock.arrow.circlepath")
-                    .font(Theme.bodyBoldDynamic)
             }
-            .buttonStyle(.glass)
+            .buttonStyle(.accentBordered)
         }
     }
 }

@@ -27,7 +27,7 @@ struct MainTabView: View {
     private func persistenceBanner(title: String, message: String, identifier: String) -> some View {
         HStack(alignment: .top, spacing: 10) {
             Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078")))
+                .foregroundStyle(Theme.destructive)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: 2) {

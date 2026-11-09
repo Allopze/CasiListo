@@ -28,6 +28,8 @@ struct SettingsCard<Content: View>: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(Color.appCardBackground)
             .clipShape(RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous))
+            // Sin el grupo, la sombra se aplica a cada texto por separado.
+            .compositingGroup()
             .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 3)
     }
 }
@@ -40,13 +42,13 @@ struct SettingsLinkRow: View {
     var destructive: Bool = false
 
     private var destructiveColor: Color {
-        Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078"))
+        Theme.destructive
     }
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: symbol)
-                .foregroundStyle(destructive ? destructiveColor : Theme.accentYellow)
+                .foregroundStyle(destructive ? destructiveColor : Theme.accentInteractive)
                 .frame(width: 28)
 
             VStack(alignment: .leading, spacing: 3) {

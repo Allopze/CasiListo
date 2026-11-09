@@ -187,7 +187,7 @@ struct SettingsView: View {
             Button(role: .destructive) { showsResetConfirmation = true } label: {
                 SettingsCard {
                     SettingsLinkRow(
-                        title: "Borrar todos mis datos guardados",
+                        title: "Borrar todos los datos",
                         detail: "Elimina los datos locales de este dispositivo.",
                         symbol: "trash.fill",
                         destructive: true
@@ -196,7 +196,7 @@ struct SettingsView: View {
             }
             .buttonStyle(.plain)
             .disabled(isExporting || isImporting)
-            .accessibilityLabel("Borrar todos mis datos guardados")
+            .accessibilityLabel("Borrar todos los datos")
         }
     }
 

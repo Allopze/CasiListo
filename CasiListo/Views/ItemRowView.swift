@@ -19,7 +19,7 @@ struct ItemRowView: View {
     @ScaledMetric(relativeTo: .caption) private var storeTextSize: CGFloat = 11
     @ScaledMetric(relativeTo: .caption) private var pillPaddingHorizontal: CGFloat = 8
     @ScaledMetric(relativeTo: .caption) private var pillPaddingVertical: CGFloat = 2.5
-    @ScaledMetric(relativeTo: .body) private var checkmarkSize: CGFloat = 12
+    @ScaledMetric(relativeTo: .body) private var checkmarkStroke: CGFloat = 2.6
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -238,15 +238,11 @@ struct ItemRowView: View {
             if item.status == .skipped || item.status == .unavailable {
                 Label(item.status.rawValue, systemImage: item.status == .skipped ? "clock" : "exclamationmark.triangle")
                     .font(Theme.captionDynamic)
-                    .foregroundStyle(
-                        item.status == .skipped
-                            ? Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D"))
-                            : Color(light: UIColor(hex: "BA2115"), dark: UIColor(hex: "FF8078"))
-                    )
+                    .foregroundStyle(item.status == .skipped ? Theme.statusSkipped : Theme.statusUnavailable)
                     .labelStyle(.titleAndIcon)
                     .padding(.horizontal, pillPaddingHorizontal)
                     .padding(.vertical, pillPaddingVertical)
-                    .background((item.status == .skipped ? Color.orange : Color.red).opacity(0.10))
+                    .background((item.status == .skipped ? Theme.statusSkipped : Theme.statusUnavailable).opacity(0.10))
                     .clipShape(Capsule())
             }
         }
@@ -284,15 +280,22 @@ struct ItemRowView: View {
                 Label("Eliminar", systemImage: "trash")
             }
         } label: {
-            Image(systemName: "ellipsis.circle")
-                .font(.system(size: 20))
+            // Sin círculo: con 29 filas por categoría, 29 anillos idénticos
+            // eran el elemento más repetido de la pantalla. El glifo queda en
+            // tinta tenue (5,1:1 sobre tarjeta) y el blanco de 44 pt se mantiene.
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .semibold))
                 .foregroundStyle(Color.appTextSecondary)
                 .frame(width: Theme.minimumTouchTarget, height: Theme.minimumTouchTarget)
+                .contentShape(Rectangle())
         }
         .accessibilityLabel("Más acciones para \(item.name)")
         .accessibilityIdentifier("item-menu-\(item.id.uuidString)")
     }
 
+    /// El verbo de la app es «marcar»: el círculo se rellena y el visto se
+    /// dibuja un instante después, como un visto con lápiz. Al desmarcar se
+    /// borra en el mismo trazo. Con Reduce Motion el estado cambia sin viaje.
     private var checkboxView: some View {
         ZStack {
             Circle()
@@ -301,16 +304,23 @@ struct ItemRowView: View {
                     lineWidth: 1.8
                 )
 
-            if item.isPurchased {
-                Circle()
-                    .fill(Theme.accentYellow)
-                    .transition(.scale.combined(with: .opacity))
+            Circle()
+                .fill(Theme.accentYellow)
+                .scaleEffect(item.isPurchased ? 1 : 0.3)
+                .opacity(item.isPurchased ? 1 : 0)
+                .animation(Theme.tickAnimation(reduceMotion: reduceMotion), value: item.isPurchased)
 
-                Image(systemName: "checkmark")
-                    .font(.system(size: checkmarkSize, weight: .bold))
-                    .foregroundStyle(Theme.onAccent)
-                    .transition(.scale.combined(with: .opacity))
-            }
+            CheckmarkShape()
+                .trim(from: 0, to: item.isPurchased ? 1 : 0)
+                .stroke(
+                    Theme.onAccent,
+                    style: StrokeStyle(lineWidth: checkmarkStroke, lineCap: .round, lineJoin: .round)
+                )
+                .padding(checkboxSize * 0.27)
+                .animation(
+                    Theme.tickAnimation(reduceMotion: reduceMotion).map { item.isPurchased ? $0.delay(0.06) : $0 },
+                    value: item.isPurchased
+                )
         }
         .frame(width: checkboxSize, height: checkboxSize)
     }

@@ -96,7 +96,7 @@ struct AddEditVoiceNoteSection: View {
             }
             .listRowInsets(.init(top: 8, leading: 12, bottom: 8, trailing: 12))
         } header: {
-            Label("Nota de Voz", systemImage: "mic.fill")
+            Label("Nota de voz", systemImage: "mic.fill")
         }
         .onDisappear {
             stopRecordingIfNeeded()

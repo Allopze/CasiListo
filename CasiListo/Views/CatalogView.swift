@@ -22,7 +22,7 @@ struct CatalogView: View {
     @State private var catalogItemPendingDeletion: ProductCatalogItem?
 
     @ScaledMetric(relativeTo: .body) private var cardPadding: CGFloat = Theme.cardPadding
-    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
+    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.cornerRadius
     @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 56
     @ScaledMetric(relativeTo: .body) private var iconTileSize: CGFloat = 30
     @ScaledMetric(relativeTo: .body) private var rowVerticalPadding: CGFloat = 10
@@ -76,9 +76,6 @@ struct CatalogView: View {
                     catalogList
                 }
             }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                destinationBanner
-            }
             .background(Color.appBackground)
             .navigationTitle("Catálogo")
             .toolbarBackground(Color.appBackground, for: .navigationBar)
@@ -131,15 +128,24 @@ struct CatalogView: View {
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, cardPadding)
+        .padding(.horizontal, cardPadding + 4)
         .padding(.vertical, 8)
         .frame(maxWidth: .infinity)
-        .background(Color.appBackground)
         .accessibilityElement(children: .combine)
     }
 
     private var catalogList: some View {
         List {
+            // Vivía en un `safeAreaInset` superior con fondo opaco: la barra de
+            // navegación perdía su vínculo con el scroll y, al desplazarse, el
+            // título «Catálogo» no volvía a aparecer: quedaba una franja vacía.
+            Section {
+                destinationBanner
+                    .listRowInsets(.init(top: 0, leading: 0, bottom: 0, trailing: 0))
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+            }
+
             ForEach(groupedCatalog, id: \.category.name) { group in
                 let isCollapsed = searchText.isEmpty && collapsedCategories.contains(group.category.name)
 

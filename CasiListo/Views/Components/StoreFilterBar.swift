@@ -53,6 +53,9 @@ struct StoreFilterBar: View {
                         }
                 }
             }
+            // El chip mide ~34 pt; el blanco táctil, los 44 de la HIG.
+            .frame(minHeight: Theme.minimumTouchTarget)
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(title)

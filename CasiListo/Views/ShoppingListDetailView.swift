@@ -17,6 +17,7 @@ struct ShoppingListDetailView: View {
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var viewModel = ShoppingListViewModel()
     @State private var showsClearPurchasedDialog = false
+    @State private var opensReceiptAfterArchiveSheet = false
     @State private var isEditingListSheetPresented = false
     @AppStorage(AppDefaultsKeys.hasSeenOnboardingV1) private var hasSeenOnboarding = false
     @State private var showsOnboarding = false
@@ -69,9 +70,7 @@ struct ShoppingListDetailView: View {
             // no se declara además un `.navigationTitle`: sería el mismo texto dos veces.
             ToolbarItem(placement: .principal) {
                 HStack(spacing: 8) {
-                    Image(systemName: list.iconName)
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(list.accentColor)
+                    titleProgressIcon
                         .accessibilityHidden(true)
 
                     Text(list.title)
@@ -100,32 +99,40 @@ struct ShoppingListDetailView: View {
         .sheet(isPresented: $isEditingListSheetPresented) {
             AddEditListSheet(mode: .edit(list))
         }
-        .confirmationDialog(
-            "Archivar productos comprados",
+        // Hoja propia en vez de `confirmationDialog`: ver `ArchivePurchasedSheet`.
+        // El escáner de boleta es otra hoja, así que se presenta recién cuando
+        // esta terminó de cerrarse (presentar mientras otra se cierra se descarta).
+        .sheet(
             isPresented: $showsClearPurchasedDialog,
-            titleVisibility: .visible
-        ) {
-            Button("Añadir boleta y archivar") {
+            onDismiss: {
+                guard opensReceiptAfterArchiveSheet else { return }
+                opensReceiptAfterArchiveSheet = false
                 viewModel.presentReceipt(closesPurchase: true)
+            },
+            content: {
+                ArchivePurchasedSheet(
+                    listTitle: list.title,
+                    purchasedCount: viewModel.itemCounts(from: activeItems).purchased,
+                    onArchiveWithReceipt: {
+                        opensReceiptAfterArchiveSheet = true
+                        showsClearPurchasedDialog = false
+                    },
+                    onArchive: {
+                        showsClearPurchasedDialog = false
+                        do {
+                            try ShoppingPersistenceCoordinator(context: modelContext).archivePurchased(
+                                from: activeItems,
+                                activeList: list
+                            )
+                            HapticFeedback.success()
+                        } catch {
+                            viewModel.presentPersistenceError(error)
+                        }
+                    },
+                    onCancel: { showsClearPurchasedDialog = false }
+                )
             }
-            Button({
-                let count = viewModel.itemCounts(from: activeItems).purchased
-                return "Archivar " + SpanishPluralization.count(count, singular: "comprado", plural: "comprados")
-            }()) {
-                do {
-                    try ShoppingPersistenceCoordinator(context: modelContext).archivePurchased(
-                        from: activeItems,
-                        activeList: list
-                    )
-                    HapticFeedback.success()
-                } catch {
-                    viewModel.presentPersistenceError(error)
-                }
-            }
-            Button("Cancelar", role: .cancel) {}
-        } message: {
-            Text("Mueve los comprados al historial de \"\(list.title)\". Con la boleta, CasiListo además registra los precios que pagaste.")
-        }
+        )
         .alert(
             "No se pudieron guardar los cambios",
             isPresented: Binding(
@@ -154,6 +161,34 @@ struct ShoppingListDetailView: View {
             onDismiss: { hasSeenOnboarding = true },
             content: { OnboardingGuideSheet(onDismiss: { showsOnboarding = false }) }
         )
+    }
+
+    // MARK: - Título
+
+    /// El ícono de la lista dentro de un anillo de avance. El panel de
+    /// progreso se va con el scroll; el anillo deja el «cuánto me falta» a la
+    /// vista mientras se recorren 300 productos. El color pasa por el mismo
+    /// ajuste a 3:1 que la insignia (el amarillo crudo medía 1,5:1 sobre crema).
+    private var titleProgressIcon: some View {
+        let colors = ListBadgeView.iconColors(for: list.uiColor)
+        let tint = Color(light: colors.light, dark: colors.dark)
+        let summary = viewModel.derivedSummary
+        let progress = ListProgress(pending: summary.pendingCount, purchased: summary.purchasedCount)
+        return ZStack {
+            if !activeItems.isEmpty {
+                Circle()
+                    .stroke(Color.appSeparator, lineWidth: 2.5)
+                Circle()
+                    .trim(from: 0, to: progress.fraction)
+                    .stroke(tint, style: StrokeStyle(lineWidth: 2.5, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .animation(Theme.panelAnimation(reduceMotion: reduceMotion), value: progress.fraction)
+            }
+            Image(systemName: list.iconName)
+                .font(.system(size: activeItems.isEmpty ? 14 : 11, weight: .semibold))
+                .foregroundStyle(tint)
+        }
+        .frame(width: 26, height: 26)
     }
 
     // MARK: - Menú de Opciones

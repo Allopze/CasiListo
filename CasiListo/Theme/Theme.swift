@@ -101,6 +101,54 @@ enum Theme {
     /// sobre blanco, daría un relleno demasiado oscuro para una cápsula.
     static let statusPurchasedFill = Color(hex: "2E7D42")
 
+    /// Tinta de acciones destructivas y avisos de persistencia. Es el mismo
+    /// par que `statusUnavailable`; vivía repetido como literal en el banner
+    /// de `MainTabView` y en `SettingsLinkRow`.
+    static let destructive = statusUnavailable
+
+    /// Relleno de la acción «Editar» al deslizar una fila. El `B8860B` que
+    /// había dejaba la etiqueta blanca del sistema en 3,25:1; este oro mide
+    /// 5,07:1. Fijo en ambos modos: la etiqueta del swipe siempre es blanca.
+    static let swipeEditFill = Color(hex: "8A6A00")
+
+    // MARK: - Panel de progreso
+
+    /// Carbón del fondo del ícono de la app. Es la superficie del panel que
+    /// encabeza cada lista: el ícono hecho pantalla (ver DESIGN.md). En oscuro
+    /// baja a casi negro, un escalón *bajo* el suelo: subirlo a gris (como en
+    /// la primera versión) lo volvía una tarjeta más y perdía el golpe.
+    static let panel = Color(light: UIColor(hex: "211F1C"), dark: UIColor(hex: "0E0D0C"))
+
+    /// Filo del panel. En claro no hace falta (14,6:1 contra el crema); en
+    /// oscuro panel y suelo miden 1,1:1, así que lo dibuja un filo amarillo
+    /// tenue: el contorno del ícono, no una línea gris de tarjeta.
+    static let panelEdge = Color(
+        light: UIColor(hex: "211F1C"),
+        dark: UIColor(hex: "F5C518").withAlphaComponent(0.28)
+    )
+
+    /// Tinta principal sobre el panel: 14,2:1 en claro, 16,8:1 en oscuro.
+    nonisolated static let onPanel = Color(hex: "F2EEE8")
+
+    /// Tinta tenue sobre el panel: 7,4:1 en claro, 8,7:1 en oscuro.
+    nonisolated static let onPanelSecondary = Color(hex: "B3ADA4")
+
+    /// Riel de la barra de progreso sobre el panel.
+    static let panelTrack = Color(hex: "F2EEE8").opacity(0.16)
+
+    // MARK: - Tipografía display
+
+    /// Numeral de display: SF Rounded Heavy con dígitos monoespaciados, para
+    /// que el contador no baile al rodar. Solo cuenta cosas (pendientes, total
+    /// pagado); el tamaño llega ya escalado por `@ScaledMetric` en la vista.
+    static func displayNumeral(size: CGFloat) -> Font {
+        .system(size: size, weight: .heavy, design: .rounded).monospacedDigit()
+    }
+
+    /// Voz de la impresora térmica: precios y totales del historial.
+    static let receiptMono: Font = .system(.body, design: .monospaced, weight: .medium)
+    static let receiptMonoCaption: Font = .system(.caption, design: .monospaced, weight: .medium)
+
     // MARK: - Animaciones
 
     static let defaultAnimation = Animation.spring(response: 0.35, dampingFraction: 0.75)
@@ -117,6 +165,36 @@ enum Theme {
 
     static func quickAnimation(reduceMotion: Bool) -> Animation? {
         reduceMotion ? nil : quickAnimation
+    }
+
+    /// El verbo de la app es «marcar»: un trazo corto y decidido. Misma
+    /// familia de resortes que `defaultAnimation`, más corto para lo pequeño
+    /// (el visto, un chip) y más largo para lo grande (el panel). Lo grande se
+    /// mueve más lento que lo pequeño.
+    static let tickAnimation = Animation.spring(response: 0.28, dampingFraction: 0.82)
+    static let panelAnimation = Animation.spring(response: 0.5, dampingFraction: 0.86)
+
+    static func tickAnimation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : tickAnimation
+    }
+
+    static func panelAnimation(reduceMotion: Bool) -> Animation? {
+        reduceMotion ? nil : panelAnimation
+    }
+}
+
+// MARK: - Visto dibujado
+
+/// El visto del logo como trazo, para dibujarlo con `trim(from:to:)` en vez
+/// de hacerlo aparecer. Coordenadas relativas al rectángulo: sirve a
+/// cualquier tamaño.
+struct CheckmarkShape: Shape {
+    nonisolated func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX + rect.width * 0.08, y: rect.minY + rect.height * 0.54))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.38, y: rect.minY + rect.height * 0.84))
+        path.addLine(to: CGPoint(x: rect.minX + rect.width * 0.94, y: rect.minY + rect.height * 0.16))
+        return path
     }
 }
 
@@ -298,7 +376,10 @@ extension Color {
     static let appTextSecondary = Color(light: UIColor(hex: "6E6E6E"), dark: UIColor(hex: "A0A0A0"))
 
     /// Texto para ítems comprados.
-    static let appTextPurchased = Color(light: UIColor(hex: "8A8680"), dark: UIColor(hex: "A8A8A8"))
+    /// `8A8680` medía 3,6:1 sobre la tarjeta: el nombre tachado de lo ya
+    /// comprado sigue siendo contenido que se lee. `75716B` da 4,85:1; la
+    /// diferencia con lo pendiente la ponen el tachado y el visto amarillo.
+    static let appTextPurchased = Color(light: UIColor(hex: "75716B"), dark: UIColor(hex: "A8A8A8"))
 
     /// Separador sutil (cálido, en armonía con el fondo crema).
     static let appSeparator = Color(light: UIColor(hex: "EAE5DD"), dark: UIColor(hex: "3A3938"))

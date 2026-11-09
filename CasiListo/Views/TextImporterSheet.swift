@@ -109,7 +109,7 @@ struct TextImporterSheet: View {
                     HapticFeedback.selection()
                 }
             } label: {
-                Label("Pegar del Portapapeles", systemImage: "doc.on.clipboard")
+                Label("Pegar del portapapeles", systemImage: "doc.on.clipboard")
                     .font(.subheadline.bold())
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 12)
@@ -169,7 +169,7 @@ struct TextImporterSheet: View {
                                 if item.isDuplicate {
                                     Text("Ya existe en esta tienda")
                                         .font(.caption)
-                                        .foregroundStyle(Color(light: UIColor(hex: "A34A00"), dark: UIColor(hex: "FFA04D")))
+                                        .foregroundStyle(Theme.statusSkipped)
                                 }
                             }
                         }

@@ -52,15 +52,18 @@ struct ShoppingListView: View {
     private func listContent(scrollProxy: ScrollViewProxy) -> some View {
         List {
             Section {
+                // El panel va primero: es lo que la persona busca al mirar la
+                // pantalla en el pasillo. El filtro de tienda queda pegado a
+                // las categorías, que es lo que filtra.
                 VStack(alignment: .leading, spacing: filterSpacing) {
-                    StoreFilterBar(selectedStore: $viewModel.selectedStore)
-
                     SummaryBarView(
                         pendingCount: viewModel.derivedSummary.pendingCount,
                         purchasedCount: viewModel.derivedSummary.purchasedCount,
                         showPurchased: $viewModel.showPurchased,
                         onArchivePurchased: onArchivePurchased
                     )
+
+                    StoreFilterBar(selectedStore: $viewModel.selectedStore)
                 }
                 .listRowInsets(.init(
                     top: listRowInsetTop,

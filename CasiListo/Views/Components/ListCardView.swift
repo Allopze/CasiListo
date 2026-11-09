@@ -18,12 +18,8 @@ struct ListCardView: View {
         items.filter { $0.status == .purchased }
     }
 
-    private var previewNames: [String] {
-        Array(pendingItems.prefix(3).map(\.name))
-    }
-
-    private var remainingCount: Int {
-        max(0, pendingItems.count - 3)
+    private var progress: ListProgress {
+        ListProgress(pending: pendingItems.count, purchased: purchasedItems.count)
     }
 
     var body: some View {
@@ -57,18 +53,23 @@ struct ListCardView: View {
                     Color.clear.frame(width: 32, height: 32)
                 }
 
-                if !previewNames.isEmpty {
+                // Al 0 % la barra sería una línea gris sin información.
+                if progress.purchased > 0 {
+                    progressBar
+                }
+
+                if !pendingItems.isEmpty {
                     previewPillsRow
                 }
             }
-            .padding(14)
-            .background(
-                Color.appCardBackground,
-                in: RoundedRectangle(cornerRadius: Theme.smallCornerRadius, style: .continuous)
-            )
-            .shadow(color: .black.opacity(0.025), radius: 4, x: 0, y: 2)
+            .padding(16)
+            .background {
+                RoundedRectangle(cornerRadius: Theme.cornerRadius, style: .continuous)
+                    .fill(Color.appCardBackground)
+                    .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
+            }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressableButtonStyle())
         .accessibilityIdentifier("list-card-\(list.title)")
         .accessibilityLabel(
             "\(list.title), "
@@ -90,7 +91,7 @@ struct ListCardView: View {
                     .frame(width: 44, height: 44)
                     .contentShape(Rectangle())
             }
-            .padding(.top, 14)
+            .padding(.top, 16)
             .padding(.trailing, 6)
             .accessibilityLabel("Acciones de \(list.title)")
             .accessibilityIdentifier("list-card-menu-\(list.title)")
@@ -136,29 +137,84 @@ struct ListCardView: View {
                         .foregroundStyle(Color.appTextSecondary)
                     Text(SpanishPluralization.count(purchasedItems.count, singular: "listo", plural: "listos"))
                         .font(Theme.captionDynamic)
-                        .foregroundStyle(Color(light: UIColor(hex: "1B6E33"), dark: UIColor(hex: "6FD08C")))
+                        .foregroundStyle(Theme.statusPurchased)
                 }
+
+                stagePill
             }
         }
     }
 
+    /// El nombre de la app aparece en la tarjeta exactamente cuando es verdad.
+    @ViewBuilder
+    private var stagePill: some View {
+        switch progress.stage {
+        case .almostDone:
+            Text("Casi listo")
+                .font(Theme.chipDynamic.weight(.bold))
+                .foregroundStyle(Theme.onAccent)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Theme.accentYellow, in: Capsule())
+        case .done:
+            Label("¡Listo!", systemImage: "checkmark")
+                .font(Theme.chipDynamic.weight(.bold))
+                .foregroundStyle(Theme.accentYellow)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 3)
+                .background(Theme.panel, in: Capsule())
+        default:
+            EmptyView()
+        }
+    }
+
+    /// Avance en el color de la lista, ajustado a 3:1 como su insignia.
+    private var progressBar: some View {
+        let colors = ListBadgeView.iconColors(for: list.uiColor)
+        return GeometryReader { proxy in
+            ZStack(alignment: .leading) {
+                Capsule().fill(Color.appSeparator)
+                Capsule()
+                    .fill(Color(light: colors.light, dark: colors.dark))
+                    .frame(width: progress.fraction > 0 ? max(6, proxy.size.width * progress.fraction) : 0)
+            }
+        }
+        .frame(height: 6)
+        .accessibilityHidden(true)
+    }
+
+    /// Muestra tantos nombres enteros como quepan (3, 2 o 1) en vez de tres
+    /// truncados: «Bolsas basur…» no le dice nada a nadie.
     private var previewPillsRow: some View {
-        HStack(spacing: 6) {
-            ForEach(Array(previewNames.enumerated()), id: \.offset) { _, name in
+        ViewThatFits(in: .horizontal) {
+            pills(count: 3, truncates: false)
+            pills(count: 2, truncates: false)
+            pills(count: 1, truncates: false)
+            pills(count: 1, truncates: true)
+        }
+    }
+
+    private func pills(count: Int, truncates: Bool) -> some View {
+        let names = pendingItems.prefix(count).map(\.name)
+        let remaining = max(0, pendingItems.count - names.count)
+        return HStack(spacing: 6) {
+            ForEach(Array(names.enumerated()), id: \.offset) { _, name in
                 Text(name)
                     .font(Theme.chipDynamic)
                     .foregroundStyle(Color.appTextPrimary)
+                    .lineLimit(truncates && !dynamicTypeSize.isAccessibilitySize ? 1 : nil)
+                    .fixedSize(horizontal: !truncates, vertical: true)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 4)
                     .background(Color.appBackground, in: Capsule())
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
             }
 
-            if remainingCount > 0 {
-                Text("+\(remainingCount)")
+            if remaining > 0 {
+                Text("+\(remaining)")
                     .font(Theme.chipDynamic)
                     .foregroundStyle(Color.appTextSecondary)
+                    .monospacedDigit()
+                    .fixedSize()
                     .padding(.horizontal, 6)
                     .padding(.vertical, 4)
                     .background(Color.appBackground.opacity(0.8), in: Capsule())

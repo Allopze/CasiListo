@@ -27,7 +27,7 @@ struct CategorySectionView: View {
     @ScaledMetric(relativeTo: .caption) private var countPaddingHorizontal: CGFloat = 9
     @ScaledMetric(relativeTo: .caption) private var countPaddingVertical: CGFloat = 3
     @ScaledMetric(relativeTo: .body) private var chevronSize: CGFloat = 13
-    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.smallCornerRadius
+    @ScaledMetric(relativeTo: .body) private var cornerRadius: CGFloat = Theme.cornerRadius
     @ScaledMetric(relativeTo: .body) private var headerMinimumHeight: CGFloat = 56
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -91,7 +91,7 @@ struct CategorySectionView: View {
                         } label: {
                             Label("Editar", systemImage: "pencil")
                         }
-                        .tint(Color(hex: "B8860B"))
+                        .tint(Theme.swipeEditFill)
                     }
                     .swipeActions(edge: .leading) {
                         Button {
@@ -221,13 +221,16 @@ struct CategorySectionView: View {
     @ViewBuilder
     private var categoryBadge: some View {
         if pendingCount == 0 {
+            // Amarillo con tinta oscura, como el visto de cada fila: el verde
+            // era un tercer color para «comprado» que no aparecía en ningún
+            // otro lado de la lista.
             Label("\(purchasedCount)", systemImage: "checkmark")
-                .font(Theme.captionDynamic.weight(.semibold))
-                .foregroundStyle(.white)
+                .font(Theme.captionDynamic.weight(.bold))
+                .foregroundStyle(Theme.onAccent)
                 .monospacedDigit()
                 .padding(.horizontal, countPaddingHorizontal)
                 .padding(.vertical, countPaddingVertical)
-                .background(Theme.statusPurchasedFill)
+                .background(Theme.accentYellow)
                 .clipShape(Capsule())
         } else if purchasedCount > 0 {
             Text("\(purchasedCount) de \(items.count)")

@@ -121,105 +121,87 @@ struct ShoppingHistoryView: View {
         }
     }
 
+    /// Insignia de tienda + título, recuentos en palabras y el total en la
+    /// columna de la boleta. Antes los recuentos eran íconos sueltos («◎ 1»)
+    /// que nadie sabía leer.
     private func historyRow(for list: ShoppingList) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            ViewThatFits(in: .horizontal) {
-                historyTitleRow(for: list, vertical: false)
-                historyTitleRow(for: list, vertical: true)
-            }
+        HStack(alignment: .top, spacing: 12) {
+            ListBadgeView(
+                symbol: list.storeScope?.sfSymbol ?? "bag.fill",
+                color: list.accentColor,
+                size: 40,
+                iconSize: 18,
+                cornerRadius: 12
+            )
 
-            // Los recuentos se apoyan en el icono para ahorrar espacio; sin
-            // etiqueta explícita VoiceOver solo dicta números sueltos.
-            ViewThatFits(in: .horizontal) {
-                historyCounts(for: list, vertical: false)
-                historyCounts(for: list, vertical: true)
-            }
-            .font(.caption)
-            .foregroundStyle(Color.appTextSecondary)
+            VStack(alignment: .leading, spacing: 4) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        historyTitle(for: list)
+                        Spacer(minLength: 4)
+                        historyTotal(for: list)
+                    }
+                    VStack(alignment: .leading, spacing: 4) {
+                        historyTitle(for: list)
+                        historyTotal(for: list)
+                    }
+                }
 
-            if let completedAt = list.completedAt {
-                Text(AppDateFormatting.shortWithTime(completedAt))
-                    .font(.caption)
+                Text(countsSummary(for: list))
+                    .font(Theme.captionDynamic)
                     .foregroundStyle(Color.appTextSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                if let completedAt = list.completedAt {
+                    Text(AppDateFormatting.shortWithTime(completedAt))
+                        .font(Theme.receiptMonoCaption)
+                        .foregroundStyle(Color.appTextSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
+        .padding(.vertical, 4)
         .accessibilityElement(children: .combine)
     }
 
-    @ViewBuilder
-    private func historyCounts(for list: ShoppingList, vertical: Bool) -> some View {
-        let layout = vertical
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
-            : AnyLayout(HStackLayout(spacing: 12))
-        layout {
-            Label("\(list.purchasedCount)", systemImage: "checkmark.circle.fill")
-                .accessibilityLabel(
-                    SpanishPluralization.count(
-                        list.purchasedCount,
-                        singular: "producto comprado",
-                        plural: "productos comprados"
-                    )
-                )
-            if list.pendingCount > 0 {
-                Label("\(list.pendingCount)", systemImage: "circle")
-                    .accessibilityLabel(
-                        SpanishPluralization.count(
-                            list.pendingCount,
-                            singular: "producto pendiente",
-                            plural: "productos pendientes"
-                        )
-                    )
-            }
-            if list.skippedCount > 0 {
-                Label("\(list.skippedCount)", systemImage: "clock")
-                    .accessibilityLabel(
-                        SpanishPluralization.count(
-                            list.skippedCount,
-                            singular: "producto pospuesto",
-                            plural: "productos pospuestos"
-                        )
-                    )
-            }
-            if list.unavailableCount > 0 {
-                Label("\(list.unavailableCount)", systemImage: "exclamationmark.triangle")
-                    .accessibilityLabel(
-                        SpanishPluralization.count(
-                            list.unavailableCount,
-                            singular: "producto no encontrado",
-                            plural: "productos no encontrados"
-                        )
-                    )
-            }
-        }
+    private func historyTitle(for list: ShoppingList) -> some View {
+        Text(list.title)
+            .font(Theme.bodyBoldDynamic)
+            .foregroundStyle(Color.appTextPrimary)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
+            .fixedSize(horizontal: false, vertical: true)
+            .layoutPriority(1)
     }
 
     @ViewBuilder
-    private func historyTitleRow(for list: ShoppingList, vertical: Bool) -> some View {
-        let layout = vertical
-            ? AnyLayout(VStackLayout(alignment: .leading, spacing: 6))
-            : AnyLayout(HStackLayout(spacing: 8))
-        layout {
-            HStack(spacing: 6) {
-                Label(list.title, systemImage: list.storeScope?.sfSymbol ?? "bag.fill")
-                    .font(.headline)
-                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .layoutPriority(1)
-                if list.receiptImageFilename != nil {
-                    Image(systemName: "doc.text.viewfinder")
-                        .foregroundStyle(Color.appTextSecondary)
-                        .accessibilityLabel("Tiene boleta asociada")
-                }
-            }
-
-            if list.totalSpent > 0 {
-                Text(list.totalSpent.formattedPriceWithSymbol)
-                    .font(.subheadline.weight(.semibold))
-                    .foregroundStyle(Theme.accentInteractive)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
+    private func historyTotal(for list: ShoppingList) -> some View {
+        if list.totalSpent > 0 {
+            Text(list.totalSpent.formattedPriceWithSymbol)
+                .font(Theme.receiptMono.weight(.bold))
+                .foregroundStyle(Color.appTextPrimary)
+                .monospacedDigit()
+                .lineLimit(1)
+                .fixedSize()
+                .accessibilityLabel("Total pagado \(list.totalSpent.formattedPriceWithSymbol)")
         }
+    }
+
+    /// «15 comprados · 2 pospuestos · con boleta», en palabras.
+    private func countsSummary(for list: ShoppingList) -> String {
+        var parts = [SpanishPluralization.count(list.purchasedCount, singular: "comprado", plural: "comprados")]
+        if list.pendingCount > 0 {
+            parts.append(SpanishPluralization.count(list.pendingCount, singular: "pendiente", plural: "pendientes"))
+        }
+        if list.skippedCount > 0 {
+            parts.append(SpanishPluralization.count(list.skippedCount, singular: "pospuesto", plural: "pospuestos"))
+        }
+        if list.unavailableCount > 0 {
+            parts.append(SpanishPluralization.count(list.unavailableCount, singular: "no encontrado", plural: "no encontrados"))
+        }
+        if list.receiptImageFilename != nil {
+            parts.append("con boleta")
+        }
+        return parts.joined(separator: " · ")
     }
 
     /// Archivar nunca borra un `ShoppingItem`: solo le cambia el `listID`. Sin
