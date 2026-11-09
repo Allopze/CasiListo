@@ -16,6 +16,29 @@ final class CasiListoUITests: XCTestCase {
         return app
     }
 
+    /// Regresión: la fila de la barra rápida vivía en un `ViewThatFits` con
+    /// dos copias del campo. Al escribir la primera letra aparecía el segundo
+    /// botón, la fila saltaba a la copia vertical y el teclado se cerraba:
+    /// «Arroz integral» quedaba en «A».
+    @MainActor
+    func testQuickAddBarKeepsFocusWhileTyping() throws {
+        let app = launchFreshApp()
+        if app.buttons["onboarding-dismiss"].waitForExistence(timeout: 3) {
+            app.buttons["onboarding-dismiss"].tap()
+        }
+
+        let field = app.textFields["quick-add-field"]
+        XCTAssertTrue(field.waitForExistence(timeout: 5))
+        field.tap()
+        field.typeText("Arroz integral")
+
+        XCTAssertEqual(field.value as? String, "Arroz integral")
+        XCTAssertTrue(app.keyboards.firstMatch.exists, "El teclado se cerró al escribir")
+
+        field.typeText("\n")
+        XCTAssertTrue(app.buttons["Marcar Arroz integral como comprado"].waitForExistence(timeout: 5))
+    }
+
     @MainActor
     func testCreateMarkArchiveAndOpenHistory() throws {
         let app = launchFreshApp()

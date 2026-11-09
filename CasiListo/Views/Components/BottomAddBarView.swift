@@ -7,6 +7,7 @@ struct BottomAddBarView: View {
     let onAddQuick: () -> Void
     let onAddTapped: () -> Void
     @State private var suggestions: [String] = []
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Query(sort: \ProductCatalogItem.name, order: .forward) private var catalogItems: [ProductCatalogItem]
 
     @ScaledMetric(relativeTo: .body) private var chipPaddingHorizontal: CGFloat = 12
@@ -49,11 +50,8 @@ struct BottomAddBarView: View {
                     .padding(.top, 4)
                 }
 
-                ViewThatFits(in: .horizontal) {
-                    inputRow(axis: .horizontal)
-                    inputRow(axis: .vertical)
-                }
-                .padding(.horizontal, cardPadding)
+                inputRow
+                    .padding(.horizontal, cardPadding)
                 .padding(.top, 4)
                 .padding(.bottom, bottomPadding)
             }
@@ -71,22 +69,20 @@ struct BottomAddBarView: View {
         }
     }
 
-    private enum InputAxis { case horizontal, vertical }
-
-    @ViewBuilder
-    private func inputRow(axis: InputAxis) -> some View {
-        let layout = axis == .horizontal
-            ? AnyLayout(HStackLayout(spacing: hStackSpacing))
-            : AnyLayout(VStackLayout(alignment: .leading, spacing: 8))
-        layout {
+    /// Un solo `TextField` en un `AnyLayout`, que conserva la identidad de
+    /// sus hijos al cambiar de eje. Antes era `ViewThatFits` con dos copias
+    /// del campo: al escribir la primera letra aparecía el segundo botón, el
+    /// ancho *ideal* del campo (el de su placeholder) ya no cabía en la fila,
+    /// `ViewThatFits` saltaba a la copia vertical y el campo nuevo nacía sin
+    /// foco: el teclado se cerraba tras cada primera letra. El eje lo decide
+    /// el tamaño de texto, que no cambia mientras se escribe.
+    private var inputRow: some View {
+        let layout = dynamicTypeSize.isAccessibilitySize
+            ? AnyLayout(VStackLayout(alignment: .trailing, spacing: 8))
+            : AnyLayout(HStackLayout(spacing: hStackSpacing))
+        return layout {
             inputField
-            if axis == .vertical {
-                HStack(spacing: hStackSpacing) {
-                    Spacer(minLength: 0)
-                    actionButtons
-                }
-                .frame(maxWidth: .infinity, alignment: .trailing)
-            } else {
+            HStack(spacing: hStackSpacing) {
                 actionButtons
             }
         }
@@ -99,18 +95,26 @@ struct BottomAddBarView: View {
                 .foregroundStyle(Color.appTextSecondary)
                 .padding(.leading, cartIconLeadingPadding)
 
-            TextField("Añade “2kg arroz” o “pan x3”…", text: $text)
+            // Prompt con la tinta tenue de la app: el placeholder del sistema
+            // medía ~2:1 sobre el vidrio, y este enseña la sintaxis.
+            TextField(
+                text: $text,
+                prompt: Text("Añade “2kg arroz” o “pan x3”…").foregroundStyle(Color.appTextSecondary)
+            ) {
+                Text("Añadir producto rápido")
+            }
                 .font(Theme.bodyDynamic)
                 .textFieldStyle(.plain)
                 .autocorrectionDisabled()
                 .submitLabel(.done)
+                .accessibilityIdentifier("quick-add-field")
                 .onSubmit {
                     if !text.trimmingCharacters(in: .whitespaces).isEmpty {
                         onAddQuick()
                     }
                 }
         }
-        .frame(height: textFieldHeight)
+        .frame(maxWidth: .infinity, minHeight: textFieldHeight)
         .glassFilterSurface(cornerRadius: controlCornerRadius, interactive: true)
         .layoutPriority(1)
     }
